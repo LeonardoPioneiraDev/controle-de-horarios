@@ -1,0 +1,54 @@
+# Dependências do Node.js
+node_modules/
+
+# Pastas de build
+dist/
+dist-ssr/
+build/ # Se você tiver uma pasta 'build'
+backend/dist/ # Sua pasta de build do backend
+frontend/dist/ # Sua pasta de build do frontend (se aplicável)
+
+# Arquivos de ambiente local (senhas, chaves, etc.)
+*.env
+.env.local
+.env.*.local
+.local
+
+# Arquivos de log
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Arquivos de configuração de editores e OS
+.vscode/*
+!.vscode/extensions.json # Não ignore este se quiser compartilhar extensões recomendadas
+.idea/ # Pastas do JetBrains IDEs
+.DS_Store # macOS
+Thumbs.db # Windows
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp # Arquivos swap do Vim
+*.s[a-v][a-z] # Padrões de arquivos de swap de editores (geralmente gerados por Vim, Emacs)
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]s
+
+# Arquivos de dados gerados localmente que não devem ser versionados
+# Se 'base' for um diretório de dados gerados localmente pelo Postgres
+data/postgres/base/
+
+# Pastas e arquivos do Oracle Instant Client
+# Estes são os que você provavelmente quer gerenciar com LFS (se forem grandes)
+# Se você *não* quiser versioná-los de forma alguma, descomente estas linhas
+apps/backend/instantclient_12_2/
+oracle-instantclient/instantclient_21_1/
+
+# Se você estiver usando Git LFS para os instantclients, NÃO os coloque aqui,
+# pois o .gitattributes já cuidará deles.
