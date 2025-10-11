@@ -1,7 +1,10 @@
+// src/pages/Dashboard.tsx
+
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ApiService } from '../services/api';
-import { Users, UserCheck, UserX, UserPlus, BarChart3, Clock } from 'lucide-react';
+import { Users, UserCheck, UserX, UserPlus, BarChart3, Clock, Bus } from 'lucide-react';
 
 interface Stats {
   total: number;
@@ -160,12 +163,24 @@ export const Dashboard: React.FC = () => {
       {/* Quick Actions */}
       <div className="card">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Ações Rápidas</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Link 
+            to="/users"
+            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left block"
+          >
             <Users className="h-8 w-8 text-primary-500 mb-2" />
             <h4 className="font-medium text-gray-900">Gerenciar Usuários</h4>
             <p className="text-sm text-gray-600">Criar, editar e visualizar usuários</p>
-          </button>
+          </Link>
+          
+          <Link 
+            to="/viagens"
+            className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left block"
+          >
+            <Bus className="h-8 w-8 text-primary-500 mb-2" />
+            <h4 className="font-medium text-gray-900">Viagens Transdata</h4>
+            <p className="text-sm text-gray-600">Consultar e sincronizar viagens</p>
+          </Link>
           
           <button className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-left">
             <Clock className="h-8 w-8 text-primary-500 mb-2" />

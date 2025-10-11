@@ -1,3 +1,5 @@
+// src/services/api.ts
+
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { 
   User, 
@@ -11,6 +13,150 @@ import {
   EmailTestRequest,
   EmailTestResponse
 } from '../types';
+
+// ===============================================
+// 🚌 INTERFACES VIAGENS TRANSDATA - CORRIGIDAS
+// ===============================================
+
+export interface ViagemTransdata {
+  id: number;
+  hashDados: string;
+  dataReferencia: string;
+  isAtivo: boolean;
+  createdAt: string;
+  updatedAt: string;
+  ultimaSincronizacao: string;
+  
+  // ✅ CAMPOS PRINCIPAIS BASEADOS NA TABELA REAL
+  NomeLinha: string;              // Nome completo da linha (ex: "180.0 - São Sebastião / Rod. P. Piloto")
+  Servico: number;                // Número do serviço
+  SentidoText: string;            // Sentido da viagem (IDA/VOLTA)
+  InicioPrevistoText: string;     // Horário previsto de início
+  InicioRealizadoText: string;    // Horário realizado de início
+  FimPrevistoText: string;        // Horário previsto de fim
+  FimRealizadoText: string;       // Horário realizado de fim
+  PontoFinal: string;             // Tipo de ponto final (Manual/Automático)
+  statusCumprimento: string;      // Status (CUMPRIDA/NAO_CUMPRIDA/etc)
+  
+  // ✅ CAMPOS ADICIONAIS DISPONÍVEIS
+  PrefixoPrevisto?: string;       // Prefixo do veículo previsto
+  PrefixoRealizado?: string;      // Prefixo do veículo realizado
+  NomePI?: string;                // Nome do ponto inicial
+  NomePF?: string;                // Nome do ponto final
+  Trajeto?: string;               // Descrição do trajeto
+  NomeMotorista?: string;         // Nome do motorista
+  MatriculaMotorista?: string;    // Matrícula do motorista
+  NomeCobrador?: string;          // Nome do cobrador
+  MatriculaCobrador?: string;     // Matrícula do cobrador
+  ParadasLbl?: string;            // Label das paradas
+  Link1Text?: string;             // Link 1
+  HistoricoLbl?: string;          // Label do histórico
+  Link2Text?: string;             // Link 2
+  
+  // ✅ CAMPOS DE STATUS DETALHADOS
+  ParcialmenteCumprida?: number;  // Flag parcialmente cumprida
+  NaoCumprida?: number;           // Flag não cumprida
+  ForadoHorarioInicio?: number;   // Flag fora do horário início
+  ForadoHorarioFim?: number;      // Flag fora do horário fim
+  AtrasadoInicio?: number;        // Flag atrasado início
+  AtrasadoFim?: number;           // Flag atrasado fim
+  AdiantadoInicio?: number;       // Flag adiantado início
+  AdiantadoFim?: number;          // Flag adiantado fim
+  NaoCumpridoInicio?: number;     // Flag não cumprido início
+  NaoCumpridoFim?: number;        // Flag não cumprido fim
+  
+  // ✅ CAMPOS TÉCNICOS
+  IdLinha?: number;               // ID da linha
+  InicioPrevisto?: string;        // Horário previsto (formato técnico)
+  InicioRealizado?: string;       // Horário realizado (formato técnico)
+  StatusInicio?: number;          // Status numérico do início
+  FimPrevisto?: string;           // Fim previsto (formato técnico)
+  FimRealizado?: string;          // Fim realizado (formato técnico)
+  StatusFim?: number;             // Status numérico do fim
+  Sentido?: boolean;              // Sentido booleano
+  Viagem?: number;                // Número da viagem
+  PontosCumpridosPercentual?: string; // Percentual de pontos cumpridos
+  ValidouPontosCumpridos?: number;    // Flag validação pontos
+  KMProgramado?: string;          // KM programado
+  KMRodado?: string;              // KM rodado
+  Consolidad?: number;            // Flag consolidado
+  
+  // ✅ CAMPOS LEGADOS (compatibilidade)
+  codigoLinha?: string;           // Campo legado
+  sentidoTexto?: string;          // Campo legado
+  numeroServico?: number;         // Campo legado
+  horaProgramada?: string;        // Campo legado
+  horaRealizada?: string;         // Campo legado
+  atraso?: number;                // Campo legado
+}
+
+export interface FiltrosViagem {
+  sentido?: 'IDA' | 'VOLTA';
+  codigoLinha?: string;           // Código extraído do NomeLinha
+  numeroServico?: number;         // Mesmo que Servico
+  statusCumprimento?: string;
+  pontoFinal?: string;            // Filtro por tipo de ponto final
+  nomeLinha?: string;             // Busca no NomeLinha
+  horarioInicio?: string;         // Filtro por horário início
+  horarioFim?: string;            // Filtro por horário fim
+  page?: number;
+  limit?: number;
+}
+
+export interface ResponsePaginada<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface StatusDados {
+  data: string;
+  existemDados: boolean;
+  totalViagens?: number;
+  ultimaSincronizacao?: string;
+}
+
+export interface CodigosLinha {
+  data: string;
+  linhas: string[];              // Códigos extraídos do NomeLinha
+  total: number;
+}
+
+export interface ServicosUnicos {
+  data: string;
+  servicos: number[];            // Números únicos do campo Servico
+  total: number;
+}
+
+export interface SincronizacaoResult {
+  message: string;
+  data: string;
+  sincronizadas: number;
+  novas: number;
+  atualizadas: number;
+  timestamp: string;
+}
+
+export interface TesteConexao {
+  success: boolean;
+  message: string;
+  responseTime?: number;
+  timestamp: string;
+}
+
+export interface EstatisticasAPI {
+  baseUrl: string;
+  timeout: string;
+  retryAttempts: string;
+  ultimaRequisicao: string;
+  timestamp: string;
+}
+
+// ===============================================
+// 🌐 API SERVICE CLASS
+// ===============================================
 
 class ApiServiceClass {
   private api: AxiosInstance;
@@ -62,7 +208,7 @@ class ApiServiceClass {
         }
 
         if (this.debug) {
-          console.log('📤 API Request:', {
+          console.log('�� API Request:', {
             method: config.method?.toUpperCase(),
             url: config.url,
             baseURL: config.baseURL,
@@ -150,7 +296,6 @@ class ApiServiceClass {
     return response.data;
   }
 
-  // ✅ NOVOS MÉTODOS DE RESET DE SENHA
   async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
     console.log(`🔑 Redefinindo senha com token: ${token.substring(0, 8)}...`);
     const response = await this.api.post('/auth/reset-password', {
@@ -162,7 +307,7 @@ class ApiServiceClass {
   }
 
   async validateResetToken(token: string): Promise<{ valid: boolean; message: string }> {
-    console.log(`🔍 Validando token de reset: ${token.substring(0, 8)}...`);
+    console.log(`�� Validando token de reset: ${token.substring(0, 8)}...`);
     const response = await this.api.post('/auth/validate-reset-token', { token });
     console.log('✅ Token validado');
     return response.data;
@@ -201,7 +346,7 @@ class ApiServiceClass {
   }
 
   async deleteUser(id: string): Promise<{ message: string }> {
-    console.log(`🗑️ Deletando usuário ${id}...`);
+    console.log(`��️ Deletando usuário ${id}...`);
     const response = await this.api.delete(`/users/${id}`);
     console.log('✅ Usuário deletado com sucesso');
     return response.data;
@@ -215,7 +360,7 @@ class ApiServiceClass {
   }
 
   async searchUsers(query: string): Promise<User[]> {
-    console.log(`🔍 Buscando usuários: "${query}"...`);
+    console.log(`�� Buscando usuários: "${query}"...`);
     const response = await this.api.get<User[]>(`/users/search?q=${encodeURIComponent(query)}`);
     console.log('✅ Busca realizada');
     return response.data;
@@ -225,6 +370,108 @@ class ApiServiceClass {
     console.log('📊 Buscando estatísticas de usuários...');
     const response = await this.api.get<UserStats>('/users/stats');
     console.log('✅ Estatísticas obtidas');
+    return response.data;
+  }
+
+  // ===============================================
+  // 🚌 VIAGENS TRANSDATA - MÉTODOS ATUALIZADOS
+  // ===============================================
+
+  /**
+   * ✅ Buscar todas as viagens de uma data específica
+   */
+  async getViagensByDate(data: string): Promise<ViagemTransdata[]> {
+    console.log(`🚌 Buscando viagens para data: ${data}...`);
+    const response = await this.api.get<ViagemTransdata[]>(`/viagens-transdata/${data}`);
+    console.log(`✅ ${response.data.length} viagens encontradas para ${data}`);
+    return response.data;
+  }
+
+  /**
+   * ✅ Buscar viagens com filtros aplicados (corrigido para usar campos reais)
+   */
+  async getViagensWithFilters(data: string, filtros: FiltrosViagem = {}): Promise<ResponsePaginada<ViagemTransdata>> {
+    console.log(`🔍 Buscando viagens filtradas para ${data}...`, filtros);
+    
+    const params = new URLSearchParams();
+    
+    // ✅ Mapear filtros para os campos corretos da API
+    if (filtros.sentido) params.append('sentido', filtros.sentido);
+    if (filtros.codigoLinha) params.append('codigoLinha', filtros.codigoLinha);
+    if (filtros.numeroServico) params.append('servico', filtros.numeroServico.toString()); // ✅ Corrigido: 'servico' não 'numeroServico'
+    if (filtros.statusCumprimento) params.append('statusCumprimento', filtros.statusCumprimento);
+    if (filtros.pontoFinal) params.append('pontoFinal', filtros.pontoFinal);
+    if (filtros.nomeLinha) params.append('nomeLinha', filtros.nomeLinha);
+    if (filtros.horarioInicio) params.append('horarioInicio', filtros.horarioInicio);
+    if (filtros.horarioFim) params.append('horarioFim', filtros.horarioFim);
+    if (filtros.page) params.append('page', filtros.page.toString());
+    if (filtros.limit) params.append('limit', filtros.limit.toString());
+
+    const queryString = params.toString();
+    const url = `/viagens-transdata/${data}/filtrados${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await this.api.get<ResponsePaginada<ViagemTransdata>>(url);
+    console.log(`✅ ${response.data.data.length}/${response.data.total} viagens filtradas encontradas`);
+    return response.data;
+  }
+
+  /**
+   * ✅ Verificar status dos dados para uma data
+   */
+  async getStatusDados(data: string): Promise<StatusDados> {
+    console.log(`📊 Verificando status dos dados para: ${data}...`);
+    const response = await this.api.get<StatusDados>(`/viagens-transdata/${data}/status`);
+    console.log(`✅ Status verificado: ${response.data.existemDados ? 'Dados existem' : 'Sem dados'}`);
+    return response.data;
+  }
+
+  /**
+   * ✅ Obter códigos de linha únicos para uma data (extraídos do NomeLinha)
+   */
+  async getCodigosLinha(data: string): Promise<CodigosLinha> {
+    console.log(`📋 Buscando códigos de linha para: ${data}...`);
+    const response = await this.api.get<CodigosLinha>(`/viagens-transdata/${data}/linhas`);
+    console.log(`✅ ${response.data.total} códigos de linha encontrados`);
+    return response.data;
+  }
+
+  /**
+   * ✅ Obter serviços únicos para uma data (campo Servico)
+   */
+  async getServicosUnicos(data: string): Promise<ServicosUnicos> {
+    console.log(`🚌 Buscando serviços únicos para: ${data}...`);
+    const response = await this.api.get<ServicosUnicos>(`/viagens-transdata/${data}/servicos`);
+    console.log(`✅ ${response.data.total} serviços únicos encontrados`);
+    return response.data;
+  }
+
+  /**
+   * ✅ Sincronizar viagens manualmente
+   */
+  async sincronizarViagens(data: string): Promise<SincronizacaoResult> {
+    console.log(`🔄 Iniciando sincronização manual para: ${data}...`);
+    const response = await this.api.post<SincronizacaoResult>(`/viagens-transdata/sincronizar/${data}`);
+    console.log(`✅ Sincronização concluída: ${response.data.sincronizadas} viagens`);
+    return response.data;
+  }
+
+  /**
+   * ✅ Testar conexão com API Transdata
+   */
+  async testarConexaoTransdata(): Promise<TesteConexao> {
+    console.log(`🔧 Testando conexão com API Transdata...`);
+    const response = await this.api.get<TesteConexao>('/viagens-transdata/api/teste-conexao');
+    console.log(`✅ Teste de conexão: ${response.data.success ? 'Sucesso' : 'Falha'}`);
+    return response.data;
+  }
+
+  /**
+   * ✅ Obter estatísticas da API Transdata
+   */
+  async getEstatisticasTransdata(): Promise<EstatisticasAPI> {
+    console.log(`📊 Buscando estatísticas da API Transdata...`);
+    const response = await this.api.get<EstatisticasAPI>('/viagens-transdata/api/estatisticas');
+    console.log(`✅ Estatísticas obtidas`);
     return response.data;
   }
 
@@ -247,7 +494,7 @@ class ApiServiceClass {
   }
 
   async sendTestEmail(data: EmailTestRequest): Promise<EmailTestResponse> {
-    console.log(`📧 Enviando e-mail de teste para: ${data.email}...`);
+    console.log(`�� Enviando e-mail de teste para: ${data.email}...`);
     const response = await this.api.post<EmailTestResponse>('/email/test-send', data);
     console.log('✅ E-mail de teste enviado');
     return response.data;

@@ -1,3 +1,5 @@
+// src/users/users.controller.ts
+
 import {
   Controller,
   Get,
@@ -26,7 +28,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from './entities/user.entity';
+// ✅ CORRIGIR: Importar UserRole do enum, não Role da entidade
+import { UserRole } from '../common/enums/user-role.enum';
 
 @ApiTags('Users')
 @Controller('users')
@@ -36,7 +39,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
-  @Roles(Role.ADMINISTRADOR)
+  @Roles(UserRole.ADMINISTRADOR) // ✅ CORRIGIDO
   @ApiOperation({ summary: 'Criar novo usuário (Apenas Administradores)' })
   @ApiBody({ type: CreateUserDto })
   @ApiResponse({ status: 201, description: 'Usuário criado com sucesso' })
@@ -61,6 +64,7 @@ export class UsersController {
   }
 
   @Get()
+  @Roles(UserRole.GERENTE) // ✅ ADICIONAR ROLE PARA LISTAR USUÁRIOS
   @ApiOperation({ summary: 'Listar todos os usuários' })
   @ApiResponse({ status: 200, description: 'Lista de usuários' })
   async findAll(@Request() req) {
@@ -81,6 +85,7 @@ export class UsersController {
   }
 
   @Get('search')
+  @Roles(UserRole.GERENTE) // ✅ ADICIONAR ROLE PARA BUSCAR USUÁRIOS
   @ApiOperation({ summary: 'Buscar usuários' })
   @ApiQuery({ name: 'q', description: 'Termo de busca' })
   @ApiResponse({ status: 200, description: 'Usuários encontrados' })
@@ -102,7 +107,7 @@ export class UsersController {
   }
 
   @Get('stats')
-  @Roles(Role.ADMINISTRADOR, Role.GERENTE)
+  @Roles(UserRole.ADMINISTRADOR, UserRole.GERENTE) // ✅ CORRIGIDO
   @ApiOperation({ summary: 'Estatísticas de usuários' })
   @ApiResponse({ status: 200, description: 'Estatísticas' })
   async getStats(@Request() req) {
@@ -123,6 +128,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @Roles(UserRole.GERENTE) // ✅ ADICIONAR ROLE
   @ApiOperation({ summary: 'Buscar usuário por ID' })
   @ApiParam({ name: 'id', description: 'ID do usuário' })
   @ApiResponse({ status: 200, description: 'Usuário encontrado' })
@@ -130,7 +136,7 @@ export class UsersController {
   async findOne(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
     const currentUser = req.user;
     
-    console.log(`�� [GET_USER] Busca por usuário ID: ${id} solicitada por: ${currentUser.email}`);
+    console.log(`👤 [GET_USER] Busca por usuário ID: ${id} solicitada por: ${currentUser.email}`);
     
     try {
       const user = await this.usersService.findOne(id);
@@ -145,7 +151,7 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMINISTRADOR, Role.GERENTE)
+  @Roles(UserRole.ADMINISTRADOR, UserRole.GERENTE) // ✅ CORRIGIDO
   @ApiOperation({ summary: 'Atualizar usuário' })
   @ApiParam({ name: 'id', description: 'ID do usuário' })
   @ApiBody({ type: UpdateUserDto })
@@ -175,7 +181,7 @@ export class UsersController {
   }
 
   @Delete(':id')
-  @Roles(Role.ADMINISTRADOR)
+  @Roles(UserRole.ADMINISTRADOR) // ✅ CORRIGIDO
   @ApiOperation({ summary: 'Deletar usuário (Apenas Administradores)' })
   @ApiParam({ name: 'id', description: 'ID do usuário' })
   @ApiResponse({ status: 200, description: 'Usuário deletado' })
