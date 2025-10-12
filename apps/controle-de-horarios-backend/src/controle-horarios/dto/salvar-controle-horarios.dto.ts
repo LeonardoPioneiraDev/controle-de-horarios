@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsUUID, MaxLength } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsOptional, IsUUID, MaxLength, IsArray, ValidateNested } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 
 export class SalvarControleHorariosDto {
   @IsUUID()
@@ -30,9 +30,13 @@ export class SalvarControleHorariosDto {
   observacoes?: string;
 }
 
+// ✅ CORREÇÃO: DTO para salvamento múltiplo
 export class SalvarMultiplosControleHorariosDto {
   @IsString()
   dataReferencia: string;
 
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => SalvarControleHorariosDto)
   controles: SalvarControleHorariosDto[];
 }

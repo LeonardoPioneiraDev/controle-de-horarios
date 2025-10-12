@@ -15,7 +15,7 @@ export class ControleHorario {
   id: string;
 
   // Referência à viagem Globus
-  @Column({ name: 'viagem_globus_id' })
+  @Column({ name: 'viagem_globus_id', length: 50 })
   @Index()
   viagemGlobusId: string;
 
@@ -26,7 +26,7 @@ export class ControleHorario {
   @Column({ name: 'codigo_linha', length: 20 })
   codigoLinha: string;
 
-  @Column({ name: 'nome_linha', length: 200, nullable: true })
+  @Column({ name: 'nome_linha', length: 300, nullable: true })
   nomeLinha: string;
 
   @Column({ name: 'cod_servico_numero', length: 20, nullable: true })
@@ -42,7 +42,7 @@ export class ControleHorario {
   @Column({ name: 'numero_carro', length: 50, nullable: true })
   numeroCarro: string;
 
-  @Column({ name: 'informacao_recolhe', length: 200, nullable: true })
+  @Column({ name: 'informacao_recolhe', length: 300, nullable: true })
   informacaoRecolhe: string;
 
   @Column({ name: 'cracha_funcionario', length: 50, nullable: true })
@@ -58,17 +58,17 @@ export class ControleHorario {
   @Column({ name: 'horario_chegada', length: 8, nullable: true })
   horarioChegada: string;
 
-  @Column({ name: 'nome_motorista', length: 100, nullable: true })
+  @Column({ name: 'nome_motorista', length: 200, nullable: true })
   nomeMotorista: string;
 
-  @Column({ name: 'local_origem', length: 100, nullable: true })
+  @Column({ name: 'local_origem', length: 200, nullable: true })
   localOrigem: string;
 
   // Auditoria
-  @Column({ name: 'usuario_edicao', length: 100 })
+  @Column({ name: 'usuario_edicao', length: 500 }) // ✅ ATUALIZADO: 500
   usuarioEdicao: string;
 
-  @Column({ name: 'usuario_email', length: 255, nullable: true })
+  @Column({ name: 'usuario_email', length: 500, nullable: true }) // ✅ ATUALIZADO: 500
   usuarioEmail: string;
 
   @CreateDateColumn({ name: 'created_at' })

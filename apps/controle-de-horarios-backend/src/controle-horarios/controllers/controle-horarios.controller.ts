@@ -79,6 +79,7 @@ export class ControleHorariosController {
     }
   }
 
+  // ✅ CORREÇÃO: Endpoint para salvamento múltiplo
   @Post('salvar-multiplos')
   @Roles(UserRole.OPERADOR)
   async salvarMultiplosControles(
@@ -87,6 +88,7 @@ export class ControleHorariosController {
   ) {
     try {
       this.logger.log(`💾 [${usuarioEmail}] Salvando múltiplos controles para ${dados.dataReferencia}`);
+      this.logger.log(`📊 Total de controles a salvar: ${dados.controles.length}`);
       
       return await this.controleHorariosService.salvarMultiplosControles(dados, usuarioEmail);
     } catch (error) {

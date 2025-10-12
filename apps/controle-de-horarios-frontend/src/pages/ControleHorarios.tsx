@@ -81,10 +81,12 @@ export const ControleHorarios: React.FC = () => {
   });
 
   const [controleHorarios, setControleHorarios] = useState<ControleHorarioItem[]>([]);
+  const [controleHorariosOriginais, setControleHorariosOriginais] = useState<ControleHorarioItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [saving, setSaving] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false);
   
   // Estados de filtros
   const [filtros, setFiltros] = useState<Filtros>({
@@ -137,6 +139,23 @@ export const ControleHorarios: React.FC = () => {
     }
   }, [dataReferencia]);
 
+  // Verificar alterações pendentes
+  useEffect(() => {
+    const temAlteracoes = controleHorarios.some((item, index) => {
+      const original = controleHorariosOriginais[index];
+      if (!original) return false;
+      
+      return (
+        item.dadosEditaveis.numeroCarro !== original.dadosEditaveis.numeroCarro ||
+        item.dadosEditaveis.informacaoRecolhe !== original.dadosEditaveis.informacaoRecolhe ||
+        item.dadosEditaveis.crachaFuncionario !== original.dadosEditaveis.crachaFuncionario ||
+        item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes
+      );
+    });
+    
+    setTemAlteracoesPendentes(temAlteracoes);
+  }, [controleHorarios, controleHorariosOriginais]);
+
   const verificarStatusDados = async () => {
     try {
       const response = await makeAuthenticatedRequest(`/controle-horarios/${dataReferencia}/status`);
@@ -177,7 +196,9 @@ export const ControleHorarios: React.FC = () => {
 
       if (response.success) {
         setControleHorarios(response.data);
+        setControleHorariosOriginais(JSON.parse(JSON.stringify(response.data))); // Deep copy
         setEstatisticas(response.estatisticas);
+        setTemAlteracoesPendentes(false);
       } else {
         setError(response.message || 'Erro ao buscar controle de horários');
       }
@@ -192,67 +213,80 @@ export const ControleHorarios: React.FC = () => {
   // 💾 FUNÇÕES DE SALVAMENTO
   // ===============================================
 
-  const salvarControle = useCallback(async (viagemId: string, dados: Partial<DadosEditaveis>) => {
-    setSaving(prev => new Set(prev).add(viagemId));
+  const salvarTodasAlteracoes = async () => {
+    setSaving(true);
+    setError(null);
     
     try {
+      // Identificar itens que foram alterados
+      const itensAlterados = controleHorarios.filter((item, index) => {
+        const original = controleHorariosOriginais[index];
+        if (!original) return false;
+        
+        return (
+          item.dadosEditaveis.numeroCarro !== original.dadosEditaveis.numeroCarro ||
+          item.dadosEditaveis.informacaoRecolhe !== original.dadosEditaveis.informacaoRecolhe ||
+          item.dadosEditaveis.crachaFuncionario !== original.dadosEditaveis.crachaFuncionario ||
+          item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes
+        );
+      });
+
+      if (itensAlterados.length === 0) {
+        setError('Nenhuma alteração encontrada para salvar.');
+        return;
+      }
+
+      // Preparar dados para salvamento múltiplo
+      const dadosParaSalvar = {
+        dataReferencia,
+        controles: itensAlterados.map(item => ({
+          viagemGlobusId: item.viagemGlobus.id,
+          numeroCarro: item.dadosEditaveis.numeroCarro || null,
+          informacaoRecolhe: item.dadosEditaveis.informacaoRecolhe || null,
+          crachaFuncionario: item.dadosEditaveis.crachaFuncionario || null,
+          observacoes: item.dadosEditaveis.observacoes || null,
+        }))
+      };
+
       const response = await makeAuthenticatedRequest(
-        `/controle-horarios/${dataReferencia}/salvar`,
+        `/controle-horarios/salvar-multiplos`,
         {
           method: 'POST',
-          body: JSON.stringify({
-            viagemGlobusId: viagemId,
-            ...dados,
-          }),
+          body: JSON.stringify(dadosParaSalvar),
         }
       );
 
       if (response.success) {
-        // Atualizar o item na lista
-        setControleHorarios(prev => 
-          prev.map(item => 
-            item.viagemGlobus.id === viagemId
-              ? {
-                  ...item,
-                  dadosEditaveis: {
-                    ...item.dadosEditaveis,
-                    ...dados,
-                    jaFoiEditado: true,
-                    updatedAt: new Date(),
-                  }
-                }
-              : item
-          )
-        );
-
-        // Atualizar estatísticas
-        setEstatisticas(prev => ({
-          ...prev,
-          viagensEditadas: prev.viagensEditadas + (item => item.dadosEditaveis.jaFoiEditado ? 0 : 1)(
-            controleHorarios.find(item => item.viagemGlobus.id === viagemId)!
-          ),
-          viagensNaoEditadas: prev.viagensNaoEditadas - (item => item.dadosEditaveis.jaFoiEditado ? 0 : 1)(
-            controleHorarios.find(item => item.viagemGlobus.id === viagemId)!
-          ),
-        }));
+        // Atualizar dados originais
+        setControleHorariosOriginais(JSON.parse(JSON.stringify(controleHorarios)));
+        setTemAlteracoesPendentes(false);
+        
+        // Recarregar dados para pegar estatísticas atualizadas
+        await buscarControleHorarios();
+        
+        // Mostrar mensagem de sucesso
+        setError(null);
+      } else {
+        setError(response.message || 'Erro ao salvar alterações');
       }
-    } catch (err) {
-      console.error('Erro ao salvar controle:', err);
-      setError('Erro ao salvar dados. Tente novamente.');
+    } catch (err: any) {
+      console.error('Erro ao salvar alterações:', err);
+      setError('Erro ao salvar alterações. Tente novamente.');
     } finally {
-      setSaving(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(viagemId);
-        return newSet;
-      });
+      setSaving(false);
     }
-  }, [dataReferencia, controleHorarios]);
+  };
 
-  // Debounce para salvamento automático
-  const [debounceTimers, setDebounceTimers] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  const descartarAlteracoes = () => {
+    setControleHorarios(JSON.parse(JSON.stringify(controleHorariosOriginais)));
+    setTemAlteracoesPendentes(false);
+  };
+
+  // ===============================================
+  // 🎨 FUNÇÕES DE EDIÇÃO
+  // ===============================================
 
   const handleInputChange = useCallback((viagemId: string, field: keyof DadosEditaveis, value: string) => {
-    // Atualizar estado local imediatamente
     setControleHorarios(prev => 
       prev.map(item => 
         item.viagemGlobus.id === viagemId
@@ -266,26 +300,7 @@ export const ControleHorarios: React.FC = () => {
           : item
       )
     );
-
-    // Cancelar timer anterior se existir
-    const timerKey = `${viagemId}-${field}`;
-    const existingTimer = debounceTimers.get(timerKey);
-    if (existingTimer) {
-      clearTimeout(existingTimer);
-    }
-
-    // Criar novo timer para salvamento
-    const newTimer = setTimeout(() => {
-      salvarControle(viagemId, { [field]: value });
-      setDebounceTimers(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(timerKey);
-        return newMap;
-      });
-    }, 1000);
-
-    setDebounceTimers(prev => new Map(prev).set(timerKey, newTimer));
-  }, [salvarControle, debounceTimers]);
+  }, []);
 
   // ===============================================
   // 🎨 FUNÇÕES DE FILTROS
@@ -307,6 +322,20 @@ export const ControleHorarios: React.FC = () => {
 
   const contarFiltrosAtivos = () => {
     return Object.values(filtros).filter(value => value && value !== '' && value !== 50).length;
+  };
+
+  const contarAlteracoesPendentes = () => {
+    return controleHorarios.filter((item, index) => {
+      const original = controleHorariosOriginais[index];
+      if (!original) return false;
+      
+      return (
+        item.dadosEditaveis.numeroCarro !== original.dadosEditaveis.numeroCarro ||
+        item.dadosEditaveis.informacaoRecolhe !== original.dadosEditaveis.informacaoRecolhe ||
+        item.dadosEditaveis.crachaFuncionario !== original.dadosEditaveis.crachaFuncionario ||
+        item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes
+      );
+    }).length;
   };
 
   // ===============================================
@@ -394,6 +423,27 @@ export const ControleHorarios: React.FC = () => {
               )}
             </button>
 
+            {/* Botão Salvar Alterações */}
+            {temAlteracoesPendentes && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={descartarAlteracoes}
+                  className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-800 text-sm"
+                >
+                  <X className="h-4 w-4" />
+                  Descartar
+                </button>
+                <button
+                  onClick={salvarTodasAlteracoes}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className={`h-4 w-4 ${saving ? 'animate-spin' : ''}`} />
+                  {saving ? 'Salvando...' : `Salvar (${contarAlteracoesPendentes()})`}
+                </button>
+              </div>
+            )}
+
             {/* Botão Atualizar */}
             <button
               onClick={buscarControleHorarios}
@@ -405,6 +455,23 @@ export const ControleHorarios: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {/* Alerta de Alterações Pendentes */}
+        {temAlteracoesPendentes && (
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-600" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">
+                  Você tem {contarAlteracoesPendentes()} alteração(ões) não salva(s)
+                </p>
+                <p className="text-sm text-yellow-700">
+                  Clique em "Salvar" para confirmar as alterações ou "Descartar" para cancelá-las.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Status dos Dados */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -683,139 +750,152 @@ export const ControleHorarios: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {controleHorarios.map((item) => (
-                  <tr key={item.viagemGlobus.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Linha / Serviço */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {item.viagemGlobus.codigoLinha} - Serviço {item.viagemGlobus.codServicoNumero}
-                        </div>
-                        <div className="text-sm text-gray-500 truncate max-w-xs" title={item.viagemGlobus.nomeLinha}>
-                          {item.viagemGlobus.nomeLinha}
-                        </div>
-                        <div className="mt-1">
-                          {renderSetorBadge(item.viagemGlobus.setorPrincipal)}
-                        </div>
-                      </div>
-                    </td>
+                {controleHorarios.map((item, index) => {
+                  const original = controleHorariosOriginais[index];
+                  const foiAlterado = original && (
+                    item.dadosEditaveis.numeroCarro !== original.dadosEditaveis.numeroCarro ||
+                    item.dadosEditaveis.informacaoRecolhe !== original.dadosEditaveis.informacaoRecolhe ||
+                    item.dadosEditaveis.crachaFuncionario !== original.dadosEditaveis.crachaFuncionario ||
+                    item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes
+                  );
 
-                    {/* Sentido / Horários */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            item.viagemGlobus.sentidoTexto === 'IDA' ? 'bg-blue-100 text-blue-700' :
-                            item.viagemGlobus.sentidoTexto === 'VOLTA' ? 'bg-green-100 text-green-700' :
-                            'bg-purple-100 text-purple-700'
-                          }`}>
-                            {item.viagemGlobus.sentidoTexto}
-                          </span>
+                  return (
+                    <tr 
+                      key={item.viagemGlobus.id} 
+                      className={`transition-colors ${
+                        foiAlterado 
+                          ? 'bg-yellow-50 hover:bg-yellow-100' 
+                          : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      {/* Linha / Serviço */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {item.viagemGlobus.codigoLinha} - Serviço {item.viagemGlobus.codServicoNumero}
+                          </div>
+                          <div className="text-sm text-gray-500 truncate max-w-xs" title={item.viagemGlobus.nomeLinha}>
+                            {item.viagemGlobus.nomeLinha}
+                          </div>
+                          <div className="mt-1">
+                            {renderSetorBadge(item.viagemGlobus.setorPrincipal)}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                          <Clock className="h-3 w-3" />
-                          {item.viagemGlobus.horSaidaTime} → {item.viagemGlobus.horChegadaTime}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {item.viagemGlobus.duracaoMinutos}min • {item.viagemGlobus.periodoDoDia}
-                        </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Motorista / Origem */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {item.viagemGlobus.nomeMotorista}
+                      {/* Sentido / Horários */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                              item.viagemGlobus.sentidoTexto === 'IDA' ? 'bg-blue-100 text-blue-700' :
+                              item.viagemGlobus.sentidoTexto === 'VOLTA' ? 'bg-green-100 text-green-700' :
+                              'bg-purple-100 text-purple-700'
+                            }`}>
+                              {item.viagemGlobus.sentidoTexto}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3" />
+                            {item.viagemGlobus.horSaidaTime} → {item.viagemGlobus.horChegadaTime}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {item.viagemGlobus.duracaoMinutos}min • {item.viagemGlobus.periodoDoDia}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {item.viagemGlobus.localOrigemViagem}
-                        </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Carro (Editável) */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="relative">
+                      {/* Motorista / Origem */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {item.viagemGlobus.nomeMotorista}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {item.viagemGlobus.localOrigemViagem}
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Carro (Editável) */}
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="text"
                           value={item.dadosEditaveis.numeroCarro || ''}
                           onChange={(e) => handleInputChange(item.viagemGlobus.id, 'numeroCarro', e.target.value)}
                           placeholder="Número do carro"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            original && item.dadosEditaveis.numeroCarro !== original.dadosEditaveis.numeroCarro
+                              ? 'border-yellow-400 bg-yellow-50'
+                              : 'border-gray-300'
+                          }`}
                         />
-                        {saving.has(item.viagemGlobus.id) && (
-                          <div className="absolute right-2 top-2">
-                            <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
-                          </div>
-                        )}
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Recolhe (Editável) */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="relative">
+                      {/* Recolhe (Editável) */}
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="text"
                           value={item.dadosEditaveis.informacaoRecolhe || ''}
                           onChange={(e) => handleInputChange(item.viagemGlobus.id, 'informacaoRecolhe', e.target.value)}
                           placeholder="Info. recolhimento"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            original && item.dadosEditaveis.informacaoRecolhe !== original.dadosEditaveis.informacaoRecolhe
+                              ? 'border-yellow-400 bg-yellow-50'
+                              : 'border-gray-300'
+                          }`}
                         />
-                        {saving.has(item.viagemGlobus.id) && (
-                          <div className="absolute right-2 top-2">
-                            <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
-                          </div>
-                        )}
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Crachá (Editável) */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="relative">
+                      {/* Crachá (Editável) */}
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <input
                           type="text"
                           value={item.dadosEditaveis.crachaFuncionario || ''}
                           onChange={(e) => handleInputChange(item.viagemGlobus.id, 'crachaFuncionario', e.target.value)}
                           placeholder="Crachá"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                            original && item.dadosEditaveis.crachaFuncionario !== original.dadosEditaveis.crachaFuncionario
+                              ? 'border-yellow-400 bg-yellow-50'
+                              : 'border-gray-300'
+                          }`}
                         />
-                        {saving.has(item.viagemGlobus.id) && (
-                          <div className="absolute right-2 top-2">
-                            <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />
-                          </div>
-                        )}
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Status */}
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col gap-1">
-                        {item.dadosEditaveis.jaFoiEditado ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                            <CheckCircle className="h-3 w-3" />
-                            Editado
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-                            <AlertCircle className="h-3 w-3" />
-                            Pendente
-                          </span>
-                        )}
-                        {item.dadosEditaveis.updatedAt && (
-                          <div className="text-xs text-gray-400">
-                            {new Date(item.dadosEditaveis.updatedAt).toLocaleString('pt-BR')}
-                          </div>
-                        )}
-                        {item.dadosEditaveis.usuarioEdicao && (
-                          <div className="text-xs text-gray-400">
-                            por {item.dadosEditaveis.usuarioEdicao}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      {/* Status */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col gap-1">
+                          {foiAlterado ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                              <AlertCircle className="h-3 w-3" />
+                              Alterado
+                            </span>
+                          ) : item.dadosEditaveis.jaFoiEditado ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              <CheckCircle className="h-3 w-3" />
+                              Salvo
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+                              <AlertCircle className="h-3 w-3" />
+                              Pendente
+                            </span>
+                          )}
+                          {item.dadosEditaveis.updatedAt && (
+                            <div className="text-xs text-gray-400">
+                              {new Date(item.dadosEditaveis.updatedAt).toLocaleString('pt-BR')}
+                            </div>
+                          )}
+                          {item.dadosEditaveis.usuarioEdicao && (
+                            <div className="text-xs text-gray-400">
+                              por {item.dadosEditaveis.usuarioEdicao}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 
@@ -832,6 +912,11 @@ export const ControleHorarios: React.FC = () => {
                   <span>
                     Pendentes: {estatisticas.viagensNaoEditadas}
                   </span>
+                  {temAlteracoesPendentes && (
+                    <span className="text-yellow-600 font-medium">
+                      Alterações não salvas: {contarAlteracoesPendentes()}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -839,7 +924,7 @@ export const ControleHorarios: React.FC = () => {
         )}
       </div>
 
-      {/* Observações Expandidas (Modal/Drawer) */}
+      {/* Observações Expandidas */}
       {controleHorarios.length > 0 && (
         <div className="bg-white shadow rounded-lg p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
@@ -849,42 +934,84 @@ export const ControleHorarios: React.FC = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {controleHorarios
-              .filter(item => item.dadosEditaveis.jaFoiEditado)
+              .filter(item => item.dadosEditaveis.jaFoiEditado || item.dadosEditaveis.observacoes)
               .slice(0, 4)
-              .map((item) => (
-                <div key={item.viagemGlobus.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="text-sm font-medium text-gray-900 mb-2">
-                    Linha {item.viagemGlobus.codigoLinha} - Serviço {item.viagemGlobus.codServicoNumero}
-                  </div>
-                  <textarea
-                    value={item.dadosEditaveis.observacoes || ''}
-                    onChange={(e) => handleInputChange(item.viagemGlobus.id, 'observacoes', e.target.value)}
-                    placeholder="Observações sobre esta viagem..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  />
-                  <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                    <span>
-                      {item.dadosEditaveis.observacoes?.length || 0}/500 caracteres
-                    </span>
-                    {saving.has(item.viagemGlobus.id) && (
-                      <span className="flex items-center gap-1 text-blue-600">
-                        <RefreshCw className="h-3 w-3 animate-spin" />
-                        Salvando...
+              .map((item, index) => {
+                const original = controleHorariosOriginais.find(orig => orig.viagemGlobus.id === item.viagemGlobus.id);
+                const observacaoAlterada = original && item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes;
+
+                return (
+                  <div key={item.viagemGlobus.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="text-sm font-medium text-gray-900 mb-2">
+                      Linha {item.viagemGlobus.codigoLinha} - Serviço {item.viagemGlobus.codServicoNumero}
+                    </div>
+                    <textarea
+                      value={item.dadosEditaveis.observacoes || ''}
+                      onChange={(e) => handleInputChange(item.viagemGlobus.id, 'observacoes', e.target.value)}
+                      placeholder="Observações sobre esta viagem..."
+                      rows={3}
+                      className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
+                        observacaoAlterada
+                          ? 'border-yellow-400 bg-yellow-50'
+                          : 'border-gray-300'
+                      }`}
+                    />
+                    <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                      <span>
+                        {item.dadosEditaveis.observacoes?.length || 0}/500 caracteres
                       </span>
-                    )}
+                      {observacaoAlterada && (
+                        <span className="text-yellow-600 font-medium">
+                          Alterado
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
           </div>
 
-          {controleHorarios.filter(item => item.dadosEditaveis.jaFoiEditado).length === 0 && (
+          {controleHorarios.filter(item => item.dadosEditaveis.jaFoiEditado || item.dadosEditaveis.observacoes).length === 0 && (
             <div className="text-center py-8 text-gray-500">
               <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
               <p>Nenhuma viagem editada ainda.</p>
               <p className="text-sm">As observações aparecerão aqui conforme você editar as viagens.</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Botão Fixo de Salvar (quando há alterações) */}
+      {temAlteracoesPendentes && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-gray-900">
+                  {contarAlteracoesPendentes()} alteração(ões) pendente(s)
+                </p>
+                <p className="text-xs text-gray-500">
+                  Clique em salvar para confirmar
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={descartarAlteracoes}
+                  className="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Descartar
+                </button>
+                <button
+                  onClick={salvarTodasAlteracoes}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className={`h-4 w-4 ${saving ? 'animate-spin' : ''}`} />
+                  {saving ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
