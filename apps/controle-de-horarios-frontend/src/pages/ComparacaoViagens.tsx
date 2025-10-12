@@ -16,19 +16,57 @@ import {
   Activity,
   Zap
 } from 'lucide-react';
-import { ApiService } from '../services/api';
-import { 
-  ResultadoComparacao, 
-  ComparacaoViagem, 
-  FiltrosComparacao, 
-  StatusComparacao 
-} from '../types';
+
+// ✅ INTERFACES PARA COMPARAÇÃO DE VIAGENS
+export interface ResultadoComparacao {
+  totalComparacoes: number;
+  compativeis: number;
+  divergentes: number;
+  apenasTransdata: number;
+  apenasGlobus: number;
+  horarioDivergente: number;
+  percentualCompatibilidade: number;
+  linhasAnalisadas: number;
+  tempoProcessamento: string;
+}
+
+export interface ComparacaoViagem {
+  id: string;
+  dataReferencia: string;
+  codigoLinha: string;
+  nomeLinhaTransdata?: string;
+  nomeLinhaGlobus?: string;
+  transdataId?: string;
+  transdataServico?: string;
+  transdataSentido?: string;
+  transdataHorarioPrevisto?: string;
+  transdataHorarioRealizado?: string;
+  globusId?: string;
+  globusServico?: string;
+  globusSentidoFlag?: string;
+  globusSentidoTexto?: string;
+  globusHorarioSaida?: string;
+  globusSetor?: string;
+  statusComparacao: 'compativel' | 'divergente' | 'apenas_transdata' | 'apenas_globus' | 'horario_divergente';
+  sentidoCompativel: boolean;
+  horarioCompativel: boolean;
+  servicoCompativel: boolean;
+  diferencaHorarioMinutos?: number;
+  observacoes?: string;
+}
+
+export interface FiltrosComparacao {
+  statusComparacao?: string;
+  codigoLinha?: string;
+  globusSetor?: string;
+  sentidoCompativel?: boolean;
+  horarioCompativel?: boolean;
+  servicoCompativel?: boolean;
+  limite: number;
+}
 
 export const ComparacaoViagens: React.FC = () => {
-  const [dataReferencia, setDataReferencia] = useState(() => {
-    const hoje = new Date();
-    return hoje.toISOString().split('T')[0];
-  });
+  const [dataReferencia, setDataReferencia] = useState('2025-10-10'); // ✅ Data fixa com dados
   
   const [loading, setLoading] = useState(false);
   const [executandoComparacao, setExecutandoComparacao] = useState(false);
@@ -41,6 +79,38 @@ export const ComparacaoViagens: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // ✅ FUNÇÃO PARA FAZER REQUISIÇÕES AUTENTICADAS
+  const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}) => {
+    const token = localStorage.getItem('token');
+    
+    if (!token) {
+      throw new Error('Token de autenticação não encontrado. Faça login novamente.');
+    }
+    
+    const response = await fetch(`/api${url}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        throw new Error('Sessão expirada. Redirecionando para login...');
+      }
+      
+      const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+      throw new Error(errorData.message || `Erro ${response.status}`);
+    }
+
+    return response.json();
+  };
+
   // Carregar estatísticas ao mudar a data
   useEffect(() => {
     if (dataReferencia) {
@@ -51,15 +121,19 @@ export const ComparacaoViagens: React.FC = () => {
   const carregarEstatisticas = async () => {
     try {
       setError(null);
-      const response = await api.get(`/comparacao-viagens/${dataReferencia}/estatisticas`);
+      console.log(`📊 Carregando estatísticas para data: ${dataReferencia}`);
       
-      if (response.data.success) {
-        setEstatisticas(response.data.data);
+      const response = await makeAuthenticatedRequest(`/comparacao-viagens/${dataReferencia}/estatisticas`);
+      console.log('📈 Estatísticas recebidas:', response);
+      
+      if (response.success) {
+        setEstatisticas(response.data);
       } else {
+        console.log('ℹ️ Nenhuma estatística encontrada para esta data');
         setEstatisticas(null);
       }
     } catch (error: any) {
-      console.error('Erro ao carregar estatísticas:', error);
+      console.error('❌ Erro ao carregar estatísticas:', error);
       setEstatisticas(null);
     }
   };
@@ -75,105 +149,147 @@ export const ComparacaoViagens: React.FC = () => {
     setSuccess(null);
 
     try {
-      const response = await api.post(`/comparacao-viagens/executar/${dataReferencia}`);
+      console.log(`🔄 Executando comparação para data: ${dataReferencia}`);
       
-      if (response.data.success) {
-        setSuccess(`Comparação executada com sucesso! ${response.data.data.totalComparacoes} registros processados em ${response.data.data.tempoProcessamento}`);
-        setEstatisticas(response.data.data);
-        // Recarregar comparações se já estavam sendo exibidas
-        if (comparacoes.length > 0) {
-          buscarComparacoes();
+      const response = await makeAuthenticatedRequest(`/comparacao-viagens/executar/${dataReferencia}`, {
+        method: 'POST'
+      });
+      
+      console.log('✅ Comparação concluída:', response);
+      
+      if (response.success) {
+        const dados = response.data;
+        setSuccess(`Comparação executada com sucesso! ${dados.totalComparacoes} registros processados em ${dados.tempoProcessamento}`);
+        setEstatisticas(dados);
+        
+        // Se há comparações, buscar algumas para exibir
+        if (dados.totalComparacoes > 0) {
+          setTimeout(() => {
+            buscarComparacoes();
+          }, 500);
         }
       } else {
-        setError(response.data.message || 'Erro ao executar comparação');
+        setError(response.message || 'Erro ao executar comparação');
       }
     } catch (error: any) {
-      console.error('Erro ao executar comparação:', error);
-      setError(error.response?.data?.message || 'Erro ao executar comparação');
+      console.error('❌ Erro ao executar comparação:', error);
+      setError(error.message || 'Erro ao executar comparação');
     } finally {
       setExecutandoComparacao(false);
     }
   };
 
-  const buscarComparacoes = async () => {
-    if (!dataReferencia) return;
+   // src/pages/ComparacaoViagens.tsx
+// Atualizar a função buscarComparacoes para mostrar mais detalhes
 
-    setLoading(true);
-    setError(null);
+const buscarComparacoes = async () => {
+  if (!dataReferencia) return;
 
-    try {
-      const params = new URLSearchParams();
-      params.append('limite', filtros.limite.toString());
+  setLoading(true);
+  setError(null);
+
+  try {
+    console.log(`🔍 Buscando comparações para data: ${dataReferencia}`);
+    console.log(`🔍 Filtros aplicados:`, filtros);
+    
+    // Construir query params
+    const params = new URLSearchParams();
+    params.append('limite', filtros.limite.toString());
+    
+    if (filtros.statusComparacao) params.append('statusComparacao', filtros.statusComparacao);
+    if (filtros.codigoLinha) params.append('codigoLinha', filtros.codigoLinha);
+    if (filtros.globusSetor) params.append('globusSetor', filtros.globusSetor);
+    if (filtros.sentidoCompativel !== undefined) params.append('sentidoCompativel', filtros.sentidoCompativel.toString());
+    if (filtros.horarioCompativel !== undefined) params.append('horarioCompativel', filtros.horarioCompativel.toString());
+    if (filtros.servicoCompativel !== undefined) params.append('servicoCompativel', filtros.servicoCompativel.toString());
+
+    const queryString = params.toString();
+    const url = `/comparacao-viagens/${dataReferencia}${queryString ? `?${queryString}` : ''}`;
+    
+    console.log(`🔍 URL da requisição: ${url}`);
+    
+    const response = await makeAuthenticatedRequest(url);
+    console.log(`✅ Resposta completa:`, response);
+    console.log(`✅ ${response.data?.length || 0} comparações carregadas`);
+    
+    if (response.success) {
+      setComparacoes(response.data || []);
       
-      if (filtros.statusComparacao) params.append('statusComparacao', filtros.statusComparacao);
-      if (filtros.codigoLinha) params.append('codigoLinha', filtros.codigoLinha);
-      if (filtros.globusSetor) params.append('globusSetor', filtros.globusSetor);
-      if (filtros.sentidoCompativel !== undefined) params.append('sentidoCompativel', filtros.sentidoCompativel.toString());
-      if (filtros.horarioCompativel !== undefined) params.append('horarioCompativel', filtros.horarioCompativel.toString());
-      if (filtros.servicoCompativel !== undefined) params.append('servicoCompativel', filtros.servicoCompativel.toString());
-
-      const response = await api.get(`/comparacao-viagens/${dataReferencia}?${params}`);
-      
-      if (response.data.success) {
-        setComparacoes(response.data.data);
-      } else {
-        setError(response.data.message || 'Erro ao buscar comparações');
-        setComparacoes([]);
+      // ✅ DEBUG: Mostrar tipos de status encontrados
+      if (response.data && response.data.length > 0) {
+        const statusCount = response.data.reduce((acc, comp) => {
+          acc[comp.statusComparacao] = (acc[comp.statusComparacao] || 0) + 1;
+          return acc;
+        }, {});
+        console.log(`📊 Status encontrados:`, statusCount);
+        
+        // Mostrar exemplo de cada tipo
+        const exemplos = {};
+        response.data.forEach(comp => {
+          if (!exemplos[comp.statusComparacao]) {
+            exemplos[comp.statusComparacao] = comp;
+          }
+        });
+        console.log(`📝 Exemplos por status:`, exemplos);
       }
-    } catch (error: any) {
-      console.error('Erro ao buscar comparações:', error);
-      setError(error.response?.data?.message || 'Erro ao buscar comparações');
+    } else {
+      setError(response.message || 'Erro ao buscar comparações');
       setComparacoes([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error: any) {
+    console.error('❌ Erro ao buscar comparações:', error);
+    setError(error.message || 'Erro ao buscar comparações');
+    setComparacoes([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const getStatusIcon = (status: StatusComparacao) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
-      case StatusComparacao.COMPATIVEL:
+      case 'compativel':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case StatusComparacao.DIVERGENTE:
+      case 'divergente':
         return <XCircle className="h-5 w-5 text-red-500" />;
-      case StatusComparacao.HORARIO_DIVERGENTE:
+      case 'horario_divergente':
         return <Clock className="h-5 w-5 text-yellow-500" />;
-      case StatusComparacao.APENAS_TRANSDATA:
+      case 'apenas_transdata':
         return <Database className="h-5 w-5 text-blue-500" />;
-      case StatusComparacao.APENAS_GLOBUS:
+      case 'apenas_globus':
         return <Database className="h-5 w-5 text-purple-500" />;
       default:
         return <AlertTriangle className="h-5 w-5 text-gray-500" />;
     }
   };
 
-  const getStatusText = (status: StatusComparacao) => {
+  const getStatusText = (status: string) => {
     switch (status) {
-      case StatusComparacao.COMPATIVEL:
+      case 'compativel':
         return 'Compatível';
-      case StatusComparacao.DIVERGENTE:
+      case 'divergente':
         return 'Divergente';
-      case StatusComparacao.HORARIO_DIVERGENTE:
+      case 'horario_divergente':
         return 'Horário Divergente';
-      case StatusComparacao.APENAS_TRANSDATA:
+      case 'apenas_transdata':
         return 'Apenas Transdata';
-      case StatusComparacao.APENAS_GLOBUS:
+      case 'apenas_globus':
         return 'Apenas Globus';
       default:
         return status;
     }
   };
 
-  const getStatusColor = (status: StatusComparacao) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case StatusComparacao.COMPATIVEL:
+      case 'compativel':
         return 'bg-green-100 text-green-800';
-      case StatusComparacao.DIVERGENTE:
+      case 'divergente':
         return 'bg-red-100 text-red-800';
-      case StatusComparacao.HORARIO_DIVERGENTE:
+      case 'horario_divergente':
         return 'bg-yellow-100 text-yellow-800';
-      case StatusComparacao.APENAS_TRANSDATA:
+      case 'apenas_transdata':
         return 'bg-blue-100 text-blue-800';
-      case StatusComparacao.APENAS_GLOBUS:
+      case 'apenas_globus':
         return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -183,6 +299,13 @@ export const ComparacaoViagens: React.FC = () => {
   const limparFiltros = () => {
     setFiltros({ limite: 50 });
     setComparacoes([]);
+  };
+
+  const handleFilterChange = (key: string, value: string | number | boolean) => {
+    setFiltros(prev => ({
+      ...prev,
+      [key]: value
+    }));
   };
 
   return (
@@ -262,13 +385,17 @@ export const ComparacaoViagens: React.FC = () => {
 
           <button
             onClick={() => setMostrarFiltros(!mostrarFiltros)}
-            className="inline-flex items-center gap-2 rounded-md bg-gray-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 ${
+              mostrarFiltros 
+                ? 'bg-gray-700 text-white hover:bg-gray-800' 
+                : 'bg-gray-600 text-white hover:bg-gray-700'
+            }`}
           >
             <Filter className="h-4 w-4" />
             Filtros
           </button>
 
-          {comparacoes.length > 0 && (
+          {(comparacoes.length > 0 || estatisticas?.totalComparacoes) && (
             <button
               onClick={buscarComparacoes}
               disabled={loading}
@@ -279,7 +406,7 @@ export const ComparacaoViagens: React.FC = () => {
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
-              Atualizar
+              {comparacoes.length > 0 ? 'Atualizar' : 'Buscar Comparações'}
             </button>
           )}
         </div>
@@ -292,15 +419,15 @@ export const ComparacaoViagens: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
                   value={filtros.statusComparacao || ''}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, statusComparacao: e.target.value as StatusComparacao || undefined }))}
+                  onChange={(e) => handleFilterChange('statusComparacao', e.target.value || undefined)}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="">Todos</option>
-                  <option value={StatusComparacao.COMPATIVEL}>Compatível</option>
-                  <option value={StatusComparacao.DIVERGENTE}>Divergente</option>
-                  <option value={StatusComparacao.HORARIO_DIVERGENTE}>Horário Divergente</option>
-                  <option value={StatusComparacao.APENAS_TRANSDATA}>Apenas Transdata</option>
-                  <option value={StatusComparacao.APENAS_GLOBUS}>Apenas Globus</option>
+                  <option value="compativel">Compatível</option>
+                  <option value="divergente">Divergente</option>
+                  <option value="horario_divergente">Horário Divergente</option>
+                  <option value="apenas_transdata">Apenas Transdata</option>
+                  <option value="apenas_globus">Apenas Globus</option>
                 </select>
               </div>
 
@@ -309,7 +436,7 @@ export const ComparacaoViagens: React.FC = () => {
                 <input
                   type="text"
                   value={filtros.codigoLinha || ''}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, codigoLinha: e.target.value || undefined }))}
+                  onChange={(e) => handleFilterChange('codigoLinha', e.target.value || undefined)}
                   placeholder="Ex: 0026"
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
@@ -319,7 +446,7 @@ export const ComparacaoViagens: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Setor Globus</label>
                 <select
                   value={filtros.globusSetor || ''}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, globusSetor: e.target.value || undefined }))}
+                  onChange={(e) => handleFilterChange('globusSetor', e.target.value || undefined)}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="">Todos</option>
@@ -334,7 +461,7 @@ export const ComparacaoViagens: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Limite</label>
                 <select
                   value={filtros.limite}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, limite: parseInt(e.target.value) }))}
+                  onChange={(e) => handleFilterChange('limite', parseInt(e.target.value))}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value={50}>50</option>
@@ -379,35 +506,35 @@ export const ComparacaoViagens: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-center p-3 bg-gray-50 rounded-lg border">
               <div className="text-2xl font-bold text-gray-900">{estatisticas.totalComparacoes.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Total</div>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
+            <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
               <div className="text-2xl font-bold text-green-600">{estatisticas.compativeis.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Compatíveis</div>
             </div>
-            <div className="text-center p-3 bg-red-50 rounded-lg">
+            <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
               <div className="text-2xl font-bold text-red-600">{estatisticas.divergentes.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Divergentes</div>
             </div>
-            <div className="text-center p-3 bg-yellow-50 rounded-lg">
+            <div className="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
               <div className="text-2xl font-bold text-yellow-600">{estatisticas.horarioDivergente.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Horário Div.</div>
             </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
+            <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
               <div className="text-2xl font-bold text-blue-600">{estatisticas.apenasTransdata.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Só Transdata</div>
             </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
+            <div className="text-center p-3 bg-purple-50 rounded-lg border border-purple-200">
               <div className="text-2xl font-bold text-purple-600">{estatisticas.apenasGlobus.toLocaleString()}</div>
               <div className="text-sm text-gray-600">Só Globus</div>
             </div>
-            <div className="text-center p-3 bg-indigo-50 rounded-lg">
+            <div className="text-center p-3 bg-indigo-50 rounded-lg border border-indigo-200">
               <div className="text-2xl font-bold text-indigo-600">{estatisticas.percentualCompatibilidade}%</div>
               <div className="text-sm text-gray-600">Compatibilidade</div>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-center p-3 bg-gray-50 rounded-lg border">
               <div className="text-2xl font-bold text-gray-600">{estatisticas.linhasAnalisadas}</div>
               <div className="text-sm text-gray-600">Linhas</div>
             </div>
@@ -456,26 +583,26 @@ export const ComparacaoViagens: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        <span className="text-blue-600">T:</span> {comparacao.transdataServico || '-'}
+                        <span className="text-blue-600 font-medium">T:</span> {comparacao.transdataServico || '-'}
                       </div>
                       <div className="text-sm text-gray-900">
-                        <span className="text-purple-600">G:</span> {comparacao.globusServico || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        <span className="text-blue-600">T:</span> {comparacao.transdataSentido || '-'}
-                      </div>
-                      <div className="text-sm text-gray-900">
-                        <span className="text-purple-600">G:</span> {comparacao.globusSentidoTexto || '-'}
+                        <span className="text-purple-600 font-medium">G:</span> {comparacao.globusServico || '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        <span className="text-blue-600">T:</span> {comparacao.transdataHorarioPrevisto || '-'}
+                        <span className="text-blue-600 font-medium">T:</span> {comparacao.transdataSentido || '-'}
                       </div>
                       <div className="text-sm text-gray-900">
-                        <span className="text-purple-600">G:</span> {comparacao.globusHorarioSaida || '-'}
+                        <span className="text-purple-600 font-medium">G:</span> {comparacao.globusSentidoTexto || '-'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        <span className="text-blue-600 font-medium">T:</span> {comparacao.transdataHorarioPrevisto || '-'}
+                      </div>
+                      <div className="text-sm text-gray-900">
+                        <span className="text-purple-600 font-medium">G:</span> {comparacao.globusHorarioSaida || '-'}
                       </div>
                       {comparacao.diferencaHorarioMinutos !== undefined && comparacao.diferencaHorarioMinutos >= 0 && (
                         <div className="text-xs text-yellow-600 font-medium">
@@ -494,41 +621,45 @@ export const ComparacaoViagens: React.FC = () => {
                   </tr>
                 ))}
               </tbody>
-              </table>
+            </table>
           </div>
         </div>
       )}
 
       {/* Estado vazio */}
       {!estatisticas && !loading && !executandoComparacao && (
-        <div className="text-center py-12">
-          <GitCompare className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhuma comparação encontrada</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            Selecione uma data e execute a comparação para ver os resultados.
-          </p>
-          <div className="mt-4">
-            <button
-              onClick={() => setDataReferencia('2025-10-10')}
-              className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            >
-              <Calendar className="h-4 w-4" />
-              Usar data com dados (10/10/2025)
-            </button>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-center py-12">
+            <GitCompare className="mx-auto h-12 w-12 text-gray-400" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhuma comparação encontrada</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Execute a comparação para a data {dataReferencia} para ver os resultados.
+            </p>
+            <div className="mt-4">
+              <button
+                onClick={executarComparacao}
+                className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <Play className="h-4 w-4" />
+                Executar Comparação
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Loading state */}
       {(loading || executandoComparacao) && (
-        <div className="text-center py-12">
-          <RefreshCw className="mx-auto h-12 w-12 text-blue-600 animate-spin" />
-          <h3 className="mt-2 text-sm font-medium text-gray-900">
-            {executandoComparacao ? 'Executando comparação...' : 'Carregando dados...'}
-          </h3>
-          <p className="mt-1 text-sm text-gray-500">
-            {executandoComparacao ? 'Este processo pode demorar alguns minutos.' : 'Aguarde enquanto buscamos os dados.'}
-          </p>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-center py-12">
+            <RefreshCw className="mx-auto h-12 w-12 text-blue-600 animate-spin" />
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              {executandoComparacao ? 'Executando comparação...' : 'Carregando dados...'}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {executandoComparacao ? 'Este processo pode demorar alguns minutos.' : 'Aguarde enquanto buscamos os dados.'}
+            </p>
+          </div>
         </div>
       )}
     </div>

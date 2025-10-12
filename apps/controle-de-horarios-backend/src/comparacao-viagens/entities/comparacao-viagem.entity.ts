@@ -22,7 +22,6 @@ export class ComparacaoViagem {
   @Column({ name: 'codigo_linha', type: 'varchar', length: 20 })
   codigoLinha: string;
 
-  // ✅ CORREÇÃO: Nome correto da propriedade
   @Column({ name: 'nome_linha_transdata', type: 'varchar', length: 200, nullable: true })
   nomeLinhaTransdata: string;
 
@@ -39,10 +38,11 @@ export class ComparacaoViagem {
   @Column({ name: 'transdata_sentido', type: 'varchar', length: 20, nullable: true })
   transdataSentido: string;
 
-  @Column({ name: 'transdata_horario_previsto', type: 'varchar', length: 8, nullable: true })
+  // ✅ CORRIGIDO: Aumentar tamanho dos campos de horário
+  @Column({ name: 'transdata_horario_previsto', type: 'varchar', length: 20, nullable: true })
   transdataHorarioPrevisto: string;
 
-  @Column({ name: 'transdata_horario_realizado', type: 'varchar', length: 8, nullable: true })
+  @Column({ name: 'transdata_horario_realizado', type: 'varchar', length: 20, nullable: true })
   transdataHorarioRealizado: string;
 
   // Dados Globus
@@ -58,7 +58,8 @@ export class ComparacaoViagem {
   @Column({ name: 'globus_sentido_texto', type: 'varchar', length: 20, nullable: true })
   globusSentidoTexto: string;
 
-  @Column({ name: 'globus_horario_saida', type: 'varchar', length: 8, nullable: true })
+  // ✅ CORRIGIDO: Aumentar tamanho do campo de horário
+  @Column({ name: 'globus_horario_saida', type: 'varchar', length: 20, nullable: true })
   globusHorarioSaida: string;
 
   @Column({ name: 'globus_setor', type: 'varchar', length: 50, nullable: true })
