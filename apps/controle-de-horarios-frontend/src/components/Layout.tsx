@@ -1,15 +1,15 @@
-// src/components/Layout.tsx
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Users, LogOut, Settings, Home, Bus, Server, GitCompare } from 'lucide-react'; // ✅ ADICIONADO GitCompare
+import { Users, LogOut, Settings, Home, Bus, Server, GitCompare, Clock } from 'lucide-react'; // ✅ ADICIONADO Clock
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Usuários', href: '/users', icon: Users },
   { name: 'Viagens Transdata', href: '/viagens', icon: Bus },
   { name: 'Viagens Globus', href: '/viagens-globus', icon: Server },
-  { name: 'Comparação', href: '/comparacao-viagens', icon: GitCompare }, // ✅ NOVA OPÇÃO
+  { name: 'Comparação', href: '/comparacao-viagens', icon: GitCompare },
+  { name: 'Controle Horários', href: '/controle-horarios', icon: Clock }, // ✅ NOVA OPÇÃO
 ];
 
 export const Layout: React.FC = () => {

@@ -11,6 +11,7 @@ import { Users } from './pages/Users';
 import { Viagens } from './pages/Viagens';
 import { ViagensGlobus } from './pages/ViagensGlobus';
 import { ComparacaoViagens } from './pages/ComparacaoViagens'; // ✅ NOVA IMPORTAÇÃO
+import { ControleHorarios } from './pages/ControleHorarios';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
             <Route path="viagens" element={<Viagens />} />
             <Route path="viagens-globus" element={<ViagensGlobus />} />
             <Route path="comparacao-viagens" element={<ComparacaoViagens />} /> {/* ✅ NOVA ROTA */}
+            <Route path="controle-horarios" element={<ControleHorarios />} />
           </Route>
           
           {/* Catch all route */}

@@ -1,5 +1,3 @@
-// src/services/api.ts
-
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { 
   User, 
@@ -102,6 +100,113 @@ export interface FiltrosViagem {
   page?: number;
   limit?: number;
 }
+
+// ===============================================
+// 🕐 INTERFACES CONTROLE DE HORÁRIOS - NOVAS
+// ===============================================
+
+export interface ViagemGlobusBase {
+  id: string;
+  codigoLinha: string;
+  nomeLinha: string;
+  codServicoNumero: string;
+  sentidoTexto: string;
+  horSaidaTime: string;
+  horChegadaTime: string;
+  nomeMotorista: string;
+  setorPrincipal: string;
+  localOrigemViagem: string;
+  duracaoMinutos: number;
+  periodoDoDia: string;
+  flgSentido: string;
+}
+
+export interface DadosEditaveis {
+  id?: string;
+  numeroCarro?: string;
+  informacaoRecolhe?: string;
+  crachaFuncionario?: string;
+  observacoes?: string;
+  usuarioEdicao?: string;
+  usuarioEmail?: string;
+  updatedAt?: Date;
+  jaFoiEditado: boolean;
+}
+
+export interface ControleHorarioItem {
+  viagemGlobus: ViagemGlobusBase;
+  dadosEditaveis: DadosEditaveis;
+}
+
+export interface FiltrosControleHorarios {
+  setorPrincipal?: string;
+  codigoLinha?: string;
+  codServicoNumero?: string;
+  sentidoTexto?: string;
+  horarioInicio?: string;
+  horarioFim?: string;
+  nomeMotorista?: string;
+  localOrigem?: string;
+  buscaTexto?: string;
+  limite?: number;
+  pagina?: number;
+}
+
+export interface ControleHorarioResponse {
+  success: boolean;
+  message: string;
+  data: ControleHorarioItem[];
+  total: number;
+  pagina: number;
+  limite: number;
+  temMaisPaginas: boolean;
+  filtrosAplicados: FiltrosControleHorarios;
+  estatisticas: {
+    totalViagens: number;
+    viagensEditadas: number;
+    viagensNaoEditadas: number;
+    percentualEditado: number;
+    setoresUnicos: string[];
+    linhasUnicas: string[];
+    servicosUnicos: string[];
+  };
+  executionTime: string;
+  dataReferencia: string;
+}
+
+export interface OpcoesControleHorarios {
+  setores: string[];
+  linhas: { codigo: string; nome: string }[];
+  servicos: string[];
+  sentidos: string[];
+  motoristas: string[];
+}
+
+export interface SalvarControleHorario {
+  viagemGlobusId: string;
+  numeroCarro?: string;
+  informacaoRecolhe?: string;
+  crachaFuncionario?: string;
+  observacoes?: string;
+}
+
+export interface SalvarMultiplosControles {
+  dataReferencia: string;
+  controles: SalvarControleHorario[];
+}
+
+export interface EstatisticasControleHorarios {
+  dataReferencia: string;
+  totalViagens: number;
+  viagensEditadas: number;
+  viagensNaoEditadas: number;
+  percentualEditado: number;
+  ultimaAtualizacao: Date;
+}
+
+// ===============================================
+// 🌐 INTERFACES GENÉRICAS
+// ===============================================
 
 export interface ResponsePaginada<T> {
   data: T[];
@@ -208,7 +313,7 @@ class ApiServiceClass {
         }
 
         if (this.debug) {
-          console.log('�� API Request:', {
+          console.log('🔄 API Request:', {
             method: config.method?.toUpperCase(),
             url: config.url,
             baseURL: config.baseURL,
@@ -476,6 +581,91 @@ class ApiServiceClass {
   }
 
   // ===============================================
+  // 🕐 CONTROLE DE HORÁRIOS - MÉTODOS NOVOS
+  // ===============================================
+
+  /**
+   * ✅ Buscar controle de horários com filtros
+   */
+  async getControleHorarios(data: string, filtros: FiltrosControleHorarios = {}): Promise<ControleHorarioResponse> {
+    console.log(`🕐 Buscando controle de horários para ${data}...`, filtros);
+    
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.append(key, value.toString());
+      }
+    });
+
+    const queryString = params.toString();
+    const url = `/controle-horarios/${data}${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await this.api.get<ControleHorarioResponse>(url);
+    console.log(`✅ ${response.data.data.length}/${response.data.total} controles encontrados`);
+    return response.data;
+  }
+
+  /**
+   * ✅ Salvar controle de horário individual
+   */
+  async salvarControleHorario(data: string, controle: SalvarControleHorario): Promise<{ success: boolean; message: string; data: any }> {
+    console.log(`💾 Salvando controle para viagem ${controle.viagemGlobusId}...`);
+    const response = await this.api.post(`/controle-horarios/${data}/salvar`, controle);
+    console.log('✅ Controle salvo com sucesso');
+    return response.data;
+  }
+
+  /**
+   * ✅ Salvar múltiplos controles
+   */
+  async salvarMultiplosControles(dados: SalvarMultiplosControles): Promise<{ success: boolean; message: string; salvos: number; erros: number }> {
+    console.log(`💾 Salvando ${dados.controles.length} controles para ${dados.dataReferencia}...`);
+    const response = await this.api.post('/controle-horarios/salvar-multiplos', dados);
+    console.log(`✅ Salvamento concluído: ${response.data.salvos} sucessos, ${response.data.erros} erros`);
+    return response.data;
+  }
+
+  /**
+   * ✅ Buscar opções para filtros
+   */
+  async getOpcoesControleHorarios(data: string): Promise<{ success: boolean; message: string; data: OpcoesControleHorarios }> {
+    console.log(`🔍 Buscando opções de filtros para ${data}...`);
+    const response = await this.api.get(`/controle-horarios/${data}/opcoes`);
+    console.log('✅ Opções obtidas com sucesso');
+    return response.data;
+  }
+
+  /**
+   * ✅ Obter estatísticas do controle de horários
+   */
+  async getEstatisticasControleHorarios(data: string): Promise<{ success: boolean; message: string; data: EstatisticasControleHorarios }> {
+    console.log(`📊 Buscando estatísticas de controle para ${data}...`);
+    const response = await this.api.get(`/controle-horarios/${data}/estatisticas`);
+    console.log('✅ Estatísticas obtidas');
+    return response.data;
+  }
+
+  /**
+   * ✅ Verificar status dos dados de controle
+   */
+  async getStatusControleHorarios(data: string): Promise<{ success: boolean; message: string; data: any; dataReferencia: string }> {
+    console.log(`📊 Verificando status do controle para ${data}...`);
+    const response = await this.api.get(`/controle-horarios/${data}/status`);
+    console.log('✅ Status verificado');
+    return response.data;
+  }
+
+  /**
+   * ✅ Health check do módulo controle de horários
+   */
+  async checkHealthControleHorarios(): Promise<{ success: boolean; message: string; status: string; timestamp: string }> {
+    console.log('🏥 Verificando saúde do módulo Controle de Horários...');
+    const response = await this.api.get('/controle-horarios/health');
+    console.log('✅ Health check do controle realizado');
+    return response.data;
+  }
+
+  // ===============================================
   // 📧 E-MAIL
   // ===============================================
 
@@ -544,5 +734,66 @@ class ApiServiceClass {
     }
   }
 }
+
+// ===============================================
+// 🌐 FUNÇÃO AUXILIAR PARA REQUISIÇÕES AUTENTICADAS
+// ===============================================
+
+/**
+ * ✅ Função auxiliar para fazer requisições autenticadas
+ * Usada pelos componentes React
+ */
+export const makeAuthenticatedRequest = async (
+  endpoint: string, 
+  options: RequestInit = {}
+): Promise<any> => {
+  const token = localStorage.getItem('token');
+  
+  if (!token) {
+    throw new Error('Token de autenticação não encontrado');
+  }
+
+  const baseURL = '/api';
+  const url = endpoint.startsWith('/') ? `${baseURL}${endpoint}` : `${baseURL}/${endpoint}`;
+  
+  const defaultOptions: RequestInit = {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+  };
+
+  const mergedOptions = {
+    ...defaultOptions,
+    ...options,
+    headers: {
+      ...defaultOptions.headers,
+      ...options.headers,
+    },
+  };
+
+  console.log('🌐 makeAuthenticatedRequest:', {
+    method: mergedOptions.method || 'GET',
+    url,
+    hasToken: !!token,
+    tokenLength: token.length,
+  });
+
+  const response = await fetch(url, mergedOptions);
+  
+  if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+      throw new Error('Token expirado. Redirecionando para login...');
+    }
+    
+    const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+    throw new Error(errorData.message || `Erro HTTP: ${response.status}`);
+  }
+
+  return await response.json();
+};
 
 export const ApiService = new ApiServiceClass();
