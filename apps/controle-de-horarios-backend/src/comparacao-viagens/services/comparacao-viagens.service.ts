@@ -163,7 +163,7 @@ export class ComparacaoViagensService {
   }
 
   /**
-   * 🆕 NOVA ABORDAGEM: Execução da comparação com busca de melhor match
+   * 🆕 NOVA ABORDAGEM: Execução da comparação com busca de melhor match + DEBUG
    */
   async executarComparacao(dataReferencia: string): Promise<ResultadoComparacaoDto> {
     const inicioProcessamento = Date.now();
@@ -178,6 +178,20 @@ export class ComparacaoViagensService {
       ]);
 
       this.logger.log(`📊 Dados encontrados - Transdata: ${viagensTransdata.length}, Globus: ${viagensGlobus.length}`);
+
+      // 🆕 DEBUG: Verificar duplicatas nos dados de entrada
+      const transdataIds = new Set(viagensTransdata.map(v => v.id));
+      const globusIds = new Set(viagensGlobus.map(v => v.id));
+      
+      this.logger.log(`🔍 DEBUG - IDs únicos: Transdata: ${transdataIds.size}, Globus: ${globusIds.size}`);
+      
+      if (transdataIds.size !== viagensTransdata.length) {
+        this.logger.warn(`⚠️ DUPLICATAS TRANSDATA: ${viagensTransdata.length - transdataIds.size} duplicatas encontradas`);
+      }
+      
+      if (globusIds.size !== viagensGlobus.length) {
+        this.logger.warn(`⚠️ DUPLICATAS GLOBUS: ${viagensGlobus.length - globusIds.size} duplicatas encontradas`);
+      }
 
       if (viagensGlobus.length === 0) {
         throw new Error(`Nenhum dado do Globus encontrado para ${dataReferencia}.`);
@@ -197,6 +211,9 @@ export class ComparacaoViagensService {
 
       // 🆕 NOVA LÓGICA: Buscar melhor match para cada viagem Transdata
       const globusUsados = new Set<string>();
+      let comparacoesProcessadas = 0; // 🆕 DEBUG: Contador
+      
+      this.logger.log(`🔍 DEBUG - Iniciando processamento de ${viagensTransdata.length} viagens Transdata`);
       
       for (const viagemTd of viagensTransdata) {
         let melhorMatch: {
@@ -233,6 +250,7 @@ export class ComparacaoViagensService {
           );
           
           todasComparacoes.push(comparacao);
+          comparacoesProcessadas++; // �� DEBUG
           estatisticas.matches++;
           
           switch (status) {
@@ -247,31 +265,80 @@ export class ComparacaoViagensService {
               break;
           }
 
+          // 🆕 DEBUG: Log detalhado a cada 500 comparações
+          if (comparacoesProcessadas % 500 === 0) {
+            this.logger.log(`📊 DEBUG - Processadas: ${comparacoesProcessadas}, Total array: ${todasComparacoes.length}, Globus usados: ${globusUsados.size}`);
+          }
+
           this.logger.debug(`✅ Match encontrado: Linha ${viagemTd.codigoLinha}, Score: ${melhorMatch.score}, Status: ${status}`);
         } else {
           // Não encontrou match - apenas Transdata
           const comparacao = this.criarComparacaoApenasTransdata(dataReferencia, viagemTd);
           todasComparacoes.push(comparacao);
+          comparacoesProcessadas++; // �� DEBUG
           estatisticas.apenasTransdata++;
           
           this.logger.debug(`📋 APENAS TRANSDATA: Linha ${viagemTd.codigoLinha}, Serviço ${viagemTd.Servico}, Horário ${viagemTd.InicioPrevistoText}`);
         }
       }
 
+      this.logger.log(`🔍 DEBUG - Finalizando processamento Transdata. Processadas: ${comparacoesProcessadas}`);
+
       // Adicionar viagens Globus que não foram usadas
+      let globusNaoUsadas = 0;
       for (const viagemGb of viagensGlobus) {
         if (!globusUsados.has(viagemGb.id)) {
           const comparacao = this.criarComparacaoApenasGlobus(dataReferencia, viagemGb);
           todasComparacoes.push(comparacao);
+          comparacoesProcessadas++; // �� DEBUG
+          globusNaoUsadas++;
           estatisticas.apenasGlobus++;
           
           this.logger.debug(`📋 APENAS GLOBUS: Linha ${viagemGb.codigoLinha}, Serviço ${viagemGb.codServicoNumero}, Horário ${viagemGb.horSaidaTime}`);
         }
       }
+
+      // 🆕 DEBUG: Verificação final detalhada
+      this.logger.log(`�� ==================== DEBUG FINAL ====================`);
+      this.logger.log(`📊 Dados de entrada:`);
+      this.logger.log(`   - Transdata: ${viagensTransdata.length} viagens`);
+      this.logger.log(`   - Globus: ${viagensGlobus.length} viagens`);
+      this.logger.log(`📊 Processamento:`);
+      this.logger.log(`   - Transdata processadas: ${viagensTransdata.length}`);
+      this.logger.log(`   - Globus usadas (matches): ${globusUsados.size}`);
+      this.logger.log(`   - Globus não usadas: ${globusNaoUsadas}`);
+      this.logger.log(`   - Total esperado: ${viagensTransdata.length + globusNaoUsadas}`);
+      this.logger.log(`📊 Resultado:`);
+      this.logger.log(`   - Comparações criadas: ${todasComparacoes.length}`);
+      this.logger.log(`   - Comparações processadas (contador): ${comparacoesProcessadas}`);
+      this.logger.log(`📊 Breakdown das comparações:`);
+      this.logger.log(`   - Matches (compatíveis + divergentes + horário div): ${estatisticas.matches}`);
+      this.logger.log(`   - Apenas Transdata: ${estatisticas.apenasTransdata}`);
+      this.logger.log(`   - Apenas Globus: ${estatisticas.apenasGlobus}`);
+      this.logger.log(`   - Total calculado: ${estatisticas.matches + estatisticas.apenasTransdata + estatisticas.apenasGlobus}`);
+      
+      // Verificar se há IDs duplicados nas comparações
+      const comparacaoIds = todasComparacoes.map((c, index) => `${index}-${c.transdataId || 'TD'}-${c.globusId || 'GB'}`);
+      const idsUnicos = new Set(comparacaoIds);
+      if (comparacaoIds.length !== idsUnicos.size) {
+        this.logger.warn(`⚠️ DUPLICATAS NAS COMPARAÇÕES: ${comparacaoIds.length - idsUnicos.size} duplicatas detectadas`);
+        
+        // Mostrar alguns exemplos de duplicatas
+        const duplicatas = comparacaoIds.filter((id, index) => comparacaoIds.indexOf(id) !== index);
+        this.logger.warn(`⚠️ Exemplos de duplicatas: ${duplicatas.slice(0, 5).join(', ')}`);
+      }
+
+      // Verificar consistência dos dados
+      const somaEstatisticas = estatisticas.compativeis + estatisticas.divergentes + estatisticas.horarioDivergente + estatisticas.apenasTransdata + estatisticas.apenasGlobus;
+      if (somaEstatisticas !== todasComparacoes.length) {
+        this.logger.warn(`⚠️ INCONSISTÊNCIA: Soma das estatísticas (${somaEstatisticas}) ≠ Total de comparações (${todasComparacoes.length})`);
+      }
+
+      this.logger.log(`🔍 =====================================================`);
       
       this.logger.log(`📊 Estatísticas: ${estatisticas.matches} matches, ${estatisticas.compativeis} compatíveis, ${estatisticas.divergentes} divergentes, ${estatisticas.horarioDivergente} horário div.`);
-      this.logger.log(`📊 Apenas: ${estatisticas.apenasTransdata} só Transdata, ${estatisticas.apenasGlobus} só Globus`);
-      this.logger.log(`📊 TOTAL DE COMPARAÇÕES: ${todasComparacoes.length}`);
+      this.logger.log(`�� Apenas: ${estatisticas.apenasTransdata} só Transdata, ${estatisticas.apenasGlobus} só Globus`);
+      this.logger.log(`�� TOTAL DE COMPARAÇÕES: ${todasComparacoes.length}`);
 
       await this.salvarComparacoes(todasComparacoes);
       this.logger.log(`💾 ${todasComparacoes.length} comparações salvas (TODAS as comparações)`);
