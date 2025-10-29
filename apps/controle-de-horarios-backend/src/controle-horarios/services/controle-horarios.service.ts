@@ -13,6 +13,7 @@ import {
   DadosEditaveisDto,
   OpcoesControleHorariosDto,
 } from '../dto';
+import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips } from '../../comparacao-viagens/utils/trip-comparator.util';
 
 @Injectable()
 export class ControleHorariosService {
@@ -40,8 +41,8 @@ export class ControleHorariosService {
         throw new BadRequestException('Formato de data inválido. Use YYYY-MM-DD');
       }
 
-      // 1. Buscar viagens Globus com filtros aplicados
-      const viagensGlobus = await this.buscarViagensGlobusComFiltros(dataReferencia, filtros);
+      // 1. Buscar viagens Globus com filtros aplicados e paginação
+      const { viagens: viagensGlobus, total: totalViagensGlobus } = await this.buscarViagensGlobusComFiltros(dataReferencia, filtros);
       
       if (viagensGlobus.length === 0) {
         return this.criarResponseVazio(dataReferencia, filtros, startTime);
@@ -52,37 +53,62 @@ export class ControleHorariosService {
       const controlesExistentes = await this.buscarControlesExistentes(dataReferencia, viagemIds);
 
       // 3. Mesclar dados
-      const itensControle = this.mesclarDadosViagensControles(viagensGlobus, controlesExistentes);
+      let itensControle = this.mesclarDadosViagensControles(viagensGlobus, controlesExistentes);
 
-      // 4. Aplicar paginação
-      const { itensPaginados, total, temMaisPaginas } = this.aplicarPaginacao(
-        itensControle,
-        filtros.pagina || 0,
-        filtros.limite || 100
-      );
+      // 3.1. Aplicar filtro de viagens editadas pelo usuário, se solicitado
+      if (filtros.editadoPorUsuario === true) {
+        itensControle = itensControle.filter(item => 
+          item.dadosEditaveis.jaFoiEditado && item.dadosEditaveis.usuarioEmail === usuarioEmail
+        );
+      } else if (filtros.editadoPorUsuario === false) {
+        itensControle = itensControle.filter(item => !item.dadosEditaveis.jaFoiEditado);
+      }
 
-      // 5. Calcular estatísticas
+      // 3.2. Aplicar filtro por combinação de comparação, se solicitado
+      if (filtros.combinacaoComparacao) {
+        itensControle = itensControle.filter(item => {
+          // Para comparar, precisamos de dados da TransData. No momento, só temos ViagemGlobus.
+          // Assumindo que `item.viagemGlobus` contém dados suficientes para simular uma TransData para comparação.
+          // Em um cenário real, você precisaria buscar a viagem TransData correspondente ou ter esses dados já mesclados.
+          // Para este exemplo, vamos criar um mock simples de TransData para a comparação.
+          const mockTransDataTrip = {
+            NomeLinha: item.viagemGlobus.nomeLinha, // Usar nome da linha Globus para simular TransData
+            SentidoText: item.viagemGlobus.sentidoTexto, // Usar sentido da Globus para simular TransData
+            Servico: parseInt(item.viagemGlobus.codServicoNumero, 10), // Usar serviço da Globus para simular TransData
+            InicioPrevistoText: item.viagemGlobus.horSaidaTime, // Usar horário da Globus para simular TransData
+          };
+
+          const normalizedTransData = normalizeTransDataTrip(mockTransDataTrip);
+          const normalizedGlobus = normalizeGlobusTrip(item.viagemGlobus);
+          const combinacao = compareTrips(normalizedTransData, normalizedGlobus);
+          return combinacao === filtros.combinacaoComparacao;
+        });
+      }
+
+      // 4. Calcular estatísticas
       const estatisticas = await this.calcularEstatisticasOtimizado(dataReferencia);
+
+      const limite = filtros.limite || 100;
+      const pagina = filtros.pagina || 0;
+      const temMaisPaginas = (pagina + 1) * limite < totalViagensGlobus;
 
       const executionTime = `${Date.now() - startTime}ms`;
       
-      this.logger.log(`✅ Encontradas ${total} viagens para ${dataReferencia} em ${executionTime}`);
+      this.logger.log(`✅ Encontradas ${viagensGlobus.length} viagens (total: ${totalViagensGlobus}) para ${dataReferencia} em ${executionTime}`);
 
       return {
         success: true,
         message: `Controle de horários obtido com sucesso`,
-        data: itensPaginados,
-        total,
-        pagina: filtros.pagina || 0,
-        limite: filtros.limite || 100,
+        data: itensControle,
+        total: totalViagensGlobus,
+        pagina: pagina,
+        limite: limite,
         temMaisPaginas,
         filtrosAplicados: filtros,
         estatisticas,
         executionTime,
         dataReferencia,
-      };
-
-    } catch (error) {
+      };    } catch (error) {
       this.logger.error(`❌ Erro ao buscar controle de horários: ${error.message}`);
       throw error;
     }
@@ -117,6 +143,11 @@ export class ControleHorariosService {
       });
 
       if (controleExistente) {
+        // Armazenar valores originais para detecção de mudança
+        const originalNumeroCarro = controleExistente.numeroCarro;
+        const originalCrachaFuncionario = controleExistente.crachaFuncionario;
+        const originalObservacoes = controleExistente.observacoes;
+
         // Atualizar existente
         controleExistente.numeroCarro = dados.numeroCarro;
         controleExistente.informacaoRecolhe = dados.informacaoRecolhe;
@@ -128,6 +159,24 @@ export class ControleHorariosService {
         await this.controleHorarioRepository.save(controleExistente);
         
         this.logger.log(`✅ Controle atualizado para viagem ${dados.viagemGlobusId}`);
+
+        // ✅ Lógica de atualização automática para viagens relacionadas
+        const changedNumeroCarro = originalNumeroCarro !== dados.numeroCarro;
+        const changedCrachaFuncionario = originalCrachaFuncionario !== dados.crachaFuncionario;
+        const changedObservacoes = originalObservacoes !== dados.observacoes;
+
+        if (changedNumeroCarro || changedCrachaFuncionario || changedObservacoes) {
+          await this.aplicarAtualizacaoEmEscala(
+            viagemGlobus,
+            dataReferencia,
+            { 
+              numeroCarro: changedNumeroCarro ? dados.numeroCarro : undefined,
+              crachaFuncionario: changedCrachaFuncionario ? dados.crachaFuncionario : undefined,
+              observacoes: changedObservacoes ? dados.observacoes : undefined,
+            },
+            usuarioEmail
+          );
+        }
         
         return {
           success: true,
@@ -139,24 +188,28 @@ export class ControleHorariosService {
         const novoControle = this.controleHorarioRepository.create({
           viagemGlobusId: dados.viagemGlobusId,
           dataReferencia,
-          codigoLinha: viagemGlobus.codigoLinha,
-          nomeLinha: viagemGlobus.nomeLinha,
-          codServicoNumero: viagemGlobus.codServicoNumero,
-          sentidoTexto: viagemGlobus.sentidoTexto,
-          setorPrincipal: viagemGlobus.setorPrincipal,
-          horarioSaida: viagemGlobus.horSaidaTime,
-          horarioChegada: viagemGlobus.horChegadaTime,
-          nomeMotorista: viagemGlobus.nomeMotorista,
-          localOrigem: viagemGlobus.localOrigemViagem,
           numeroCarro: dados.numeroCarro,
           informacaoRecolhe: dados.informacaoRecolhe,
           crachaFuncionario: dados.crachaFuncionario,
           observacoes: dados.observacoes,
           usuarioEdicao: usuarioEmail,
           usuarioEmail: usuarioEmail,
+          isAtivo: true,
         });
 
         const controleSalvo = await this.controleHorarioRepository.save(novoControle);
+
+        // ✅ Lógica de atualização automática para viagens relacionadas (apenas se for um novo registro)
+        await this.aplicarAtualizacaoEmEscala(
+          viagemGlobus,
+          dataReferencia,
+          { 
+            numeroCarro: dados.numeroCarro,
+            crachaFuncionario: dados.crachaFuncionario,
+            observacoes: dados.observacoes,
+          },
+          usuarioEmail
+        );
         
         this.logger.log(`✅ Novo controle criado para viagem ${dados.viagemGlobusId}`);
         
@@ -290,7 +343,7 @@ export class ControleHorariosService {
           where: { dataReferencia }
         }),
         this.controleHorarioRepository.count({
-          where: { dataReferencia }
+          where: { dataReferencia, isAtivo: true }
         }),
       ]);
 
@@ -326,9 +379,51 @@ export class ControleHorariosService {
   private async buscarViagensGlobusComFiltros(
     dataReferencia: string,
     filtros: FiltrosControleHorariosDto,
-  ): Promise<ViagemGlobus[]> {
+  ): Promise<{ viagens: ViagemGlobus[], total: number }> {
     let query = this.viagemGlobusRepository
       .createQueryBuilder('vg')
+      .select([
+        'vg.id',
+        'vg.setorPrincipal',
+        'vg.codLocalTerminalSec',
+        'vg.codigoLinha',
+        'vg.nomeLinha',
+        'vg.codDestinoLinha',
+        'vg.localDestinoLinha',
+        'vg.flgSentido',
+        'vg.dataViagem',
+        'vg.descTipoDia',
+        'vg.horSaida',
+        'vg.horChegada',
+        'vg.horSaidaTime',
+        'vg.horChegadaTime',
+        'vg.codOrigemViagem',
+        'vg.localOrigemViagem',
+        'vg.codAtividade',
+        'vg.nomeAtividade',
+        'vg.flgTipo',
+        'vg.codServicoCompleto',
+        'vg.codServicoNumero',
+        'vg.codMotorista',
+        'vg.nomeMotorista',
+        'vg.codCobrador',
+        'vg.nomeCobrador',
+        'vg.crachaMotorista',
+        'vg.chapaFuncMotorista',
+        'vg.crachaCobrador',
+        'vg.chapaFuncCobrador',
+        'vg.totalHorarios',
+        'vg.duracaoMinutos',
+        'vg.dataReferencia',
+        'vg.hashDados',
+        'vg.createdAt',
+        'vg.updatedAt',
+        'vg.sentidoTexto',
+        'vg.periodoDoDia',
+        'vg.temCobrador',
+        'vg.origemDados',
+        'vg.isAtivo',
+      ])
       .where('vg.dataReferencia = :dataReferencia', { dataReferencia });
 
     // Aplicar filtros
@@ -380,6 +475,30 @@ export class ControleHorariosService {
       });
     }
 
+    if (filtros.localOrigem) {
+      query = query.andWhere('UPPER(vg.localOrigemViagem) LIKE :localOrigem', { 
+        localOrigem: `%${filtros.localOrigem.toUpperCase()}%` 
+      });
+    }
+
+    if (filtros.codAtividade) {
+      query = query.andWhere('vg.codAtividade = :codAtividade', { 
+        codAtividade: filtros.codAtividade 
+      });
+    }
+
+    if (filtros.localDestino) {
+      query = query.andWhere('UPPER(vg.localDestinoLinha) LIKE :localDestino', { 
+        localDestino: `%${filtros.localDestino.toUpperCase()}%` 
+      });
+    }
+
+    if (filtros.crachaMotorista) {
+      query = query.andWhere('UPPER(vg.crachaMotorista) LIKE :crachaMotorista', { 
+        crachaMotorista: `%${filtros.crachaMotorista.toUpperCase()}%` 
+      });
+    }
+
     if (filtros.buscaTexto) {
       const buscaUpper = `%${filtros.buscaTexto.toUpperCase()}%`;
       query = query.andWhere(
@@ -394,12 +513,17 @@ export class ControleHorariosService {
                  .addOrderBy('vg.sentidoTexto', 'ASC')
                  .addOrderBy('vg.horSaidaTime', 'ASC');
 
-    // Aplicar limite se especificado
+    // Aplicar paginação
     if (filtros.limite) {
       query = query.limit(filtros.limite);
     }
 
-    return await query.getMany();
+    if (filtros.pagina && filtros.limite) {
+      query = query.offset((filtros.pagina) * filtros.limite);
+    }
+
+    const [viagens, total] = await query.getManyAndCount();
+    return { viagens, total };
   }
 
   private async buscarControlesExistentes(
@@ -442,6 +566,18 @@ export class ControleHorariosService {
         duracaoMinutos: viagem.duracaoMinutos,
         periodoDoDia: viagem.periodoDoDia,
         flgSentido: viagem.flgSentido,
+        // Novos campos da ViagemGlobus
+        codDestinoLinha: viagem.codDestinoLinha,
+        localDestinoLinha: viagem.localDestinoLinha,
+        descTipoDia: viagem.descTipoDia,
+        codOrigemViagem: viagem.codOrigemViagem,
+        codAtividade: viagem.codAtividade,
+        nomeAtividade: viagem.nomeAtividade,
+        flgTipo: viagem.flgTipo,
+        crachaMotorista: viagem.crachaMotorista,
+        chapaFuncMotorista: viagem.chapaFuncMotorista,
+        crachaCobrador: viagem.crachaCobrador,
+        chapaFuncCobrador: viagem.chapaFuncCobrador,
       };
 
       const dadosEditaveisDto: DadosEditaveisDto = {
@@ -503,32 +639,21 @@ export class ControleHorariosService {
     };
   }
 
-  private aplicarPaginacao(
-    itens: ControleHorarioItemDto[],
-    pagina: number,
-    limite: number,
-  ): { itensPaginados: ControleHorarioItemDto[]; total: number; temMaisPaginas: boolean } {
-    const total = itens.length;
-    const inicio = pagina * limite;
-    const fim = inicio + limite;
-    const itensPaginados = itens.slice(inicio, fim);
-    const temMaisPaginas = fim < total;
-
-    return { itensPaginados, total, temMaisPaginas };
-  }
-
   private criarResponseVazio(
     dataReferencia: string,
     filtros: FiltrosControleHorariosDto,
     startTime: number,
   ): ControleHorarioResponseDto {
+    const limite = filtros.limite || 100;
+    const pagina = filtros.pagina || 0;
+
     return {
       success: true,
       message: 'Nenhuma viagem encontrada para os filtros aplicados',
       data: [],
       total: 0,
-      pagina: filtros.pagina || 0,
-      limite: filtros.limite || 100,
+      pagina: pagina,
+      limite: limite,
       temMaisPaginas: false,
       filtrosAplicados: filtros,
       estatisticas: {
@@ -551,5 +676,69 @@ export class ControleHorariosService {
     
     const date = new Date(dateString);
     return date instanceof Date && !isNaN(date.getTime());
+  }
+
+  private async aplicarAtualizacaoEmEscala(
+    viagemBase: ViagemGlobus,
+    dataReferencia: string,
+    updatedFields: { numeroCarro?: string; crachaFuncionario?: string; observacoes?: string },
+    usuarioEmail: string,
+  ): Promise<void> {
+    this.logger.log(`🔄 Aplicando atualização em escala para viagem ${viagemBase.id}`);
+
+    // 1. Identificar a escala (mesmo serviço, linha, sentido, setor, data)
+    const escalaQuery = this.viagemGlobusRepository
+      .createQueryBuilder('vg')
+      .where('vg.dataReferencia = :dataReferencia', { dataReferencia })
+      .andWhere('vg.codServicoNumero = :codServicoNumero', { codServicoNumero: viagemBase.codServicoNumero })
+      .andWhere('vg.setorPrincipal = :setorPrincipal', { setorPrincipal: viagemBase.setorPrincipal })
+      .andWhere('vg.flgSentido = :flgSentido', { flgSentido: viagemBase.flgSentido })
+      .andWhere('vg.id != :viagemBaseId', { viagemBaseId: viagemBase.id }); // Excluir a viagem original
+
+    const viagensNaEscala = await escalaQuery.getMany();
+
+    if (viagensNaEscala.length === 0) {
+      this.logger.log(`ℹ️ Nenhuma outra viagem encontrada na escala para ${viagemBase.id}`);
+      return;
+    }
+
+    this.logger.log(`📊 Encontradas ${viagensNaEscala.length} viagens na mesma escala para atualização.`);
+
+    for (const viagemEscala of viagensNaEscala) {
+      let controleExistente = await this.controleHorarioRepository.findOne({
+        where: {
+          viagemGlobusId: viagemEscala.id,
+          dataReferencia,
+        },
+      });
+
+      if (!controleExistente) {
+        // Se não existe, cria um novo controle para a viagem na escala
+        controleExistente = this.controleHorarioRepository.create({
+          viagemGlobusId: viagemEscala.id,
+          dataReferencia,
+          usuarioEdicao: usuarioEmail,
+          usuarioEmail: usuarioEmail,
+          isAtivo: true,
+        });
+      }
+
+      // Aplicar apenas os campos que foram atualizados na viagem original
+      if (updatedFields.numeroCarro !== undefined) {
+        controleExistente.numeroCarro = updatedFields.numeroCarro;
+      }
+      if (updatedFields.crachaFuncionario !== undefined) {
+        controleExistente.crachaFuncionario = updatedFields.crachaFuncionario;
+      }
+      if (updatedFields.observacoes !== undefined) {
+        controleExistente.observacoes = updatedFields.observacoes;
+      }
+
+      controleExistente.usuarioEdicao = usuarioEmail;
+      controleExistente.usuarioEmail = usuarioEmail;
+
+      await this.controleHorarioRepository.save(controleExistente);
+      this.logger.log(`✅ Controle atualizado para viagem em escala: ${viagemEscala.id}`);
+    }
   }
 }

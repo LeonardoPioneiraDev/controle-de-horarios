@@ -1,5 +1,6 @@
-import { IsOptional, IsString, IsNumber, Min, Max } from 'class-validator';
+import { IsOptional, IsString, IsNumber, Min, Max, IsEnum } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { CombinacaoComparacao } from '../../comparacao-viagens/utils/trip-comparator.util';
 
 export class FiltrosControleHorariosDto {
   @IsOptional()
@@ -43,9 +44,33 @@ export class FiltrosControleHorariosDto {
   localOrigem?: string; // Busca parcial no local
 
   @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  codAtividade?: number; // Código da Atividade
+
+  @IsOptional()
+  @Type(() => Boolean)
+  editadoPorUsuario?: boolean; // Filtra viagens editadas pelo usuário logado
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim())
+  localDestino?: string; // Busca parcial no local de destino
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim())
+  crachaMotorista?: string; // Crachá do motorista
+
+  @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
   buscaTexto?: string; // Busca geral em múltiplos campos
+
+  @IsOptional()
+  @IsEnum(CombinacaoComparacao)
+  @Type(() => Number)
+  combinacaoComparacao?: CombinacaoComparacao;
 
   @IsOptional()
   @Type(() => Number)

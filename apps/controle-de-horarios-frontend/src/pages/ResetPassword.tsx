@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ApiService } from '../services/api';
+import { authService } from '../services/api';
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, Key } from 'lucide-react';
 
 export const ResetPassword: React.FC = () => {
@@ -102,7 +102,7 @@ export const ResetPassword: React.FC = () => {
       console.log('🔑 [RESET] Redefinindo senha...');
       
       // Implementar chamada para o backend
-      const response = await ApiService.resetPassword(token!, formData.newPassword);
+      const response = await authService.resetPassword(token!, formData.newPassword);
       
       console.log('✅ [RESET] Senha redefinida com sucesso');
       

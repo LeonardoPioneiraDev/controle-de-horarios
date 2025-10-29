@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { ApiService } from '../services/api';
+import { authService, healthService } from '../services/api';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 
 export const Login: React.FC = () => {
@@ -96,7 +96,7 @@ export const Login: React.FC = () => {
   const testConnection = async () => {
     try {
       console.log('🧪 [LOGIN] Testando conexão...');
-      await ApiService.checkHealth();
+      await healthService.checkHealth();
       alert('✅ Backend conectado!');
     } catch (error) {
       console.error('❌ [LOGIN] Erro de conexão:', error);

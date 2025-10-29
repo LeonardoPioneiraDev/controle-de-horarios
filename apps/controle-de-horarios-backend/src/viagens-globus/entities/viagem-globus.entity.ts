@@ -22,12 +22,21 @@ export class ViagemGlobus {
   @Column({ name: 'nome_linha', type: 'varchar', length: 200 })
   nomeLinha: string;
 
+  @Column({ name: 'cod_destino_linha', type: 'integer', nullable: true })
+  codDestinoLinha: number;
+
+  @Column({ name: 'local_destino_linha', type: 'varchar', length: 100, nullable: true })
+  localDestinoLinha: string;
+
   // ✅ INFORMAÇÕES DA VIAGEM/HORÁRIO
   @Column({ name: 'flg_sentido', type: 'varchar', length: 1 })
   flgSentido: string;
 
   @Column({ name: 'data_viagem', type: 'date' })
   dataViagem: Date;
+
+  @Column({ name: 'desc_tipo_dia', type: 'varchar', length: 20, nullable: true })
+  descTipoDia: string;
 
   @Column({ name: 'hor_saida', type: 'timestamp', nullable: true })
   horSaida: Date;
@@ -43,11 +52,21 @@ export class ViagemGlobus {
   horChegadaTime: string;
 
   // ✅ LOCAL DE ORIGEM DA VIAGEM
-  @Column({ name: 'cod_localidade', type: 'integer', nullable: true })
-  codLocalidade: number;
+  @Column({ name: 'cod_origem_viagem', type: 'integer', nullable: true })
+  codOrigemViagem: number;
 
   @Column({ name: 'local_origem_viagem', type: 'varchar', length: 100, nullable: true })
   localOrigemViagem: string;
+
+  // ✅ INFORMAÇÕES DA ATIVIDADE
+  @Column({ name: 'cod_atividade', type: 'integer', nullable: true })
+  codAtividade: number;
+
+  @Column({ name: 'nome_atividade', type: 'varchar', length: 50, nullable: true })
+  nomeAtividade: string;
+
+  @Column({ name: 'flg_tipo', type: 'varchar', length: 1, nullable: true })
+  flgTipo: string;
 
   // ✅ INFORMAÇÕES DO SERVIÇO
   @Column({ name: 'cod_servico_completo', type: 'varchar', length: 50, nullable: true })
@@ -68,6 +87,18 @@ export class ViagemGlobus {
 
   @Column({ name: 'nome_cobrador', type: 'varchar', length: 100, nullable: true })
   nomeCobrador: string;
+
+  @Column({ name: 'cracha_motorista', type: 'varchar', length: 20, nullable: true })
+  crachaMotorista: string;
+
+  @Column({ name: 'chapafunc_motorista', type: 'varchar', length: 20, nullable: true })
+  chapaFuncMotorista: string;
+
+  @Column({ name: 'cracha_cobrador', type: 'varchar', length: 20, nullable: true })
+  crachaCobrador: string;
+
+  @Column({ name: 'chapafunc_cobrador', type: 'varchar', length: 20, nullable: true })
+  chapaFuncCobrador: string;
 
   // ✅ INFORMAÇÃO ANALÍTICA
   @Column({ name: 'total_horarios', type: 'integer', default: 0 })
@@ -101,4 +132,7 @@ export class ViagemGlobus {
 
   @Column({ name: 'origem_dados', type: 'varchar', length: 20, default: 'ORACLE_GLOBUS' })
   origemDados: string;
+
+  @Column({ name: 'is_ativo', type: 'boolean', default: true })
+  isAtivo: boolean;
 }

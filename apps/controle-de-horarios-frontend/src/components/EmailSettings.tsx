@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ApiService } from '../services/api';
-import { EmailConfig, EmailTestRequest } from '../types';
+import { emailService } from '../services/api';
+import { EmailConfig, EmailTestRequest, EmailTestResponse } from '../types';
+
 import { 
   Mail, 
   Settings, 
@@ -39,7 +40,7 @@ export const EmailSettings: React.FC = () => {
   const loadEmailConfig = async () => {
     try {
       setLoading(true);
-      const emailConfig = await ApiService.getEmailConfig();
+      const emailConfig = await emailService.getEmailConfig();
       setConfig(emailConfig);
     } catch (error) {
       console.error('Erro ao carregar configurações de e-mail:', error);
@@ -51,7 +52,7 @@ export const EmailSettings: React.FC = () => {
   const testConnection = async () => {
     try {
       setTesting(true);
-      const result = await ApiService.testEmailConnection();
+      const result = await emailService.testEmailConnection();
       setConnectionStatus(result);
     } catch (error) {
       console.error('Erro ao testar conexão:', error);
@@ -73,9 +74,11 @@ export const EmailSettings: React.FC = () => {
 
     try {
       setSendingTest(true);
-      const result = await ApiService.sendTestEmail({
+      const result = await emailService.sendTestEmail({
         email: testEmail,
-        name: testName
+        name: testName,
+        subject: 'Teste de Conexão SMTP',
+        text: 'Este é um e-mail de teste enviado do sistema de controle de horários.',
       });
       setTestResult(result);
     } catch (error) {

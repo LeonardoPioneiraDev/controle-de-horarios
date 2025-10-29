@@ -1,0 +1,243 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { ControleHorariosController } from './controle-horarios.controller';
+import { ControleHorariosService } from '../services/controle-horarios.service';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../auth/guards/roles.guard';
+import { UserRole } from '../../common/enums/user-role.enum';
+import { HttpException, HttpStatus } from '@nestjs/common';
+
+describe('ControleHorariosController', () => {
+  let controller: ControleHorariosController;
+  let service: ControleHorariosService;
+
+  const mockControleHorariosService = {
+    buscarControleHorarios: jest.fn(),
+    salvarControleHorario: jest.fn(),
+    salvarMultiplosControles: jest.fn(),
+    buscarOpcoesControleHorarios: jest.fn(),
+    obterEstatisticasControleHorarios: jest.fn(),
+  };
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [ControleHorariosController],
+      providers: [
+        {
+          provide: ControleHorariosService,
+          useValue: mockControleHorariosService,
+        },
+      ],
+    })
+    .overrideGuard(JwtAuthGuard)
+    .useValue({ canActivate: () => true })
+    .overrideGuard(RolesGuard)
+    .useValue({ canActivate: () => true })
+    .compile();
+
+    controller = module.get<ControleHorariosController>(ControleHorariosController);
+    service = module.get<ControleHorariosService>(ControleHorariosService);
+  });
+
+  it('should be defined', () => {
+    expect(controller).toBeDefined();
+  });
+
+  describe('buscarControleHorarios', () => {
+    it('should return controle horarios data', async () => {
+      const result = { success: true, data: [], total: 0, pagina: 0, limite: 100, temMaisPaginas: false, filtrosAplicados: {}, estatisticas: {}, executionTime: '0ms', dataReferencia: '2023-01-01' };
+      mockControleHorariosService.buscarControleHorarios.mockResolvedValue(result);
+
+      expect(await controller.buscarControleHorarios('2023-01-01', {}, 'test@example.com')).toEqual(result);
+      expect(service.buscarControleHorarios).toHaveBeenCalledWith('2023-01-01', {}, 'test@example.com');
+    });
+
+    it('should throw HttpException on service error', async () => {
+      mockControleHorariosService.buscarControleHorarios.mockRejectedValue(new Error('Service error'));
+
+      await expect(controller.buscarControleHorarios('2023-01-01', {}, 'test@example.com')).rejects.toThrow(
+        new HttpException(
+          {
+            success: false,
+            message: 'Erro ao buscar controle de horários',
+            error: 'Service error',
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+  });
+
+  describe('salvarControleHorario', () => {
+    it('should save controle horario', async () => {
+      const result = { success: true, message: 'Controle de horário criado com sucesso', data: {} };
+      mockControleHorariosService.salvarControleHorario.mockResolvedValue(result);
+
+      const dto = { viagemGlobusId: '123', numeroCarro: 'A1', informacaoRecolhe: 'info', crachaFuncionario: 'C1', observacoes: 'obs' };
+      expect(await controller.salvarControleHorario('2023-01-01', dto, 'test@example.com')).toEqual(result);
+      expect(service.salvarControleHorario).toHaveBeenCalledWith('2023-01-01', dto, 'test@example.com');
+    });
+
+    it('should throw HttpException on service error', async () => {
+      mockControleHorariosService.salvarControleHorario.mockRejectedValue(new Error('Service error'));
+
+      const dto = { viagemGlobusId: '123', numeroCarro: 'A1', informacaoRecolhe: 'info', crachaFuncionario: 'C1', observacoes: 'obs' };
+      await expect(controller.salvarControleHorario('2023-01-01', dto, 'test@example.com')).rejects.toThrow(
+        new HttpException(
+          {
+            success: false,
+            message: 'Erro ao salvar controle de horário',
+            error: 'Service error',
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+  });
+
+  describe('salvarMultiplosControles', () => {
+    it('should save multiple controle horarios', async () => {
+      const result = { success: true, message: 'Salvamento concluído: 1 sucessos, 0 erros', salvos: 1, erros: 0 };
+      mockControleHorariosService.salvarMultiplosControles.mockResolvedValue(result);
+
+      const dto = { dataReferencia: '2023-01-01', controles: [{ viagemGlobusId: '123', numeroCarro: 'A1' }] };
+      expect(await controller.salvarMultiplosControles(dto, 'test@example.com')).toEqual(result);
+      expect(service.salvarMultiplosControles).toHaveBeenCalledWith(dto, 'test@example.com');
+    });
+
+    it('should throw HttpException on service error', async () => {
+      mockControleHorariosService.salvarMultiplosControles.mockRejectedValue(new Error('Service error'));
+
+      const dto = { dataReferencia: '2023-01-01', controles: [{ viagemGlobusId: '123', numeroCarro: 'A1' }] };
+      await expect(controller.salvarMultiplosControles(dto, 'test@example.com')).rejects.toThrow(
+        new HttpException(
+          {
+            success: false,
+            message: 'Erro ao salvar controles de horário',
+            error: 'Service error',
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+  });
+
+  describe('buscarOpcoesControleHorarios', () => {
+    it('should return options for controle horarios', async () => {
+      const result = { success: true, message: 'Opções obtidas com sucesso', data: { setores: [], linhas: [], servicos: [], sentidos: [], motoristas: [] } };
+      mockControleHorariosService.buscarOpcoesControleHorarios.mockResolvedValue(result.data);
+
+      expect(await controller.buscarOpcoesControleHorarios('2023-01-01', 'test@example.com')).toEqual(result);
+      expect(service.buscarOpcoesControleHorarios).toHaveBeenCalledWith('2023-01-01');
+    });
+
+    it('should throw HttpException on service error', async () => {
+      mockControleHorariosService.buscarOpcoesControleHorarios.mockRejectedValue(new Error('Service error'));
+
+      await expect(controller.buscarOpcoesControleHorarios('2023-01-01', 'test@example.com')).rejects.toThrow(
+        new HttpException(
+          {
+            success: false,
+            message: 'Erro ao buscar opções para filtros',
+            error: 'Service error',
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+  });
+
+  describe('obterEstatisticas', () => {
+    it('should return statistics', async () => {
+      const result = { success: true, message: 'Estatísticas obtidas com sucesso', data: { totalViagens: 10, viagensEditadas: 5 } };
+      mockControleHorariosService.obterEstatisticasControleHorarios.mockResolvedValue(result.data);
+
+      expect(await controller.obterEstatisticas('2023-01-01', 'test@example.com')).toEqual(result);
+      expect(service.obterEstatisticasControleHorarios).toHaveBeenCalledWith('2023-01-01');
+    });
+
+    it('should throw HttpException on service error', async () => {
+      mockControleHorariosService.obterEstatisticasControleHorarios.mockRejectedValue(new Error('Service error'));
+
+      await expect(controller.obterEstatisticas('2023-01-01', 'test@example.com')).rejects.toThrow(
+        new HttpException(
+          {
+            success: false,
+            message: 'Erro ao obter estatísticas',
+            error: 'Service error',
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+  });
+
+  describe('verificarStatusDados', () => {
+    it('should return data status', async () => {
+      const serviceResult = { totalViagens: 10, viagensEditadas: 5, percentualEditado: 50, ultimaAtualizacao: new Date() };
+      const expectedResult = {
+        success: true,
+        message: 'Status dos dados obtido com sucesso',
+        data: {
+          existeViagensGlobus: true,
+          totalViagensGlobus: 10,
+          viagensEditadas: 5,
+          percentualEditado: 50,
+          ultimaAtualizacao: serviceResult.ultimaAtualizacao,
+        },
+        dataReferencia: '2023-01-01',
+      };
+      mockControleHorariosService.obterEstatisticasControleHorarios.mockResolvedValue(serviceResult);
+
+      expect(await controller.verificarStatusDados('2023-01-01', 'test@example.com')).toEqual(expectedResult);
+      expect(service.obterEstatisticasControleHorarios).toHaveBeenCalledWith('2023-01-01');
+    });
+
+    it('should throw HttpException on service error', async () => {
+      mockControleHorariosService.obterEstatisticasControleHorarios.mockRejectedValue(new Error('Service error'));
+
+      await expect(controller.verificarStatusDados('2023-01-01', 'test@example.com')).rejects.toThrow(
+        new HttpException(
+          {
+            success: false,
+            message: 'Erro ao verificar status dos dados',
+            error: 'Service error',
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+    });
+  });
+
+  describe('healthCheck', () => {
+    it('should return health check status', async () => {
+      const result = await controller.healthCheck('test@example.com');
+      expect(result.success).toBe(true);
+      expect(result.status).toBe('HEALTHY');
+      expect(result.endpoints).toBeDefined();
+    });
+
+    it('should throw HttpException on error', async () => {
+      // Simulate an error within the healthCheck method if it were to call a service
+      // For this specific healthCheck, it doesn't call a service, so we'll simulate a generic error
+      // by temporarily overriding a method or mocking a dependency if it had one.
+      // As it stands, this healthCheck is self-contained and unlikely to throw unless NestJS itself fails.
+      // For demonstration, we'll just ensure it returns the expected healthy status.
+      // If there were external dependencies, we would mock them to simulate failure.
+      const originalLog = controller['logger'].log;
+      controller['logger'].log = jest.fn(() => { throw new Error('Simulated health check error'); });
+
+      await expect(controller.healthCheck('test@example.com')).rejects.toThrow(
+        new HttpException(
+          {
+            success: false,
+            message: 'Erro no health check',
+            status: 'UNHEALTHY',
+            error: 'Simulated health check error',
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        ),
+      );
+      controller['logger'].log = originalLog; // Restore original logger
+    });
+  });
+});

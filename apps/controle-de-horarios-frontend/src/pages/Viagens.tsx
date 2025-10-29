@@ -1,8 +1,9 @@
 // src/pages/Viagens.tsx
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { viagensTransdataService } from '../services/api';
+import { ViagemTransdata, FiltrosViagem, StatusDados } from '../types';
 import { useAuth } from '../contexts/AuthContext';
-import { ApiService, ViagemTransdata, FiltrosViagem, StatusDados } from '../services/api';
 import { 
   Bus, 
   Calendar, 
@@ -51,7 +52,7 @@ export const Viagens: React.FC = () => {
 
   const loadStatusDados = async () => {
     try {
-      const status = await ApiService.getStatusDados(selectedDate);
+      const status = await viagensTransdataService.getStatusDados(selectedDate);
       setStatusDados(status);
       
       if (!status.existemDados) {
@@ -65,7 +66,7 @@ export const Viagens: React.FC = () => {
 
   const loadCodigosLinha = async () => {
     try {
-      const response = await ApiService.getCodigosLinha(selectedDate);
+      const response = await viagensTransdataService.getCodigosLinha(selectedDate);
       setCodigosLinha(response.linhas);
     } catch (err: any) {
       console.error('Erro ao carregar códigos de linha:', err);
@@ -74,7 +75,7 @@ export const Viagens: React.FC = () => {
 
   const loadServicos = async () => {
     try {
-      const response = await ApiService.getServicosUnicos(selectedDate);
+      const response = await viagensTransdataService.getServicosUnicos(selectedDate);
       setServicos(response.servicos);
     } catch (err: any) {
       console.error('Erro ao carregar serviços:', err);
@@ -88,12 +89,12 @@ export const Viagens: React.FC = () => {
       
       if (Object.keys(filtros).some(key => filtros[key as keyof FiltrosViagem] && key !== 'page' && key !== 'limit')) {
         // Com filtros
-        const response = await ApiService.getViagensWithFilters(selectedDate, filtros);
+        const response = await viagensTransdataService.getViagensWithFilters(selectedDate, filtros);
         setViagens(response.data);
         setTotal(response.total);
       } else {
         // Sem filtros - buscar todas
-        const response = await ApiService.getViagensByDate(selectedDate);
+        const response = await viagensTransdataService.getViagensByDate(selectedDate);
         setViagens(response);
         setTotal(response.length);
       }
@@ -110,7 +111,7 @@ export const Viagens: React.FC = () => {
       setError('');
       setSuccess('');
       
-      const result = await ApiService.sincronizarViagens(selectedDate);
+      const result = await viagensTransdataService.sincronizarViagens(selectedDate);
       setSuccess(`Sincronização concluída: ${result.sincronizadas} viagens processadas`);
       
       // Recarregar dados

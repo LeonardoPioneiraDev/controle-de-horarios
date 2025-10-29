@@ -97,6 +97,7 @@ export class ViagensTransdataService {
     novas: number; 
     atualizadas: number;
     ignoradas: number;
+    desativadas: number;
     tempoProcessamento: number;
     isPrimeiraSincronizacao: boolean;
   }> {
@@ -144,12 +145,14 @@ export class ViagensTransdataService {
       this.logger.log(`[VIAGENS]    ➕ Novas: ${resultado.novas}`);
       this.logger.log(`[VIAGENS]    🔄 Atualizadas: ${resultado.atualizadas}`);
       this.logger.log(`[VIAGENS]    ⏭️ Ignoradas: ${resultado.ignoradas}`);
+      this.logger.log(`[VIAGENS]    🗑️ Desativadas: ${resultado.desativadas}`);
 
       return {
         sincronizadas: dadosApi.length,
         novas: resultado.novas,
         atualizadas: resultado.atualizadas,
         ignoradas: resultado.ignoradas,
+        desativadas: resultado.desativadas,
         tempoProcessamento,
         isPrimeiraSincronizacao
       };
@@ -200,7 +203,7 @@ export class ViagensTransdataService {
   private async executarSincronizacaoIncremental(
     dadosApi: TransdataApiResponse[], 
     dataReferencia: string
-  ): Promise<{ novas: number; atualizadas: number; ignoradas: number }> {
+  ): Promise<{ novas: number; atualizadas: number; ignoradas: number; desativadas: number }> {
     
     this.logger.log(`[VIAGENS] 🔄 Executando sincronização incremental - verificando ${dadosApi.length} viagens`);
 
@@ -215,6 +218,7 @@ export class ViagensTransdataService {
     let novas = 0;
     let atualizadas = 0;
     let ignoradas = 0;
+    const allProcessedIds: number[] = [];
 
     for (let i = 0; i < dadosApi.length; i += tamanhoLote) {
       const lote = dadosApi.slice(i, i + tamanhoLote);
@@ -223,12 +227,30 @@ export class ViagensTransdataService {
       novas += resultadoLote.novas;
       atualizadas += resultadoLote.atualizadas;
       ignoradas += resultadoLote.ignoradas;
+      allProcessedIds.push(...resultadoLote.processedIds);
 
       const progresso = Math.min(i + tamanhoLote, dadosApi.length);
       this.logger.log(`[VIAGENS] 📈 Sincronização incremental - progresso: ${progresso}/${dadosApi.length}`);
     }
 
-    return { novas, atualizadas, ignoradas };
+    // ✅ DESATIVAR VIAGENS REMOVIDAS DA API
+    const viagensParaDesativar = await this.viagensRepository.find({
+      where: {
+        dataReferencia: dataReferencia,
+        isAtivo: true,
+        id: In(viagensExistentes.map(v => v.id).filter(id => !allProcessedIds.includes(id)))
+      }
+    });
+
+    if (viagensParaDesativar.length > 0) {
+      this.logger.log(`[VIAGENS] 🗑️ Desativando ${viagensParaDesativar.length} viagens que não estão mais na API Transdata.`);
+      await this.viagensRepository.update(
+        viagensParaDesativar.map(v => v.id),
+        { isAtivo: false, updatedAt: new Date() }
+      );
+    }
+
+    return { novas, atualizadas, ignoradas, desativadas: viagensParaDesativar.length };
   }
 
   /**
@@ -269,9 +291,10 @@ export class ViagensTransdataService {
     lote: TransdataApiResponse[], 
     dataReferencia: string,
     mapViagensExistentes: Map<string, ViagemTransdata>
-  ): Promise<{ novas: number; atualizadas: number; ignoradas: number }> {
+  ): Promise<{ novas: number; atualizadas: number; ignoradas: number; processedIds: number[] }> {
     
     const viagensParaSalvar: ViagemTransdata[] = [];
+    const processedIds: number[] = [];
     let novas = 0;
     let atualizadas = 0;
     let ignoradas = 0;
@@ -295,15 +318,17 @@ export class ViagensTransdataService {
         } else {
           ignoradas++;
         }
+        processedIds.push(viagemExistente.id); // Add existing ID to processed list
       }
     }
 
     // Salvar apenas as viagens que precisam ser inseridas ou atualizadas
     if (viagensParaSalvar.length > 0) {
-      await this.viagensRepository.save(viagensParaSalvar);
+      const savedViagens = await this.viagensRepository.save(viagensParaSalvar);
+      savedViagens.forEach(v => processedIds.push(v.id)); // Add new IDs to processed list
     }
 
-    return { novas, atualizadas, ignoradas };
+    return { novas, atualizadas, ignoradas, processedIds };
   }
 
   /**
@@ -426,14 +451,7 @@ export class ViagensTransdataService {
    */
   private aplicarFiltros(queryBuilder: any, filtros: FiltrosViagemTransdataDto): void {
     if (filtros.codigoLinha) {
-      queryBuilder.andWhere(`
-        REGEXP_REPLACE(
-          SUBSTRING(viagem.NomeLinha, 1, 7), 
-          '[^0-9]', 
-          '', 
-          'g'
-        ) = :codigoLinha
-      `, { 
+      queryBuilder.andWhere('viagem.codigoLinha = :codigoLinha', { 
         codigoLinha: filtros.codigoLinha 
       });
     }
@@ -502,31 +520,15 @@ export class ViagensTransdataService {
   async obterCodigosLinha(data: string): Promise<string[]> {
     const result = await this.viagensRepository
       .createQueryBuilder('viagem')
-      .select(`
-        DISTINCT REGEXP_REPLACE(
-          SUBSTRING(viagem.NomeLinha, 1, 7), 
-          '[^0-9]', 
-          '', 
-          'g'
-        )
-      `, 'codigoLinha')
+      .select('DISTINCT viagem.codigoLinha', 'codigoLinha')
       .where('viagem.dataReferencia = :data', { data })
       .andWhere('viagem.isAtivo = :ativo', { ativo: true })
-      .andWhere('viagem.NomeLinha IS NOT NULL')
-      .andWhere(`
-        REGEXP_REPLACE(
-          SUBSTRING(viagem.NomeLinha, 1, 7), 
-          '[^0-9]', 
-          '', 
-          'g'
-        ) != ''
-      `)
+      .andWhere('viagem.codigoLinha IS NOT NULL')
+      .andWhere('viagem.codigoLinha != ''')
       .orderBy('codigoLinha', 'ASC')
       .getRawMany();
 
-    return result
-      .map(r => r.codigoLinha)
-      .filter(codigo => codigo && codigo.length > 0);
+    return result.map(r => r.codigoLinha);
   }
 
   /**

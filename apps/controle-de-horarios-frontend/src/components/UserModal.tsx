@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, CreateUserRequest, UpdateUserRequest, UserRole, UserStatus, EmailConfig } from '../types';
-import { ApiService } from '../services/api';
+import { User, CreateUserRequest, UpdateUserRequest, EmailConfig } from '../types';
+import { UserRole, UserStatus } from '../types/user.types';
+import { usersService, emailService } from '../services/api';
 import { X, Mail, AlertCircle, CheckCircle, XCircle, Settings, Loader } from 'lucide-react';
 
 interface UserModalProps {
@@ -71,7 +72,7 @@ export const UserModal: React.FC<UserModalProps> = ({
       setEmailInfo(prev => ({ ...prev, isLoading: true, error: null }));
 
       try {
-        const config = await ApiService.getEmailConfig();
+        const config = await emailService.getEmailConfig();
         
         setEmailInfo({
           willSendEmail: config.emailEnabled && config.transporterConfigured,

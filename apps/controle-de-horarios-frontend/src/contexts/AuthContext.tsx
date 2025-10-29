@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, LoginRequest } from '../types';
-import { ApiService } from '../services/api';
+import { authService } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setToken(storedToken);
             
             // Verificar se o token ainda é válido
-            const response = await ApiService.getProfile();
+            const response = await authService.getProfile();
             
             console.log('✅ AuthProvider: Token válido, usuário autenticado:', {
               userId: response.user.id,
@@ -98,22 +98,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       
       // Chamar ApiService para fazer login
-      const response = await ApiService.login(credentials);
+      const response = await authService.login(credentials);
       
       console.log('📦 AuthProvider.login: Resposta do login recebida:', {
-        hasAccessToken: !!response.access_token,
+        hasAccessToken: !!response.accessToken,
         hasUser: !!response.user,
         userEmail: response.user?.email
       });
 
-      if (!response.access_token || !response.user) {
+      if (!response.accessToken || !response.user) {
         throw new Error('Resposta de login inválida');
       }
 
       // ✅ CORRIGIDO: Salvar como 'token' (não 'access_token')
-      setToken(response.access_token);
+      setToken(response.accessToken);
       setUser(response.user);
-      localStorage.setItem('token', response.access_token);
+      localStorage.setItem('token', response.accessToken);
       localStorage.setItem('user', JSON.stringify(response.user));
       
       console.log('✅ AuthProvider.login: Login realizado com sucesso!', {
@@ -142,7 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(true);
       
       try {
-        await ApiService.logout();
+        await authService.logout();
         console.log('✅ AuthProvider.logout: Logout no backend bem-sucedido');
       } catch (error) {
         console.log('⚠️ AuthProvider.logout: Erro no logout do backend (ignorado):', error);

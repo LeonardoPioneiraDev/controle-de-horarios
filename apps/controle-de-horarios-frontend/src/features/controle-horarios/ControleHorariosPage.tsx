@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Calendar, Filter, Save, RefreshCw, Car, User, FileText, AlertCircle, CheckCircle, Clock, Search, X } from 'lucide-react';
-import { makeAuthenticatedRequest } from '../services/api';
+import { controleHorariosService } from '../services/controle-horarios/controle-horarios.service';
+import { healthService } from '../services/health/health.service';
+import { OpcoesControleHorarios, EstatisticasControleHorarios, ControleHorarioResponse } from '../types';
+import { UserModal } from '../components/UserModal';
 
 // ===============================================
 // 🎯 INTERFACES
@@ -40,24 +43,24 @@ interface ControleHorarioItem {
 }
 
 interface Filtros {
-  setorPrincipal: string;
-  codigoLinha: string;
-  codServicoNumero: string;
-  sentidoTexto: string;
-  horarioInicio: string;
-  horarioFim: string;
-  nomeMotorista: string;
-  buscaTexto: string;
+  setorPrincipal?: string;
+  codigoLinha?: string[];
+  codServicoNumero?: string;
+  sentidoTexto?: string;
+  horarioInicio?: string;
+  horarioFim?: string;
+  nomeMotorista?: string;
+  localOrigem?: string;
+  codAtividade?: string;
+  localDestino?: string;
+  crachaMotorista?: string;
+  buscaTexto?: string;
+  editadoPorUsuario?: boolean; // Adicionado para o filtro de viagens editadas pelo usuário
   limite: number;
+  pagina: number;
 }
 
-interface OpcoesControleHorarios {
-  setores: string[];
-  linhas: { codigo: string; nome: string }[];
-  servicos: string[];
-  sentidos: string[];
-  motoristas: string[];
-}
+
 
 interface Estatisticas {
   totalViagens: number;
@@ -85,20 +88,27 @@ export const ControleHorarios: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showLinhaMultiSelect, setShowLinhaMultiSelect] = useState(false);
   const [saving, setSaving] = useState(false);
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false);
   
   // Estados de filtros
   const [filtros, setFiltros] = useState<Filtros>({
-    setorPrincipal: '',
-    codigoLinha: '',
-    codServicoNumero: '',
-    sentidoTexto: '',
-    horarioInicio: '',
-    horarioFim: '',
-    nomeMotorista: '',
-    buscaTexto: '',
+    setorPrincipal: undefined,
+    codigoLinha: [],
+    codServicoNumero: undefined,
+    sentidoTexto: undefined,
+    horarioInicio: undefined,
+    horarioFim: undefined,
+    nomeMotorista: undefined,
+    localOrigem: undefined,
+    codAtividade: undefined,
+    localDestino: undefined,
+    crachaMotorista: undefined,
+    buscaTexto: undefined,
+    editadoPorUsuario: undefined, // Inicialmente indefinido
     limite: 50,
+    pagina: 0,
   });
 
   const [opcoesFiltros, setOpcoesFiltros] = useState<OpcoesControleHorarios>({
@@ -107,6 +117,8 @@ export const ControleHorarios: React.FC = () => {
     servicos: [],
     sentidos: [],
     motoristas: [],
+    locaisOrigem: [],
+    locaisDestino: [],
   });
 
   const [estatisticas, setEstatisticas] = useState<Estatisticas>({
@@ -127,72 +139,12 @@ export const ControleHorarios: React.FC = () => {
     ultimaAtualizacao: null as Date | null,
   });
 
-  // ===============================================
-  // 🔄 EFEITOS E CARREGAMENTO DE DADOS
-  // ===============================================
-
-  useEffect(() => {
-    if (dataReferencia) {
-      verificarStatusDados();
-      buscarOpcoesFiltros();
-      buscarControleHorarios();
-    }
-  }, [dataReferencia]);
-
-  // Verificar alterações pendentes
-  useEffect(() => {
-    const temAlteracoes = controleHorarios.some((item, index) => {
-      const original = controleHorariosOriginais[index];
-      if (!original) return false;
-      
-      return (
-        item.dadosEditaveis.numeroCarro !== original.dadosEditaveis.numeroCarro ||
-        item.dadosEditaveis.informacaoRecolhe !== original.dadosEditaveis.informacaoRecolhe ||
-        item.dadosEditaveis.crachaFuncionario !== original.dadosEditaveis.crachaFuncionario ||
-        item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes
-      );
-    });
-    
-    setTemAlteracoesPendentes(temAlteracoes);
-  }, [controleHorarios, controleHorariosOriginais]);
-
-  const verificarStatusDados = async () => {
-    try {
-      const response = await makeAuthenticatedRequest(`/controle-horarios/${dataReferencia}/status`);
-      if (response.success) {
-        setStatusDados(response.data);
-      }
-    } catch (err) {
-      console.error('Erro ao verificar status dos dados:', err);
-    }
-  };
-
-  const buscarOpcoesFiltros = async () => {
-    try {
-      const response = await makeAuthenticatedRequest(`/controle-horarios/${dataReferencia}/opcoes`);
-      if (response.success) {
-        setOpcoesFiltros(response.data);
-      }
-    } catch (err) {
-      console.error('Erro ao buscar opções de filtros:', err);
-    }
-  };
-
-  const buscarControleHorarios = async () => {
+  const buscarControleHorarios = useCallback(async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const queryParams = new URLSearchParams();
-      Object.entries(filtros).forEach(([key, value]) => {
-        if (value && value !== '') {
-          queryParams.append(key, value.toString());
-        }
-      });
-
-      const response = await makeAuthenticatedRequest(
-        `/controle-horarios/${dataReferencia}?${queryParams.toString()}`
-      );
+      const response = await controleHorariosService.getControleHorarios(dataReferencia, filtros);
 
       if (response.success) {
         setControleHorarios(response.data);
@@ -207,7 +159,39 @@ export const ControleHorarios: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  }, [dataReferencia, filtros]);
+
+  const verificarStatusDados = async () => {
+    try {
+      const response = await controleHorariosService.getStatusControleHorarios(dataReferencia);
+      if (response.success) {
+        setStatusDados(response.data);
+      }
+    } catch (err) {
+      console.error('Erro ao verificar status dos dados:', err);
+    }
   };
+
+  const buscarOpcoesFiltros = async () => {
+    try {
+      const response = await controleHorariosService.getOpcoesControleHorarios(dataReferencia);
+      if (response.success) {
+        setOpcoesFiltros(response.data);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar opções de filtros:', err);
+    }
+  };
+  // ===============================================
+  // 🔄 EFEITOS E CARREGAMENTO DE DADOS
+  // ===============================================
+
+  useEffect(() => {
+    if (dataReferencia) {
+      verificarStatusDados();
+      buscarOpcoesFiltros();
+    }
+  }, [dataReferencia]);
 
   // ===============================================
   // 💾 FUNÇÕES DE SALVAMENTO
@@ -241,20 +225,14 @@ export const ControleHorarios: React.FC = () => {
         dataReferencia,
         controles: itensAlterados.map(item => ({
           viagemGlobusId: item.viagemGlobus.id,
-          numeroCarro: item.dadosEditaveis.numeroCarro || null,
-          informacaoRecolhe: item.dadosEditaveis.informacaoRecolhe || null,
-          crachaFuncionario: item.dadosEditaveis.crachaFuncionario || null,
-          observacoes: item.dadosEditaveis.observacoes || null,
+          numeroCarro: item.dadosEditaveis.numeroCarro || undefined,
+          informacaoRecolhe: item.dadosEditaveis.informacaoRecolhe || undefined,
+          crachaFuncionario: item.dadosEditaveis.crachaFuncionario || undefined,
+          observacoes: item.dadosEditaveis.observacoes || undefined,
         }))
       };
 
-      const response = await makeAuthenticatedRequest(
-        `/controle-horarios/salvar-multiplos`,
-        {
-          method: 'POST',
-          body: JSON.stringify(dadosParaSalvar),
-        }
-      );
+      const response = await controleHorariosService.salvarMultiplosControles(dadosParaSalvar);
 
       if (response.success) {
         // Atualizar dados originais
@@ -308,20 +286,41 @@ export const ControleHorarios: React.FC = () => {
 
   const limparFiltros = () => {
     setFiltros({
-      setorPrincipal: '',
-      codigoLinha: '',
-      codServicoNumero: '',
-      sentidoTexto: '',
-      horarioInicio: '',
-      horarioFim: '',
-      nomeMotorista: '',
-      buscaTexto: '',
+      setorPrincipal: undefined,
+      codigoLinha: [],
+      codServicoNumero: undefined,
+      sentidoTexto: undefined,
+      horarioInicio: undefined,
+      horarioFim: undefined,
+      nomeMotorista: undefined,
+      localOrigem: undefined,
+      codAtividade: undefined,
+      localDestino: undefined,
+      crachaMotorista: undefined,
+      buscaTexto: undefined,
+      editadoPorUsuario: undefined,
       limite: 50,
+      pagina: 0,
     });
   };
 
   const contarFiltrosAtivos = () => {
-    return Object.values(filtros).filter(value => value && value !== '' && value !== 50).length;
+    let count = 0;
+    if (filtros.setorPrincipal) count++;
+    if (filtros.codigoLinha && filtros.codigoLinha.length > 0) count++;
+    if (filtros.codServicoNumero) count++;
+    if (filtros.sentidoTexto) count++;
+    if (filtros.horarioInicio) count++;
+    if (filtros.horarioFim) count++;
+    if (filtros.nomeMotorista) count++;
+    if (filtros.localOrigem) count++;
+    if (filtros.codAtividade) count++;
+    if (filtros.localDestino) count++;
+    if (filtros.crachaMotorista) count++;
+    if (filtros.buscaTexto) count++;
+    if (filtros.editadoPorUsuario === true) count++; // Contar se for explicitamente true
+    // limite e pagina não são contados como filtro ativo para o badge
+    return count;
   };
 
   const contarAlteracoesPendentes = () => {
@@ -540,112 +539,223 @@ export const ControleHorarios: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Setor */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Setor</label>
-              <select
-                value={filtros.setorPrincipal}
-                onChange={(e) => setFiltros(prev => ({ ...prev, setorPrincipal: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Todos os setores</option>
-                {opcoesFiltros.setores.map(setor => (
-                  <option key={setor} value={setor}>{setor}</option>
-                ))}
-              </select>
+            {/* Grupo: Localização */}
+            <div className="lg:col-span-2 p-4 border rounded-md bg-gray-50">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Localização</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Setor */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Setor</label>
+                  <select
+                    value={filtros.setorPrincipal || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, setorPrincipal: e.target.value || undefined }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Todos os setores</option>
+                    {opcoesFiltros.setores.map(setor => (
+                      <option key={setor} value={setor}>{setor}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Local Origem */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Local Origem</label>
+                  <select
+                    value={filtros.localOrigem || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, localOrigem: e.target.value || undefined }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Todos os locais de origem</option>
+                    {opcoesFiltros.locaisOrigem?.map(local => (
+                      <option key={local} value={local}>{local}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Local Destino */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Local Destino</label>
+                  <select
+                    value={filtros.localDestino || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, localDestino: e.target.value || undefined }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Todos os locais de destino</option>
+                    {opcoesFiltros.locaisDestino?.map(local => (
+                      <option key={local} value={local}>{local}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
-            {/* Linha */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Linha</label>
-              <select
-                value={filtros.codigoLinha}
-                onChange={(e) => setFiltros(prev => ({ ...prev, codigoLinha: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Todas as linhas</option>
-                {opcoesFiltros.linhas.map(linha => (
-                  <option key={linha.codigo} value={linha.codigo}>
-                    {linha.codigo} - {linha.nome.length > 30 ? linha.nome.substring(0, 30) + '...' : linha.nome}
-                  </option>
-                ))}
-              </select>
+            {/* Grupo: Linha e Serviço */}
+            <div className="lg:col-span-2 p-4 border rounded-md bg-gray-50">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Linha e Serviço</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Linha (Multi-select) */}
+                <div className="relative">
+                  <>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Linha(s)</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowLinhaMultiSelect(!showLinhaMultiSelect)}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    >
+                      {filtros.codigoLinha && filtros.codigoLinha.length > 0
+                        ? `${filtros.codigoLinha.length} linha(s) selecionada(s)`
+                        : 'Todas as linhas'}
+                    </button>
+                    {showLinhaMultiSelect && (
+                      <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto">
+                        {opcoesFiltros.linhas.map(linha => (
+                          <label key={linha.codigo} className="flex items-center px-3 py-2 hover:bg-gray-100">
+                            <input
+                              type="checkbox"
+                              checked={filtros.codigoLinha?.includes(linha.codigo) || false}
+                              onChange={(e) => {
+                                const newSelected = e.target.checked
+                                  ? [...(filtros.codigoLinha || []), linha.codigo]
+                                  : (filtros.codigoLinha || []).filter(code => code !== linha.codigo);
+                                setFiltros(prev => ({ ...prev, codigoLinha: newSelected }));
+                              }}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            />
+                            <span className="ml-2 text-sm text-gray-900">
+                              {linha.codigo}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                </div>
+                {/* Serviço */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Serviço</label>
+                  <select
+                    value={filtros.codServicoNumero || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, codServicoNumero: e.target.value || undefined }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Todos os serviços</option>
+                    {opcoesFiltros.servicos.map(servico => (
+                      <option key={servico} value={servico}>{servico}</option>
+                    ))}
+                  </select>
+                </div>
+                {/* Sentido */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Sentido</label>
+                  <select
+                    value={filtros.sentidoTexto || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, sentidoTexto: e.target.value || undefined }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Todos os sentidos</option>
+                    {opcoesFiltros.sentidos.map(sentido => (
+                      <option key={sentido} value={sentido}>{sentido}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
 
-            {/* Serviço */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Serviço</label>
-              <select
-                value={filtros.codServicoNumero}
-                onChange={(e) => setFiltros(prev => ({ ...prev, codServicoNumero: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Todos os serviços</option>
-                {opcoesFiltros.servicos.map(servico => (
-                  <option key={servico} value={servico}>{servico}</option>
-                ))}
-              </select>
+            {/* Grupo: Horários */}
+            <div className="lg:col-span-2 p-4 border rounded-md bg-gray-50">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Horários</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Horário Início */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Horário Início</label>
+                  <input
+                    type="time"
+                    value={filtros.horarioInicio || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, horarioInicio: e.target.value || undefined }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                {/* Horário Fim */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Horário Fim</label>
+                  <input
+                    type="time"
+                    value={filtros.horarioFim || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, horarioFim: e.target.value || undefined }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Sentido */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Sentido</label>
-              <select
-                value={filtros.sentidoTexto}
-                onChange={(e) => setFiltros(prev => ({ ...prev, sentidoTexto: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Todos os sentidos</option>
-                {opcoesFiltros.sentidos.map(sentido => (
-                  <option key={sentido} value={sentido}>{sentido}</option>
-                ))}
-              </select>
+            {/* Grupo: Motorista */}
+            <div className="lg:col-span-2 p-4 border rounded-md bg-gray-50">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Motorista</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Motorista */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Motorista</label>
+                  <input
+                    type="text"
+                    value={filtros.nomeMotorista || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, nomeMotorista: e.target.value || undefined }))}
+                    placeholder="Nome do motorista"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                {/* Crachá Motorista */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Crachá Motorista</label>
+                  <input
+                    type="text"
+                    value={filtros.crachaMotorista || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, crachaMotorista: e.target.value || undefined }))}
+                    placeholder="Crachá do motorista"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
             </div>
 
-            {/* Horário Início */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Horário Início</label>
-              <input
-                type="time"
-                value={filtros.horarioInicio}
-                onChange={(e) => setFiltros(prev => ({ ...prev, horarioInicio: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Horário Fim */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Horário Fim</label>
-              <input
-                type="time"
-                value={filtros.horarioFim}
-                onChange={(e) => setFiltros(prev => ({ ...prev, horarioFim: e.target.value }))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Motorista */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Motorista</label>
-              <input
-                type="text"
-                value={filtros.nomeMotorista}
-                onChange={(e) => setFiltros(prev => ({ ...prev, nomeMotorista: e.target.value }))}
-                placeholder="Nome do motorista"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Busca Geral */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Busca Geral</label>
-              <input
-                type="text"
-                value={filtros.buscaTexto}
-                onChange={(e) => setFiltros(prev => ({ ...prev, buscaTexto: e.target.value }))}
-                placeholder="Buscar em todos os campos"
-                className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
+            {/* Grupo: Outros */}
+            <div className="lg:col-span-4 p-4 border rounded-md bg-gray-50">
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Outros</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Código Atividade */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Código Atividade</label>
+                  <input
+                    type="text"
+                    value={filtros.codAtividade || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, codAtividade: e.target.value || undefined }))}
+                    placeholder="Código da atividade"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                {/* Busca Geral */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Busca Geral</label>
+                  <input
+                    type="text"
+                    value={filtros.buscaTexto || ''}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, buscaTexto: e.target.value || undefined }))}
+                    placeholder="Buscar em todos os campos"
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                {/* Editado por Usuário */}
+                <div className="flex items-center mt-6">
+                  <input
+                    id="editadoPorUsuario"
+                    type="checkbox"
+                    checked={filtros.editadoPorUsuario === true}
+                    onChange={(e) => setFiltros(prev => ({ ...prev, editadoPorUsuario: e.target.checked ? true : undefined }))}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="editadoPorUsuario" className="ml-2 block text-sm text-gray-900">
+                    Mostrar apenas viagens editadas por mim
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -655,7 +765,7 @@ export const ControleHorarios: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Limite de Registros</label>
                 <select
                   value={filtros.limite}
-                  onChange={(e) => setFiltros(prev => ({ ...prev, limite: Number(e.target.value) }))}
+                  onChange={(e) => console.log(e.target.value)}
                   className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value={25}>25 registros</option>
@@ -667,25 +777,15 @@ export const ControleHorarios: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  limparFiltros();
-                  buscarControleHorarios();
-                }}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 flex items-center gap-2"
-              >
-                <X className="h-4 w-4" />
-                Limpar Filtros
-              </button>
-              <button
-                onClick={buscarControleHorarios}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center gap-2"
-              >
-                <Search className="h-4 w-4" />
-                Aplicar Filtros
-              </button>
-            </div>
+            <button
+              onClick={() => {
+                limparFiltros();
+              }}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 flex items-center gap-2"
+            >
+              <X className="h-4 w-4" />
+              Limpar Filtros
+            </button>
           </div>
         </div>
       )}
@@ -1015,5 +1115,4 @@ export const ControleHorarios: React.FC = () => {
         </div>
       )}
     </div>
-  );
-};
+ 

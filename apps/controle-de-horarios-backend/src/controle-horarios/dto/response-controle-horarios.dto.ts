@@ -2,6 +2,8 @@ export interface ViagemGlobusBaseDto {
   id: string;
   codigoLinha: string;
   nomeLinha: string;
+  codDestinoLinha?: number;
+  localDestinoLinha?: string;
   codServicoNumero: string;
   sentidoTexto: string;
   horSaidaTime: string;
@@ -12,6 +14,15 @@ export interface ViagemGlobusBaseDto {
   duracaoMinutos: number;
   periodoDoDia: string;
   flgSentido: string;
+  descTipoDia?: string;
+  codOrigemViagem?: number;
+  codAtividade?: number;
+  nomeAtividade?: string;
+  flgTipo?: string;
+  crachaMotorista?: string;
+  chapaFuncMotorista?: string;
+  crachaCobrador?: string;
+  chapaFuncCobrador?: string;
 }
 
 export interface DadosEditaveisDto {

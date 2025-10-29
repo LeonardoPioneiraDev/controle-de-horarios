@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { ApiService } from '../services/api';
-import { User, CreateUserRequest, UpdateUserRequest, UserRole } from '../types';
+import { useState, useEffect } from 'react';
+import { usersService } from '../services/api';
+import { User, CreateUserRequest, UpdateUserRequest, UserRole, UserStatus } from '../types';
 import { UserModal } from '../components/UserModal';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -48,7 +48,7 @@ export const Users: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await ApiService.getUsers();
+      const response = await usersService.getUsers();
       setUsers(response);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao carregar usuários');
@@ -112,7 +112,7 @@ export const Users: React.FC = () => {
     }
 
     try {
-      await ApiService.deleteUser(user.id);
+      await usersService.deleteUser(user.id);
       await loadUsers();
       setOpenDropdown(null);
     } catch (err: any) {
@@ -125,9 +125,9 @@ export const Users: React.FC = () => {
       setModalLoading(true);
       
       if (selectedUser) {
-        await ApiService.updateUser(selectedUser.id, userData as UpdateUserRequest);
+        await usersService.updateUser(selectedUser.id, userData as UpdateUserRequest);
       } else {
-        await ApiService.createUser(userData as CreateUserRequest);
+        await usersService.createUser(userData as CreateUserRequest);
       }
       
       setIsModalOpen(false);
@@ -367,10 +367,10 @@ export const Users: React.FC = () => {
                     {getStatusBadge(user.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {user.lastLogin ? formatDate(user.lastLogin) : 'Nunca'}
+                    {user.lastLogin ? formatDate(user.lastLogin.toISOString()) : 'Nunca'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(user.createdAt)}
+                    {formatDate(user.createdAt.toISOString())}
                   </td>
                   {isAdmin && (
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

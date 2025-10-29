@@ -128,10 +128,12 @@ export class ViagensGlobusController {
     return {
       success: true,
       message: 'Sincronização concluída com sucesso',
-      data: resultado,
+      data: {
+        ...resultado,
+        dataReferencia: data
+      },
       executionTime: `${executionTime}ms`,
-      source: 'ORACLE_GLOBUS',
-      dataReferencia: data
+      source: 'ORACLE_GLOBUS'
     };
   }
 

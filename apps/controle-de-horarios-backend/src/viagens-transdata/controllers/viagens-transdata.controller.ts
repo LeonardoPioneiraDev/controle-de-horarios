@@ -140,7 +140,19 @@ export class ViagensTransdataController {
   })
   @ApiResponse({ 
     status: 200, 
-    description: 'Sincronização realizada com sucesso' 
+    description: 'Sincronização realizada com sucesso',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+        data: { type: 'string' },
+        sincronizadas: { type: 'number' },
+        novas: { type: 'number' },
+        atualizadas: { type: 'number' },
+        desativadas: { type: 'number' },
+        timestamp: { type: 'string' }
+      }
+    }
   })
   async sincronizarViagensPorData(@Param('data') data: string): Promise<{
     message: string;
@@ -148,6 +160,7 @@ export class ViagensTransdataController {
     sincronizadas: number;
     novas: number;
     atualizadas: number;
+    desativadas: number;
     timestamp: string;
   }> {
     this.logger.log(`[CONTROLLER] Iniciando sincronização manual para data: ${data}`);
@@ -163,6 +176,7 @@ export class ViagensTransdataController {
         message: 'Sincronização realizada com sucesso',
         data,
         ...resultado,
+        desativadas: resultado.desativadas,
         timestamp: new Date().toISOString()
       };
 

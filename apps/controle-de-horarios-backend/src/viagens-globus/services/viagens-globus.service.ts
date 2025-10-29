@@ -92,6 +92,7 @@ export class ViagensGlobusService {
     novas: number;
     atualizadas: number;
     erros: number;
+    desativadas: number;
   }> {
     this.logger.log(`🔄 Sincronizando viagens Globus para ${dataViagem}`);
 
@@ -108,33 +109,62 @@ export class ViagensGlobusService {
           -- Informações da Linha e Setor Principal
           CASE
               WHEN L.COD_LOCAL_TERMINAL_SEC = 7000 THEN 'GAMA'
-              WHEN L.COD_LOCAL_TERMINAL_SEC = 6000 THEN 'SANTA MARIA'
-              WHEN L.COD_LOCAL_TERMINAL_SEC = 8000 THEN 'PARANOÁ'
-              WHEN L.COD_LOCAL_TERMINAL_SEC = 9000 THEN 'SÃO SEBASTIÃO'
+              WHEN L.COD_LOCAL_TERMIN_SEC = 6000 THEN 'SANTA MARIA'
+              WHEN L.COD_LOCAL_TERMIN_SEC = 8000 THEN 'PARANOÁ'
+              WHEN L.COD_LOCAL_TERMIN_SEC = 9000 THEN 'SÃO SEBASTIÃO'
           END AS SETOR_PRINCIPAL_LINHA,
           L.COD_LOCAL_TERMINAL_SEC,
           L.CODIGOLINHA,
           L.NOMELINHA,
+          L.DESTINOLINHA AS COD_DESTINO_LINHA, -- O código do destino da linha
+          NLD.DESC_LOCALIDADE AS LOCAL_DESTINO_LINHA, -- <<< Adicionada a descrição do destino da linha
 
           -- Informações da Viagem/Horário
           H.FLG_SENTIDO,
           TO_CHAR(D.DAT_ESCALA, 'DD-MON-YYYY') AS DATA_VIAGEM,
+          -- Adiciona DESC_TIPODIA (baseado no dia da semana da DAT_ESCALA)
+          CASE TO_CHAR(D.DAT_ESCALA, 'DY', 'NLS_DATE_LANGUAGE=PORTUGUESE')
+              WHEN 'DOM' THEN 'DOMINGO'
+              WHEN 'SÁB' THEN 'SABADO'
+              ELSE 'DIAS UTEIS'
+          END AS DESC_TIPODIA,
           H.HOR_SAIDA,
           H.HOR_CHEGADA,
-          
-          -- Local de Origem da Viagem
-          H.COD_LOCALIDADE,
-          LC.DESC_LOCALIDADE AS LOCAL_ORIGEM_VIAGEM,
+
+          -- Local de Origem da Viagem (AGORA É A ORIGEM DA VIAGEM/HORÁRIO)
+          H.COD_LOCALIDADE AS COD_ORIGEM_VIAGEM,
+          LCO.DESC_LOCALIDADE AS LOCAL_ORIGEM_VIAGEM, -- <--- Nome do local de saída
 
           -- Informações do Serviço (Viagem)
           S.COD_SERVDIARIA AS COD_SERVICO_COMPLETO,
           REGEXP_SUBSTR(S.COD_SERVDIARIA, '[[:digit:]]+') AS COD_SERVICO_NUMERO,
-          
-          -- Informações da Tripulação
+
+          -- Informações da Atividade (NOVO CAMPO)
+          H.COD_ATIVIDADE, -- <--- Código da Atividade
+          CASE H.COD_ATIVIDADE -- <--- Descrição da Atividade
+              WHEN 2 THEN 'REGULAR'
+              WHEN 3 THEN 'ESPECIAL'
+              WHEN 4 THEN 'RENDIÇÃO'
+              WHEN 5 THEN 'RECOLHIMENTO'
+              WHEN 10 THEN 'RESERVA'
+              ELSE 'OUTROS'
+          END AS NOME_ATIVIDADE,
+
+          -- FLG_TIPO (inferida)
+          CASE H.COD_ATIVIDADE
+              WHEN 2 THEN 'R' -- Regular
+              ELSE 'S' -- Suplementar / Outros
+          END AS FLG_TIPO,
+
+          -- Informações da Tripulação (ADICIONADOS CRACHÁ E CHAPA/DM-TU)
           S.COD_MOTORISTA,
           FM.NOMECOMPLETOFUNC AS NOME_MOTORISTA,
+          FM.CODFUNC AS CRACHA_MOTORISTA,         -- <<< Crachá do Motorista
+          FM.CHAPAFUNC AS CHAPAFUNC_MOTORISTA,    -- <<< Chapa/DM-TU do Motorista
           S.COD_COBRADOR,
-          FC.NOMECOMPLETOFUNC AS NOME_COBRADOR,
+          FC.NOMECOMPLETOFUNC AS NOME_COBRADOR,   -- <--- Nome do Cobrador
+          FC.CODFUNC AS CRACHA_COBRADOR,          -- <<< Crachá do Cobrador
+          FC.CHAPAFUNC AS CHAPAFUNC_COBRADOR,     -- <<< Chapa/DM-TU do Cobrador
 
           -- Informação Analítica
           COUNT(H.HOR_SAIDA) OVER (
@@ -147,14 +177,17 @@ export class ViagensGlobusService {
                 AND S.COD_SERVDIARIA = H.COD_INTSERVDIARIA 
                 AND H.COD_INTTURNO = S.COD_INTTURNO
             JOIN BGM_CADLINHAS L ON DECODE(H.CODINTLINHA, NULL, D.COD_INTLINHA, H.CODINTLINHA) = L.CODINTLINHA
-            
+
             -- JUNÇÕES ADICIONADAS
-            LEFT JOIN T_ESC_LOCALIDADE LC ON H.COD_LOCALIDADE = LC.COD_LOCALIDADE
+            LEFT JOIN T_ESC_LOCALIDADE LCO ON H.COD_LOCALIDADE = LCO.COD_LOCALIDADE
+            LEFT JOIN T_ESC_LOCALIDADE NLD ON L.DESTINOLINHA = NLD.COD_LOCALIDADE
+
+            -- AS JUNÇÕES DE FUNCIONÁRIOS JÁ PERMITEM ACESSAR O CRACHÁ E CHAPA
             LEFT JOIN FLP_FUNCIONARIOS FM ON S.COD_MOTORISTA = FM.CODINTFUNC
             LEFT JOIN FLP_FUNCIONARIOS FC ON S.COD_COBRADOR = FC.CODINTFUNC
-            
+
         WHERE
-            H.COD_ATIVIDADE = 2
+            H.COD_ATIVIDADE IN (2, 3, 4, 5, 10)
             AND L.CODIGOEMPRESA = 4
             AND UPPER(L.NOMELINHA) NOT LIKE '%DESPACHANTES%'
             AND UPPER(L.NOMELINHA) NOT LIKE '%LINHA ESPECIAL%'
@@ -181,6 +214,7 @@ export class ViagensGlobusService {
       let novas = 0;
       let atualizadas = 0;
       let erros = 0;
+      const processedHashes: string[] = [];
 
       // ✅ PROCESSAR DADOS EM LOTES
       const BATCH_SIZE = 100;
@@ -200,13 +234,20 @@ export class ViagensGlobusService {
               // ✅ ATUALIZAR
               await this.viagemGlobusRepository.update(
                 { id: viagemExistente.id },
-                viagemProcessada
+                { ...viagemProcessada, updatedAt: new Date(), isAtivo: true } // Ensure isAtivo is true on update
               );
               atualizadas++;
+              processedHashes.push(viagemProcessada.hashDados);
             } else {
               // ✅ INSERIR NOVA
-              await this.viagemGlobusRepository.save(viagemProcessada);
+              const novaViagem = await this.viagemGlobusRepository.save({ 
+                ...viagemProcessada, 
+                createdAt: new Date(), 
+                updatedAt: new Date(),
+                isAtivo: true
+              });
               novas++;
+              processedHashes.push(novaViagem.hashDados);
             }
           } catch (error: any) {
             this.logger.error(`❌ Erro ao processar item: ${error.message}`);
@@ -220,11 +261,34 @@ export class ViagensGlobusService {
         }
       }
 
+      // ✅ DESATIVAR VIAGENS REMOVIDAS DO ORACLE
+      const viagensAtivasLocais = await this.viagemGlobusRepository.find({
+        where: {
+          dataReferencia: dataViagem,
+          isAtivo: true
+        },
+        select: ['id', 'hashDados']
+      });
+
+      const hashesParaDesativar = viagensAtivasLocais
+        .filter(v => !processedHashes.includes(v.hashDados))
+        .map(v => v.hashDados);
+
+      let desativadas = 0;
+      if (hashesParaDesativar.length > 0) {
+        const updateResult = await this.viagemGlobusRepository.update(
+          { dataReferencia: dataViagem, hashDados: In(hashesParaDesativar) },
+          { isAtivo: false, updatedAt: new Date() }
+        );
+        desativadas = updateResult.affected || 0;
+        this.logger.log(`🗑️ Desativadas ${desativadas} viagens que não estão mais no Oracle Globus.`);
+      }
+
       const sincronizadas = novas + atualizadas;
       
-      this.logger.log(`✅ Sincronização Globus concluída: ${sincronizadas} total (${novas} novas, ${atualizadas} atualizadas, ${erros} erros)`);
+      this.logger.log(`✅ Sincronização Globus concluída: ${sincronizadas} total (${novas} novas, ${atualizadas} atualizadas, ${desativadas} desativadas, ${erros} erros)`);
 
-      return { sincronizadas, novas, atualizadas, erros };
+      return { sincronizadas, novas, atualizadas, erros, desativadas };
 
     } catch (error: any) {
       this.logger.error(`❌ Erro na sincronização Globus: ${error.message}`);
@@ -249,7 +313,7 @@ export class ViagensGlobusService {
     const periodoDoDia = this.determinarPeriodoDoDia(horSaida);
 
     // ✅ CRIAR HASH ÚNICO
-    const hashData = `${dataReferencia}-${item.COD_LOCAL_TERMINAL_SEC}-${item.CODIGOLINHA}-${item.FLG_SENTIDO}-${item.COD_SERVICO_COMPLETO}-${horSaida?.getTime() || 'null'}`;
+    const hashData = `${dataReferencia}-${item.COD_LOCAL_TERMINAL_SEC}-${item.CODIGOLINHA}-${item.FLG_SENTIDO}-${item.COD_SERVICO_COMPLETO}-${horSaida?.getTime() || 'null'}-${item.COD_DESTINO_LINHA || 'null'}-${item.LOCAL_DESTINO_LINHA || 'null'}-${item.DESC_TIPODIA || 'null'}-${item.COD_ORIGEM_VIAGEM || 'null'}-${item.COD_ATIVIDADE || 'null'}-${item.NOME_ATIVIDADE || 'null'}-${item.FLG_TIPO || 'null'}-${item.CRACHA_MOTORISTA || 'null'}-${item.CHAPAFUNC_MOTORISTA || 'null'}-${item.CRACHA_COBRADOR || 'null'}-${item.CHAPAFUNC_COBRADOR || 'null'}`;
     const hashDados = createHash('sha256').update(hashData).digest('hex');
 
     return {
@@ -257,20 +321,30 @@ export class ViagensGlobusService {
       codLocalTerminalSec: item.COD_LOCAL_TERMINAL_SEC || 0,
       codigoLinha: item.CODIGOLINHA || 'N/A',
       nomeLinha: item.NOMELINHA || 'Linha não identificada',
+      codDestinoLinha: item.COD_DESTINO_LINHA || null,
+      localDestinoLinha: item.LOCAL_DESTINO_LINHA || null,
       flgSentido: item.FLG_SENTIDO || 'C',
       dataViagem: new Date(dataReferencia),
+      descTipoDia: item.DESC_TIPODIA || 'NÃO INFORMADO',
       horSaida,
       horChegada,
       horSaidaTime: horSaida ? horSaida.toTimeString().split(' ')[0] : null,
       horChegadaTime: horChegada ? horChegada.toTimeString().split(' ')[0] : null,
-      codLocalidade: item.COD_LOCALIDADE || null,
+      codOrigemViagem: item.COD_ORIGEM_VIAGEM || null,
       localOrigemViagem: item.LOCAL_ORIGEM_VIAGEM || null,
+      codAtividade: item.COD_ATIVIDADE || null,
+      nomeAtividade: item.NOME_ATIVIDADE || null,
+      flgTipo: item.FLG_TIPO || 'S',
       codServicoCompleto: item.COD_SERVICO_COMPLETO || null,
       codServicoNumero: item.COD_SERVICO_NUMERO || null,
       codMotorista: item.COD_MOTORISTA || null,
       nomeMotorista: item.NOME_MOTORISTA || null,
+      crachaMotorista: item.CRACHA_MOTORISTA || null,
+      chapaFuncMotorista: item.CHAPAFUNC_MOTORISTA || null,
       codCobrador: item.COD_COBRADOR || null,
       nomeCobrador: item.NOME_COBRADOR || null,
+      crachaCobrador: item.CRACHA_COBRADOR || null,
+      chapaFuncCobrador: item.CHAPAFUNC_COBRADOR || null,
       totalHorarios: item.TOTAL_HORARIOS || 0,
       duracaoMinutos,
       dataReferencia,
