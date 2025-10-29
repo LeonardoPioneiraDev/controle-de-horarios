@@ -96,6 +96,7 @@ export interface UserStats {
     active: number;
     pending: number;
     inactive: number;
+    blocked: number;
   };
   byRole: Record<string, number>;
 }

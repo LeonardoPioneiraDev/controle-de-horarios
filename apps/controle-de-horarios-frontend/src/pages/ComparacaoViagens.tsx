@@ -419,7 +419,7 @@ const buscarComparacoes = async () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
                   value={filtros.statusComparacao || ''}
-                  onChange={(e) => handleFilterChange('statusComparacao', e.target.value || undefined)}
+                  onChange={(e) => handleFilterChange('statusComparacao', e.target.value)}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="">Todos</option>
@@ -436,7 +436,7 @@ const buscarComparacoes = async () => {
                 <input
                   type="text"
                   value={filtros.codigoLinha || ''}
-                  onChange={(e) => handleFilterChange('codigoLinha', e.target.value || undefined)}
+                  onChange={(e) => handleFilterChange('codigoLinha', e.target.value)}
                   placeholder="Ex: 0026"
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 />
@@ -446,7 +446,7 @@ const buscarComparacoes = async () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Setor Globus</label>
                 <select
                   value={filtros.globusSetor || ''}
-                  onChange={(e) => handleFilterChange('globusSetor', e.target.value || undefined)}
+                  onChange={(e) => handleFilterChange('globusSetor', e.target.value)}
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="">Todos</option>
