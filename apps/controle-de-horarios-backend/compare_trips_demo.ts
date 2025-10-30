@@ -1,4 +1,4 @@
-import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, CombinacaoComparacao } from './src/comparacao-viagens/utils/trip-comparator.util';
+import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, CombinacaoComparacao, OracleGlobusData } from './src/comparacao-viagens/utils/trip-comparator.util';
 
 const transDataTrip1 = {
     "SentidoText": "IDA",
@@ -46,7 +46,7 @@ const transDataTrip1 = {
     "KMProgramado": "",
     "KMRodado": "",
     "Consolidad": 0
-  };
+};
 
 const transDataTrip2 = {
     "SentidoText": "VOLTA",
@@ -94,49 +94,50 @@ const transDataTrip2 = {
     "KMProgramado": "",
     "KMRodado": "",
     "Consolidad": 0
-  };
+};
 
-const globusTrip1 = {
-    "SETOR_PRINCIPAL_LINHA":"GAMA",
-    "COD_LOCAL_TERMINAL_SEC":"7000",
-    "CODIGOLINHA":"0026",
-    "NOMELINHA":"PARK WAY (LADO OESTE) / QD 26 E 27",
-    "FLG_SENTIDO":"C",
-    "DATA_VIAGEM":"26-AUG-2025",
-    "HOR_SAIDA":"01/01/1900 06:07:01",
-    "HOR_CHEGADA":"01/01/1900 07:20:01",
-    "COD_LOCALIDADE":"40",
-    "LOCAL_ORIGEM_VIAGEM":"FLORICULTURA",
-    "COD_SERVICO_COMPLETO":"PW01M",
-    "COD_SERVICO_NUMERO":"01",
-    "COD_MOTORISTA":"16029",
-    "NOME_MOTORISTA":"ALBERTO DOS SANTOS",
-    "COD_COBRADOR":"",
-    "NOME_COBRADOR":"",
-    "TOTAL_HORARIOS":"4"
-  };
+// ✅ DADOS ORACLE GLOBUS com tipagem correta
+const globusTrip1: OracleGlobusData = {
+    "SETOR_PRINCIPAL_LINHA": "GAMA",
+    "COD_LOCAL_TERMINAL_SEC": "7000",
+    "CODIGOLINHA": "0026",
+    "NOMELINHA": "PARK WAY (LADO OESTE) / QD 26 E 27",
+    "FLG_SENTIDO": "C",
+    "DATA_VIAGEM": "26-AUG-2025",
+    "HOR_SAIDA": "01/01/1900 06:07:01",
+    "HOR_CHEGADA": "01/01/1900 07:20:01",
+    "COD_LOCALIDADE": "40",
+    "LOCAL_ORIGEM_VIAGEM": "FLORICULTURA",
+    "COD_SERVICO_COMPLETO": "PW01M",
+    "COD_SERVICO_NUMERO": "01",
+    "COD_MOTORISTA": "16029",
+    "NOME_MOTORISTA": "ALBERTO DOS SANTOS",
+    "COD_COBRADOR": "",
+    "NOME_COBRADOR": "",
+    "TOTAL_HORARIOS": "4"
+};
 
-const globusTrip2 = {
-    "SETOR_PRINCIPAL_LINHA":"GAMA",
-    "COD_LOCAL_TERMINAL_SEC":"7000",
-    "CODIGOLINHA":"0026",
-    "NOMELINHA":"PARK WAY (LADO OESTE) / QD 26 E 27",
-    "FLG_SENTIDO":"C",
-    "DATA_VIAGEM":"26-AUG-2025",
-    "HOR_SAIDA":"01/01/1900 07:20:01",
-    "HOR_CHEGADA":"01/01/1900 09:05:01",
-    "COD_LOCALIDADE":"40",
-    "LOCAL_ORIGEM_VIAGEM":"FLORICULTURA",
-    "COD_SERVICO_COMPLETO":"PW01M",
-    "COD_SERVICO_NUMERO":"01",
-    "COD_MOTORISTA":"16029",
-    "NOME_MOTORISTA":"ALBERTO DOS SANTOS",
-    "COD_COBRADOR":"",
-    "NOME_COBRADOR":"",
-    "TOTAL_HORARIOS":"4"
-  };
+const globusTrip2: OracleGlobusData = {
+    "SETOR_PRINCIPAL_LINHA": "GAMA",
+    "COD_LOCAL_TERMINAL_SEC": "7000",
+    "CODIGOLINHA": "0026",
+    "NOMELINHA": "PARK WAY (LADO OESTE) / QD 26 E 27",
+    "FLG_SENTIDO": "C",
+    "DATA_VIAGEM": "26-AUG-2025",
+    "HOR_SAIDA": "01/01/1900 07:20:01",
+    "HOR_CHEGADA": "01/01/1900 09:05:01",
+    "COD_LOCALIDADE": "40",
+    "LOCAL_ORIGEM_VIAGEM": "FLORICULTURA",
+    "COD_SERVICO_COMPLETO": "PW01M",
+    "COD_SERVICO_NUMERO": "01",
+    "COD_MOTORISTA": "16029",
+    "NOME_MOTORISTA": "ALBERTO DOS SANTOS",
+    "COD_COBRADOR": "",
+    "NOME_COBRADOR": "",
+    "TOTAL_HORARIOS": "4"
+};
 
-// Normalize and compare
+// ✅ Normalize and compare - agora com tipagem correta
 const normalizedTransData1 = normalizeTransDataTrip(transDataTrip1);
 const normalizedGlobus1 = normalizeGlobusTrip(globusTrip1);
 const comparison1 = compareTrips(normalizedTransData1, normalizedGlobus1);
@@ -155,7 +156,7 @@ console.log('TransData 2:', normalizedTransData2);
 console.log('Globus 2:', normalizedGlobus2);
 console.log('Combinação:', CombinacaoComparacao[comparison2], `(${comparison2})`);
 
-// Example with user's provided data for TransData and Globus
+// ✅ Example with user's provided data for TransData and Globus
 const userTransDataTrip = {
     "SentidoText": "IDA",
     "InicioPrevistoText": "15:40:00",
@@ -163,11 +164,11 @@ const userTransDataTrip = {
     "NomeLinha": "100.2 - Paranoá (Paranoá Parque) / Rod. Plano Piloto (L2 Sul)"
 };
 
-const userGlobusTrip = {
-    "CODIGOLINHA":"7652",
-    "FLG_SENTIDO":"C",
-    "COD_SERVICO_NUMERO":"01",
-    "HOR_SAIDA":"01/01/1900 06:07:01"
+const userGlobusTrip: OracleGlobusData = {
+    "CODIGOLINHA": "7652",
+    "FLG_SENTIDO": "C",
+    "COD_SERVICO_NUMERO": "01",
+    "HOR_SAIDA": "01/01/1900 06:07:01"
 };
 
 const normalizedUserTransData = normalizeTransDataTrip(userTransDataTrip);

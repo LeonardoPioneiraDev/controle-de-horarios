@@ -1,5 +1,5 @@
-import { BaseApiService } from '../shared/api.service';
-import { ControleHorarioResponse, FiltrosControleHorarios, OpcoesControleHorarios, SalvarControleHorario, SalvarMultiplosControles, EstatisticasControleHorarios } from '../../types';
+import { BaseApiService } from "../../../services/shared/api.service"; // ✅ CAMINHO CORRIGIDO
+import { ControleHorarioResponse, FiltrosControleHorarios, OpcoesControleHorarios, SalvarControleHorario, SalvarMultiplosControles, EstatisticasControleHorarios } from  '../types/controle-horarios.types'; // ✅ CAMINHO CORRIGIDO
 
 export class ControleHorariosService extends BaseApiService {
   constructor() {

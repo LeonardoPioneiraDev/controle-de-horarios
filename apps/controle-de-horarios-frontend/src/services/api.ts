@@ -2,7 +2,7 @@ import { BaseApiService } from './shared/api.service';
 import { authService } from './auth/auth.service';
 import { usersService } from './users/users.service';
 import { viagensTransdataService } from './viagens-transdata/viagens-transdata.service';
-import { controleHorariosService } from './controle-horarios/controle-horarios.service';
+import { controleHorariosService } from "../features/controle-horarios/services/controle-horarios.service"; // ✅ CAMINHO 
 import { emailService } from './email/email.service';
 import { healthService } from './health/health.service';
 

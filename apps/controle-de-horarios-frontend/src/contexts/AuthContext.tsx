@@ -1,3 +1,4 @@
+// src/contexts/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, LoginRequest } from '../types';
 import { authService } from '../services/api';
@@ -11,7 +12,8 @@ interface AuthContextType {
   isAuthenticated: boolean;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// ✅ CORRIGIDO: Exportar o AuthContext
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -35,7 +37,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     const initAuth = async () => {
       try {
-        // ✅ CORRIGIDO: Usar 'token' em vez de 'access_token'
         const storedToken = localStorage.getItem('token');
         const storedUser = localStorage.getItem('user');
 
@@ -50,10 +51,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             console.log('🔑 AuthProvider: Token encontrado, validando com backend...');
             
-            // Definir token temporariamente para o ApiService poder usar
             setToken(storedToken);
             
-            // Verificar se o token ainda é válido
             const response = await authService.getProfile();
             
             console.log('✅ AuthProvider: Token válido, usuário autenticado:', {
@@ -67,7 +66,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
           } catch (error) {
             console.log('❌ AuthProvider: Token inválido, limpando storage...', error);
-            // Token inválido, limpar storage
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             setToken(null);
@@ -87,7 +85,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  // ✅ CORRIGIDO: Função de login que chama ApiService
+  // ✅ CORRIGIDO: Função de login usando os campos corretos
   const login = async (credentials: LoginRequest) => {
     console.log('🔑 AuthProvider.login: Iniciando processo de login...', {
       email: credentials.email,
@@ -97,29 +95,44 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       
-      // Chamar ApiService para fazer login
       const response = await authService.login(credentials);
       
       console.log('📦 AuthProvider.login: Resposta do login recebida:', {
-        hasAccessToken: !!response.accessToken,
+        hasAccessToken: !!response.access_token,  // ✅ CORRIGIDO: usar access_token
+        hasRefreshToken: !!response.refresh_token,
         hasUser: !!response.user,
-        userEmail: response.user?.email
+        userEmail: response.user?.email,
+        tokenLength: response.access_token?.length || 0
       });
 
-      if (!response.accessToken || !response.user) {
-        throw new Error('Resposta de login inválida');
+      // ✅ CORRIGIDO: Usar access_token do backend
+      if (!response.access_token || !response.user) {
+        console.error('❌ AuthProvider.login: Resposta inválida:', {
+          hasAccessToken: !!response.access_token,
+          hasUser: !!response.user,
+          response: response
+        });
+        throw new Error('Token de acesso ou dados do usuário não encontrados na resposta do servidor');
       }
 
-      // ✅ CORRIGIDO: Salvar como 'token' (não 'access_token')
-      setToken(response.accessToken);
+      // ✅ Salvar dados usando access_token
+      setToken(response.access_token);
       setUser(response.user);
-      localStorage.setItem('token', response.accessToken);
+      localStorage.setItem('token', response.access_token);
       localStorage.setItem('user', JSON.stringify(response.user));
+      
+      // ✅ OPCIONAL: Salvar refresh_token também
+      if (response.refresh_token) {
+        localStorage.setItem('refresh_token', response.refresh_token);
+      }
       
       console.log('✅ AuthProvider.login: Login realizado com sucesso!', {
         userId: response.user.id,
         userEmail: response.user.email,
-        userRole: response.user.role
+        userRole: response.user.role,
+        userName: `${response.user.firstName} ${response.user.lastName}`,
+        tokenLength: response.access_token.length,
+        tokenPrefix: response.access_token.substring(0, 20) + '...'
       });
       
     } catch (error) {
@@ -129,6 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('refresh_token');
       throw error;
     } finally {
       setLoading(false);
@@ -153,6 +167,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('refresh_token');
       
       console.log('✅ AuthProvider.logout: Dados locais limpos');
       
@@ -178,6 +193,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     hasToken: !!token,
     loading,
     userEmail: user?.email || 'N/A',
+    userName: user ? `${user.firstName} ${user.lastName}` : 'N/A',
+    userRole: user?.role || 'N/A',
     tokenLength: token?.length || 0,
     isAuthenticated: !!user && !!token
   });

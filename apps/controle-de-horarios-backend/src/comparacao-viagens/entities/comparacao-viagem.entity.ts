@@ -89,6 +89,9 @@ export class ComparacaoViagem {
   @Column({ name: 'observacoes', type: 'text', nullable: true })
   observacoes: string;
 
+  @Column({ name: 'tipo_combinacao', type: 'integer', nullable: true })
+  tipoCombinacao: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

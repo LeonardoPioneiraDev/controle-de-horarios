@@ -1,4 +1,6 @@
-import { IsOptional, IsString, IsNumber, Min, Max, IsEnum } from 'class-validator';
+// src/modules/controle-horarios/dto/filtros-controle-horarios.dto.ts
+
+import { IsOptional, IsString, IsNumber, Min, Max, IsEnum, IsArray } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { CombinacaoComparacao } from '../../comparacao-viagens/utils/trip-comparator.util';
 
@@ -6,66 +8,74 @@ export class FiltrosControleHorariosDto {
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
-  setorPrincipal?: string; // "GAMA", "SANTA MARIA", "PARANOÁ", "SÃO SEBASTIÃO"
+  setorPrincipal?: string;
+
+  // ✅ CORRIGIDO: Aceitar tanto string quanto array
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return [value.trim()];
+    }
+    if (Array.isArray(value)) {
+      return value.map(v => v?.toString().trim()).filter(Boolean);
+    }
+    return value;
+  })
+  codigoLinha?: string[];
 
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
-  codigoLinha?: string; // "780", "163"
-
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.trim())
-  codServicoNumero?: string; // "01", "12"
+  codServicoNumero?: string;
 
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim()?.toUpperCase())
-  sentidoTexto?: string; // "IDA", "VOLTA", "CIRCULAR"
+  sentidoTexto?: string;
 
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
-  horarioInicio?: string; // "06:00"
+  horarioInicio?: string;
 
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
-  horarioFim?: string; // "22:00"
+  horarioFim?: string;
 
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
-  nomeMotorista?: string; // Busca parcial no nome
+  nomeMotorista?: string;
 
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
-  localOrigem?: string; // Busca parcial no local
+  localOrigem?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim())
+  localDestino?: string;
 
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
-  codAtividade?: number; // Código da Atividade
+  codAtividade?: number;
 
   @IsOptional()
   @Type(() => Boolean)
-  editadoPorUsuario?: boolean; // Filtra viagens editadas pelo usuário logado
+  editadoPorUsuario?: boolean;
 
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
-  localDestino?: string; // Busca parcial no local de destino
+  crachaMotorista?: string;
 
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
-  crachaMotorista?: string; // Crachá do motorista
-
-  @IsOptional()
-  @IsString()
-  @Transform(({ value }) => value?.trim())
-  buscaTexto?: string; // Busca geral em múltiplos campos
+  buscaTexto?: string;
 
   @IsOptional()
   @IsEnum(CombinacaoComparacao)

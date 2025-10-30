@@ -10,8 +10,8 @@ import Dashboard from './pages/Dashboard';
 import { Users } from './pages/Users';
 import { Viagens } from './pages/Viagens';
 import { ViagensGlobus } from './pages/ViagensGlobus';
-import { ComparacaoViagens } from './pages/ComparacaoViagens'; // ✅ NOVA IMPORTAÇÃO
-import { ControleHorarios } from './pages/ControleHorarios';
+import { ComparacaoViagens } from './pages/ComparacaoViagens';
+import { ControleHorariosPage } from './features/controle-horarios/ControleHorariosPage'; // ✅ IMPORTAÇÃO CORRIGIDA
 
 function App() {
   return (
@@ -38,8 +38,8 @@ function App() {
             <Route path="users" element={<Users />} />
             <Route path="viagens" element={<Viagens />} />
             <Route path="viagens-globus" element={<ViagensGlobus />} />
-            <Route path="comparacao-viagens" element={<ComparacaoViagens />} /> {/* ✅ NOVA ROTA */}
-            <Route path="controle-horarios" element={<ControleHorarios />} />
+            <Route path="comparacao-viagens" element={<ComparacaoViagens />} />
+            <Route path="controle-horarios" element={<ControleHorariosPage />} /> {/* ✅ COMPONENTE CORRIGIDO */}
           </Route>
           
           {/* Catch all route */}

@@ -1,5 +1,6 @@
 // src/comparacao-viagens/dto/filtros-comparacao.dto.ts
-import { IsOptional, IsString, IsEnum, IsBoolean } from 'class-validator';
+import { IsOptional, IsString, IsEnum, IsBoolean, IsNumber } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
 import { StatusComparacao } from '../entities/comparacao-viagem.entity';
 
 export class FiltrosComparacaoDto {
@@ -28,8 +29,14 @@ export class FiltrosComparacaoDto {
   servicoCompativel?: boolean;
 
   @IsOptional()
-  @IsString()
-  limite?: string = '100';
+  @Type(() => Number)
+  @IsNumber()
+  limit?: number = 50;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  page?: number = 1;
 }
 
 // src/comparacao-viagens/dto/resultado-comparacao.dto.ts

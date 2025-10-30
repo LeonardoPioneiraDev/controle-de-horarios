@@ -1,3 +1,5 @@
+// src/modules/controle-horarios/services/controle-horarios.service.ts
+
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -67,15 +69,11 @@ export class ControleHorariosService {
       // 3.2. Aplicar filtro por combinação de comparação, se solicitado
       if (filtros.combinacaoComparacao) {
         itensControle = itensControle.filter(item => {
-          // Para comparar, precisamos de dados da TransData. No momento, só temos ViagemGlobus.
-          // Assumindo que `item.viagemGlobus` contém dados suficientes para simular uma TransData para comparação.
-          // Em um cenário real, você precisaria buscar a viagem TransData correspondente ou ter esses dados já mesclados.
-          // Para este exemplo, vamos criar um mock simples de TransData para a comparação.
           const mockTransDataTrip = {
-            NomeLinha: item.viagemGlobus.nomeLinha, // Usar nome da linha Globus para simular TransData
-            SentidoText: item.viagemGlobus.sentidoTexto, // Usar sentido da Globus para simular TransData
-            Servico: parseInt(item.viagemGlobus.codServicoNumero, 10), // Usar serviço da Globus para simular TransData
-            InicioPrevistoText: item.viagemGlobus.horSaidaTime, // Usar horário da Globus para simular TransData
+            NomeLinha: item.viagemGlobus.nomeLinha,
+            SentidoText: item.viagemGlobus.sentidoTexto,
+            Servico: parseInt(item.viagemGlobus.codServicoNumero, 10),
+            InicioPrevistoText: item.viagemGlobus.horSaidaTime,
           };
 
           const normalizedTransData = normalizeTransDataTrip(mockTransDataTrip);
@@ -108,7 +106,8 @@ export class ControleHorariosService {
         estatisticas,
         executionTime,
         dataReferencia,
-      };    } catch (error) {
+      };
+    } catch (error) {
       this.logger.error(`❌ Erro ao buscar controle de horários: ${error.message}`);
       throw error;
     }
@@ -274,13 +273,14 @@ export class ControleHorariosService {
       erros,
     };
   }
+
   async buscarOpcoesControleHorarios(dataReferencia: string): Promise<OpcoesControleHorariosDto> {
     try {
       this.logger.log(`🔍 Buscando opções para filtros da data ${dataReferencia}`);
 
       // Buscar opções únicas das viagens Globus
-      const [setores, linhas, servicos, sentidos, motoristas] = await Promise.all([
-        // Setores únicos
+      const [setores, linhas, servicos, sentidos, motoristas, locaisOrigem, locaisDestino] = await Promise.all([
+        // ✅ Setores únicos - campo correto
         this.viagemGlobusRepository
           .createQueryBuilder('vg')
           .select('DISTINCT vg.setorPrincipal', 'setor')
@@ -320,6 +320,18 @@ export class ControleHorariosService {
           .orderBy('vg.nomeMotorista')
           .limit(100)
           .getRawMany(),
+
+        // ✅ Locais de origem únicos
+        this.viagemGlobusRepository
+          .createQueryBuilder('vg')
+          .select('DISTINCT vg.localOrigemViagem', 'local')
+          .where('vg.dataReferencia = :dataReferencia AND vg.localOrigemViagem IS NOT NULL', { dataReferencia })
+          .orderBy('vg.localOrigemViagem')
+          .limit(100)
+          .getRawMany(),
+
+        // ✅ Locais de destino únicos (REMOVIDO)
+        Promise.resolve([]),
       ]);
 
       return {
@@ -328,6 +340,8 @@ export class ControleHorariosService {
         servicos: servicos.map(s => s.servico).filter(Boolean),
         sentidos: sentidos.map(s => s.sentido).filter(Boolean),
         motoristas: motoristas.map(m => m.motorista).filter(Boolean),
+        locaisOrigem: locaisOrigem.map(l => l.local).filter(Boolean),
+        locaisDestino: [], // ✅ REMOVIDO
       };
 
     } catch (error) {
@@ -388,30 +402,30 @@ export class ControleHorariosService {
         'vg.codLocalTerminalSec',
         'vg.codigoLinha',
         'vg.nomeLinha',
-        'vg.codDestinoLinha',
-        'vg.localDestinoLinha',
+        // 'vg.codDestinoLinha',
+        // 'vg.localDestinoLinha',
         'vg.flgSentido',
         'vg.dataViagem',
-        'vg.descTipoDia',
+        // 'vg.descTipoDia',
         'vg.horSaida',
         'vg.horChegada',
         'vg.horSaidaTime',
         'vg.horChegadaTime',
         'vg.codOrigemViagem',
         'vg.localOrigemViagem',
-        'vg.codAtividade',
-        'vg.nomeAtividade',
-        'vg.flgTipo',
+        // 'vg.codAtividade',
+        // 'vg.nomeAtividade',
+        // 'vg.flgTipo',
         'vg.codServicoCompleto',
         'vg.codServicoNumero',
         'vg.codMotorista',
         'vg.nomeMotorista',
         'vg.codCobrador',
         'vg.nomeCobrador',
-        'vg.crachaMotorista',
-        'vg.chapaFuncMotorista',
-        'vg.crachaCobrador',
-        'vg.chapaFuncCobrador',
+        // 'vg.crachaMotorista',
+        // 'vg.chapaFuncMotorista',
+        // 'vg.crachaCobrador',
+        // 'vg.chapaFuncCobrador',
         'vg.totalHorarios',
         'vg.duracaoMinutos',
         'vg.dataReferencia',
@@ -425,80 +439,81 @@ export class ControleHorariosService {
         'vg.isAtivo',
       ])
       .where('vg.dataReferencia = :dataReferencia', { dataReferencia });
-
-    // Aplicar filtros
+  
+    // ✅ CORRIGIR FILTROS
     if (filtros.setorPrincipal) {
       query = query.andWhere('vg.setorPrincipal = :setorPrincipal', { 
         setorPrincipal: filtros.setorPrincipal 
       });
     }
-
+  
     if (filtros.codigoLinha) {
-      query = query.andWhere('vg.codigoLinha = :codigoLinha', { 
-        codigoLinha: filtros.codigoLinha 
-      });
+      // ✅ Se for array, usar IN
+      if (Array.isArray(filtros.codigoLinha)) {
+        query = query.andWhere('vg.codigoLinha IN (:...codigoLinha)', { 
+          codigoLinha: filtros.codigoLinha 
+        });
+      } else {
+        query = query.andWhere('vg.codigoLinha = :codigoLinha', { 
+          codigoLinha: filtros.codigoLinha 
+        });
+      }
     }
-
+  
     if (filtros.codServicoNumero) {
       query = query.andWhere('vg.codServicoNumero = :codServicoNumero', { 
         codServicoNumero: filtros.codServicoNumero 
       });
     }
-
+  
     if (filtros.sentidoTexto) {
       query = query.andWhere('UPPER(vg.sentidoTexto) = :sentidoTexto', { 
         sentidoTexto: filtros.sentidoTexto.toUpperCase() 
       });
     }
-
+  
     if (filtros.horarioInicio) {
       query = query.andWhere('vg.horSaidaTime >= :horarioInicio', { 
         horarioInicio: filtros.horarioInicio 
       });
     }
-
+  
     if (filtros.horarioFim) {
       query = query.andWhere('vg.horSaidaTime <= :horarioFim', { 
         horarioFim: filtros.horarioFim 
       });
     }
-
+  
     if (filtros.nomeMotorista) {
       query = query.andWhere('UPPER(vg.nomeMotorista) LIKE :nomeMotorista', { 
         nomeMotorista: `%${filtros.nomeMotorista.toUpperCase()}%` 
       });
     }
-
+  
     if (filtros.localOrigem) {
       query = query.andWhere('UPPER(vg.localOrigemViagem) LIKE :localOrigem', { 
         localOrigem: `%${filtros.localOrigem.toUpperCase()}%` 
       });
     }
-
-    if (filtros.localOrigem) {
-      query = query.andWhere('UPPER(vg.localOrigemViagem) LIKE :localOrigem', { 
-        localOrigem: `%${filtros.localOrigem.toUpperCase()}%` 
-      });
-    }
-
+  
     if (filtros.codAtividade) {
-      query = query.andWhere('vg.codAtividade = :codAtividade', { 
-        codAtividade: filtros.codAtividade 
-      });
+      // query = query.andWhere('vg.codAtividade = :codAtividade', { 
+      //   codAtividade: filtros.codAtividade 
+      // });
     }
-
+  
     if (filtros.localDestino) {
-      query = query.andWhere('UPPER(vg.localDestinoLinha) LIKE :localDestino', { 
-        localDestino: `%${filtros.localDestino.toUpperCase()}%` 
-      });
+      // query = query.andWhere('UPPER(vg.localDestinoLinha) LIKE :localDestino', { 
+      //   localDestino: `%${filtros.localDestino.toUpperCase()}%` 
+      // });
     }
-
+  
     if (filtros.crachaMotorista) {
       query = query.andWhere('UPPER(vg.crachaMotorista) LIKE :crachaMotorista', { 
         crachaMotorista: `%${filtros.crachaMotorista.toUpperCase()}%` 
       });
     }
-
+  
     if (filtros.buscaTexto) {
       const buscaUpper = `%${filtros.buscaTexto.toUpperCase()}%`;
       query = query.andWhere(
@@ -506,22 +521,22 @@ export class ControleHorariosService {
         { busca: buscaUpper }
       );
     }
-
+  
     // Ordenação
-    query = query.orderBy('vg.setorPrincipal', 'ASC')
+    query = query.orderBy('vg.setorPrincipal', 'ASC')  // ✅ CORRIGIDO
                  .addOrderBy('vg.codigoLinha', 'ASC')
                  .addOrderBy('vg.sentidoTexto', 'ASC')
                  .addOrderBy('vg.horSaidaTime', 'ASC');
-
+  
     // Aplicar paginação
     if (filtros.limite) {
       query = query.limit(filtros.limite);
     }
-
+  
     if (filtros.pagina && filtros.limite) {
       query = query.offset((filtros.pagina) * filtros.limite);
     }
-
+  
     const [viagens, total] = await query.getManyAndCount();
     return { viagens, total };
   }
@@ -561,23 +576,23 @@ export class ControleHorariosService {
         horSaidaTime: viagem.horSaidaTime,
         horChegadaTime: viagem.horChegadaTime,
         nomeMotorista: viagem.nomeMotorista,
-        setorPrincipal: viagem.setorPrincipal,
+        setorPrincipal: viagem.setorPrincipal, // ✅ CORRIGIDO: usar o campo correto
         localOrigemViagem: viagem.localOrigemViagem,
         duracaoMinutos: viagem.duracaoMinutos,
         periodoDoDia: viagem.periodoDoDia,
         flgSentido: viagem.flgSentido,
-        // Novos campos da ViagemGlobus
-        codDestinoLinha: viagem.codDestinoLinha,
-        localDestinoLinha: viagem.localDestinoLinha,
-        descTipoDia: viagem.descTipoDia,
+        // Novos campos da ViagemGlobus (removidos)
+        // codDestinoLinha: viagem.codDestinoLinha,
+        // localDestinoLinha: viagem.localDestinoLinha,
+        // descTipoDia: viagem.descTipoDia,
         codOrigemViagem: viagem.codOrigemViagem,
-        codAtividade: viagem.codAtividade,
-        nomeAtividade: viagem.nomeAtividade,
-        flgTipo: viagem.flgTipo,
-        crachaMotorista: viagem.crachaMotorista,
-        chapaFuncMotorista: viagem.chapaFuncMotorista,
-        crachaCobrador: viagem.crachaCobrador,
-        chapaFuncCobrador: viagem.chapaFuncCobrador,
+        // codAtividade: viagem.codAtividade,
+        // nomeAtividade: viagem.nomeAtividade,
+        // flgTipo: viagem.flgTipo,
+        // crachaMotorista: viagem.crachaMotorista,
+        // chapaFuncMotorista: viagem.chapaFuncMotorista,
+        // crachaCobrador: viagem.crachaCobrador,
+        // chapaFuncCobrador: viagem.chapaFuncCobrador,
       };
 
       const dadosEditaveisDto: DadosEditaveisDto = {
@@ -609,7 +624,7 @@ export class ControleHorariosService {
       }),
       this.viagemGlobusRepository
         .createQueryBuilder('vg')
-        .select('DISTINCT vg.setorPrincipal')
+        .select('DISTINCT vg.setorPrincipal')  // ✅ CORRIGIDO
         .where('vg.dataReferencia = :dataReferencia', { dataReferencia })
         .getRawMany(),
       this.viagemGlobusRepository
@@ -633,7 +648,7 @@ export class ControleHorariosService {
       viagensEditadas,
       viagensNaoEditadas,
       percentualEditado,
-      setoresUnicos: setoresResult.map(s => s.vg_setor_principal).filter(Boolean),
+      setoresUnicos: setoresResult.map(s => s.vg_setor_principal).filter(Boolean), // ✅ CORRIGIDO
       linhasUnicas: linhasResult.map(l => l.vg_codigo_linha).filter(Boolean),
       servicosUnicos: servicosResult.map(s => s.vg_cod_servico_numero).filter(Boolean),
     };
@@ -691,7 +706,7 @@ export class ControleHorariosService {
       .createQueryBuilder('vg')
       .where('vg.dataReferencia = :dataReferencia', { dataReferencia })
       .andWhere('vg.codServicoNumero = :codServicoNumero', { codServicoNumero: viagemBase.codServicoNumero })
-      .andWhere('vg.setorPrincipal = :setorPrincipal', { setorPrincipal: viagemBase.setorPrincipal })
+      .andWhere('vg.setorPrincipal = :setorPrincipal', { setorPrincipal: viagemBase.setorPrincipal }) // ✅ CORRIGIDO
       .andWhere('vg.flgSentido = :flgSentido', { flgSentido: viagemBase.flgSentido })
       .andWhere('vg.id != :viagemBaseId', { viagemBaseId: viagemBase.id }); // Excluir a viagem original
 

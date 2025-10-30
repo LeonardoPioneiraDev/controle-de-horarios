@@ -97,7 +97,7 @@ export class ViagensTransdataService {
     novas: number; 
     atualizadas: number;
     ignoradas: number;
-    desativadas: number;
+    desativadas: number; // ✅ CORRIGIDO: Propriedade adicionada
     tempoProcessamento: number;
     isPrimeiraSincronizacao: boolean;
   }> {
@@ -121,6 +121,7 @@ export class ViagensTransdataService {
           novas: 0, 
           atualizadas: 0, 
           ignoradas: 0,
+          desativadas: 0, // ✅ CORRIGIDO: Propriedade adicionada
           tempoProcessamento: Date.now() - inicioProcessamento,
           isPrimeiraSincronizacao
         };
@@ -169,7 +170,7 @@ export class ViagensTransdataService {
   private async executarPrimeiraSincronizacao(
     dadosApi: TransdataApiResponse[], 
     dataReferencia: string
-  ): Promise<{ novas: number; atualizadas: number; ignoradas: number }> {
+  ): Promise<{ novas: number; atualizadas: number; ignoradas: number; desativadas: number }> {
     
     this.logger.log(`[VIAGENS] 🆕 Executando primeira sincronização - salvando ${dadosApi.length} viagens`);
 
@@ -193,7 +194,8 @@ export class ViagensTransdataService {
     return {
       novas: totalSalvas,
       atualizadas: 0,
-      ignoradas: 0
+      ignoradas: 0,
+      desativadas: 0 // ✅ CORRIGIDO: Propriedade adicionada
     };
   }
 
@@ -524,7 +526,7 @@ export class ViagensTransdataService {
       .where('viagem.dataReferencia = :data', { data })
       .andWhere('viagem.isAtivo = :ativo', { ativo: true })
       .andWhere('viagem.codigoLinha IS NOT NULL')
-      .andWhere('viagem.codigoLinha != ''')
+      .andWhere('viagem.codigoLinha != :empty', { empty: '' }) // ✅ CORRIGIDO: SQL syntax
       .orderBy('codigoLinha', 'ASC')
       .getRawMany();
 

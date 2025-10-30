@@ -1,3 +1,5 @@
+// src/modules/controle-horarios/dto/salvar-controle-horarios.dto.ts
+
 import { IsString, IsOptional, IsUUID, MaxLength, IsArray, ValidateNested } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 
@@ -30,7 +32,6 @@ export class SalvarControleHorariosDto {
   observacoes?: string;
 }
 
-// ✅ CORREÇÃO: DTO para salvamento múltiplo
 export class SalvarMultiplosControleHorariosDto {
   @IsString()
   dataReferencia: string;

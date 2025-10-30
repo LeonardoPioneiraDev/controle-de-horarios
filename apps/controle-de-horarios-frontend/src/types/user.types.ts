@@ -1,3 +1,4 @@
+// src/types/user.types.ts
 export enum UserRole {
   OPERADOR = 'OPERADOR',
   ADMIN = 'ADMIN',
@@ -25,6 +26,13 @@ export interface User {
   createdAt: Date;
   updatedAt: Date;
   lastLogin?: Date;
+  // ✅ ADICIONADOS: Campos extras que vêm do backend
+  emailVerified?: boolean;
+  tempPasswordExpires?: Date | null;
+  passwordResetExpires?: Date | null;
+  firstLogin?: boolean;
+  loginAttempts?: number;
+  lockedUntil?: Date | null;
 }
 
 export interface CreateUserRequest {
@@ -47,8 +55,10 @@ export interface LoginRequest {
   password?: string;
 }
 
+// ✅ CORRIGIDO: Interface que corresponde ao que o backend retorna
 export interface LoginResponse {
-  accessToken: string;
+  access_token: string;  // ✅ snake_case como o backend retorna
+  refresh_token: string; // ✅ snake_case como o backend retorna
   user: User;
 }
 
@@ -64,4 +74,4 @@ export interface UserStats {
   activeUsers: number;
   inactiveUsers: number;
   rolesDistribution: { role: string; count: number }[];
-};
+}

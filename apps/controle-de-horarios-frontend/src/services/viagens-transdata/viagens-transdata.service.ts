@@ -54,15 +54,7 @@ export class ViagensTransdataService extends BaseApiService {
     return response.data;
   }
 
-  /**
-   * ✅ Obter códigos de linha únicos para uma data (extraídos do NomeLinha)
-   */
-  async getCodigosLinha(data: string): Promise<CodigosLinha> {
-    console.log(`📋 Buscando códigos de linha para: ${data}...`);
-    const response = await this.api.get<CodigosLinha>(`/viagens-transdata/${data}/linhas`);
-    console.log(`✅ ${response.data.total} códigos de linha encontrados`);
-    return response.data;
-  }
+
 
   /**
    * ✅ Obter serviços únicos para uma data (campo Servico)

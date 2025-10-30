@@ -1,4 +1,3 @@
-// src/comparacao-viagens/services/comparacao-viagens.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -6,6 +5,7 @@ import { ComparacaoViagem, StatusComparacao } from '../entities/comparacao-viage
 import { ViagemTransdata } from '../../viagens-transdata/entities/viagem-transdata.entity';
 import { ViagemGlobus } from '../../viagens-globus/entities/viagem-globus.entity';
 import { FiltrosComparacaoDto, ResultadoComparacaoDto } from '../dto';
+import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, CombinacaoComparacao, NormalizedTransDataTrip, NormalizedGlobusTrip } from '../utils/trip-comparator.util';
 
 @Injectable()
 export class ComparacaoViagensService {
@@ -20,331 +20,85 @@ export class ComparacaoViagensService {
     private readonly globusRepository: Repository<ViagemGlobus>,
   ) {}
 
-  /**
-   * ✅ Normalizar código da linha (remover zeros à esquerda)
-   */
-  private normalizarCodigoLinha(codigo: string): string {
-    if (!codigo) return '';
-    const apenasNumeros = codigo.match(/^\d+/);
-    if (!apenasNumeros) return '';
-    let normalizado = apenasNumeros[0].replace(/^0+/, '');
-    return !normalizado ? '0' : normalizado;
-  }
-
-  /**
-   * ✅ Normalizar serviço (remover zeros à esquerda)
-   */
-  private normalizarServico(servico: string | number): string {
-    if (servico === null || servico === undefined) return '';
-    let servicoStr = servico.toString().trim().replace(/^0+/, '');
-    return !servicoStr ? '0' : servicoStr;
-  }
-
-  /**
-   * ✅ Limpar horário (remover segundos)
-   */
-  private limparHorario(horario: string): string {
-    if (!horario) return '';
-    
-    try {
-      let horarioLimpo = horario.trim();
-      
-      if (horarioLimpo.length === 8 && horarioLimpo.split(':').length === 3) {
-        horarioLimpo = horarioLimpo.substring(0, 5);
-      }
-      
-      const regexHorario = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-      return regexHorario.test(horarioLimpo) ? horarioLimpo : '';
-    } catch (error) {
-      return '';
-    }
-  }
-
-  /**
-   * ✅ Mapear sentido do Globus para Transdata
-   */
-  private mapearSentidoGlobusParaTransdata(sentidoGlobus: string): string {
-    if (!sentidoGlobus) return '';
-    
-    const sentidoNormalizado = sentidoGlobus.trim().toUpperCase();
-    
-    const mapeamento = {
-      'I': 'IDA',
-      'V': 'VOLTA', 
-      'C': 'IDA',
-      'CIRCULAR': 'IDA'
-    };
-    
-    return mapeamento[sentidoNormalizado] || sentidoNormalizado;
-  }
-
-  /**
-   * ✅ Calcular diferença entre horários
-   */
-  private calcularDiferencaHorario(horario1: string, horario2: string): number {
-    try {
-      if (!horario1 || !horario2) return -1;
-      
-      const h1Clean = this.limparHorario(horario1);
-      const h2Clean = this.limparHorario(horario2);
-      
-      if (!h1Clean || !h2Clean) return -1;
-      
-      const [h1, m1] = h1Clean.split(':').map(Number);
-      const [h2, m2] = h2Clean.split(':').map(Number);
-      
-      const minutos1 = h1 * 60 + m1;
-      const minutos2 = h2 * 60 + m2;
-      
-      return Math.abs(minutos1 - minutos2);
-    } catch (error) {
-      return -1;
-    }
-  }
-
-  /**
-   * 🆕 NOVA FUNÇÃO: Calcular score de compatibilidade entre duas viagens
-   */
-  private calcularScoreCompatibilidade(
-    transdata: ViagemTransdata,
-    globus: ViagemGlobus
-  ): { score: number; detalhes: any } {
-    let score = 0;
-    const detalhes = {
-      linhaMesma: false,
-      servicoMesmo: false,
-      sentidoMesmo: false,
-      diferencaHorario: -1,
-      horarioCompativel: false
-    };
-
-    // 1. Verificar linha (peso: 40 pontos)
-    const linhaTd = this.normalizarCodigoLinha(transdata.codigoLinha);
-    const linhaGb = this.normalizarCodigoLinha(globus.codigoLinha);
-    if (linhaTd === linhaGb) {
-      score += 40;
-      detalhes.linhaMesma = true;
-    }
-
-    // 2. Verificar sentido (peso: 30 pontos)
-    const sentidoTd = transdata.SentidoText.trim().toUpperCase();
-    const sentidoGb = this.mapearSentidoGlobusParaTransdata(globus.flgSentido);
-    if (sentidoTd === sentidoGb) {
-      score += 30;
-      detalhes.sentidoMesmo = true;
-    }
-
-    // 3. Verificar serviço (peso: 20 pontos)
-    const servicoTd = this.normalizarServico(transdata.Servico);
-    const servicoGb = this.normalizarServico(globus.codServicoNumero);
-    if (servicoTd === servicoGb) {
-      score += 20;
-      detalhes.servicoMesmo = true;
-    }
-
-    // 4. Verificar horário (peso: 10 pontos + bônus por proximidade)
-    const diffMin = this.calcularDiferencaHorario(transdata.InicioPrevistoText, globus.horSaidaTime);
-    detalhes.diferencaHorario = diffMin;
-    
-    if (diffMin >= 0) {
-      if (diffMin <= 2) {
-        score += 10; // Horário perfeito
-        detalhes.horarioCompativel = true;
-      } else if (diffMin <= 10) {
-        score += 8; // Horário muito próximo
-      } else if (diffMin <= 30) {
-        score += 5; // Horário próximo
-      } else if (diffMin <= 60) {
-        score += 2; // Horário distante mas aceitável
-      }
-    }
-
-    return { score, detalhes };
-  }
-
-  /**
-   * 🆕 NOVA ABORDAGEM: Execução da comparação com busca de melhor match + DEBUG
-   */
   async executarComparacao(dataReferencia: string): Promise<ResultadoComparacaoDto> {
     const inicioProcessamento = Date.now();
-    this.logger.log(`🔄 Iniciando comparação para data: ${dataReferencia}`);
+    this.logger.log(`🔄 Iniciando comparação detalhada para data: ${dataReferencia}`);
 
-    try {
-      await this.limparComparacoesExistentes(dataReferencia);
+    await this.limparComparacoesExistentes(dataReferencia);
 
-      const [viagensTransdata, viagensGlobus] = await Promise.all([
-        this.buscarViagensTransdata(dataReferencia),
-        this.buscarViagensGlobus(dataReferencia)
-      ]);
+    const [viagensTransdata, viagensGlobus] = await Promise.all([
+      this.buscarViagensTransdata(dataReferencia),
+      this.buscarViagensGlobus(dataReferencia)
+    ]);
 
-      this.logger.log(`📊 Dados encontrados - Transdata: ${viagensTransdata.length}, Globus: ${viagensGlobus.length}`);
+    this.logger.log(`📊 Dados encontrados - Transdata: ${viagensTransdata.length}, Globus: ${viagensGlobus.length}`);
 
-      // 🆕 DEBUG: Verificar duplicatas nos dados de entrada
-      const transdataIds = new Set(viagensTransdata.map(v => v.id));
-      const globusIds = new Set(viagensGlobus.map(v => v.id));
-      
-      this.logger.log(`🔍 DEBUG - IDs únicos: Transdata: ${transdataIds.size}, Globus: ${globusIds.size}`);
-      
-      if (transdataIds.size !== viagensTransdata.length) {
-        this.logger.warn(`⚠️ DUPLICATAS TRANSDATA: ${viagensTransdata.length - transdataIds.size} duplicatas encontradas`);
-      }
-      
-      if (globusIds.size !== viagensGlobus.length) {
-        this.logger.warn(`⚠️ DUPLICATAS GLOBUS: ${viagensGlobus.length - globusIds.size} duplicatas encontradas`);
-      }
+    if (viagensGlobus.length === 0 || viagensTransdata.length === 0) {
+        this.logger.warn(`Dados insuficientes para comparação. Abortando.`);
+        return {
+            totalComparacoes: 0, compativeis: 0, divergentes: 0, apenasTransdata: viagensTransdata.length, 
+            apenasGlobus: viagensGlobus.length, horarioDivergente: 0, percentualCompatibilidade: 0,
+            linhasAnalisadas: 0, tempoProcessamento: '0s'
+        };
+    }
 
-      if (viagensGlobus.length === 0) {
-        throw new Error(`Nenhum dado do Globus encontrado para ${dataReferencia}.`);
-      }
+    const todasComparacoes: ComparacaoViagem[] = [];
+    const globusUsados = new Set<string>();
+    const estatisticas = {
+        compativeis: 0, divergentes: 0, horarioDivergente: 0,
+        apenasTransdata: 0, apenasGlobus: 0, matches: 0
+    };
 
-      const todasComparacoes: ComparacaoViagem[] = [];
-      let estatisticas = {
-        totalTransdata: viagensTransdata.length,
-        totalGlobus: viagensGlobus.length,
-        matches: 0,
-        compativeis: 0,
-        divergentes: 0,
-        horarioDivergente: 0,
-        apenasTransdata: 0,
-        apenasGlobus: 0
-      };
+    for (const viagemTd of viagensTransdata) {
+        const normTd = normalizeTransDataTrip(viagemTd);
+        let melhorMatch: { globus: ViagemGlobus; combinacao: CombinacaoComparacao } | null = null;
 
-      // 🆕 NOVA LÓGICA: Buscar melhor match para cada viagem Transdata
-      const globusUsados = new Set<string>();
-      let comparacoesProcessadas = 0; // 🆕 DEBUG: Contador
-      
-      this.logger.log(`🔍 DEBUG - Iniciando processamento de ${viagensTransdata.length} viagens Transdata`);
-      
-      for (const viagemTd of viagensTransdata) {
-        let melhorMatch: {
-          globus: ViagemGlobus;
-          score: number;
-          detalhes: any;
-        } | null = null;
-
-        // Buscar o melhor match no Globus
         for (const viagemGb of viagensGlobus) {
-          if (globusUsados.has(viagemGb.id)) continue;
+            if (globusUsados.has(viagemGb.id)) continue;
 
-          const { score, detalhes } = this.calcularScoreCompatibilidade(viagemTd, viagemGb);
-          
-          // Só considerar se tem pelo menos linha e sentido compatíveis (score >= 70)
-          if (score >= 70) {
-            if (!melhorMatch || score > melhorMatch.score) {
-              melhorMatch = { globus: viagemGb, score, detalhes };
+            const normGb = normalizeGlobusTrip(viagemGb);
+            const combinacao = compareTrips(normTd, normGb);
+
+            if (melhorMatch === null || combinacao < melhorMatch.combinacao) {
+                melhorMatch = { globus: viagemGb, combinacao };
             }
-          }
         }
 
-        if (melhorMatch) {
-          // Encontrou um match - criar comparação
-          globusUsados.add(melhorMatch.globus.id);
-          
-          const status = this.determinarStatusComparacao(melhorMatch.detalhes);
-          const comparacao = this.compararViagensDetalhado(
-            dataReferencia, 
-            viagemTd, 
-            melhorMatch.globus, 
-            melhorMatch.detalhes.diferencaHorario, 
-            status
-          );
-          
-          todasComparacoes.push(comparacao);
-          comparacoesProcessadas++; // �� DEBUG
-          estatisticas.matches++;
-          
-          switch (status) {
-            case StatusComparacao.COMPATIVEL:
-              estatisticas.compativeis++;
-              break;
-            case StatusComparacao.HORARIO_DIVERGENTE:
-              estatisticas.horarioDivergente++;
-              break;
-            case StatusComparacao.DIVERGENTE:
-              estatisticas.divergentes++;
-              break;
-          }
+        if (melhorMatch && melhorMatch.combinacao <= CombinacaoComparacao.SO_LINHA_IGUAL) {
+            globusUsados.add(melhorMatch.globus.id);
+            const normGb = normalizeGlobusTrip(melhorMatch.globus);
 
-          // 🆕 DEBUG: Log detalhado a cada 500 comparações
-          if (comparacoesProcessadas % 500 === 0) {
-            this.logger.log(`📊 DEBUG - Processadas: ${comparacoesProcessadas}, Total array: ${todasComparacoes.length}, Globus usados: ${globusUsados.size}`);
-          }
+            const status = this.determinarStatusComparacao(melhorMatch.combinacao);
+            const observacao = this.gerarObservacao(melhorMatch.combinacao, normTd, normGb);
 
-          this.logger.debug(`✅ Match encontrado: Linha ${viagemTd.codigoLinha}, Score: ${melhorMatch.score}, Status: ${status}`);
+            const comparacao = this.criarComparacaoDetalhada(
+                dataReferencia, viagemTd, melhorMatch.globus, status, observacao, melhorMatch.combinacao
+            );
+            todasComparacoes.push(comparacao);
+
+            estatisticas.matches++;
+            if (status === StatusComparacao.COMPATIVEL) estatisticas.compativeis++;
+            else if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
+            else estatisticas.divergentes++;
+
         } else {
-          // Não encontrou match - apenas Transdata
-          const comparacao = this.criarComparacaoApenasTransdata(dataReferencia, viagemTd);
-          todasComparacoes.push(comparacao);
-          comparacoesProcessadas++; // �� DEBUG
-          estatisticas.apenasTransdata++;
-          
-          this.logger.debug(`📋 APENAS TRANSDATA: Linha ${viagemTd.codigoLinha}, Serviço ${viagemTd.Servico}, Horário ${viagemTd.InicioPrevistoText}`);
+            estatisticas.apenasTransdata++;
+            todasComparacoes.push(this.criarComparacaoApenasTransdata(dataReferencia, viagemTd));
         }
-      }
+    }
 
-      this.logger.log(`🔍 DEBUG - Finalizando processamento Transdata. Processadas: ${comparacoesProcessadas}`);
-
-      // Adicionar viagens Globus que não foram usadas
-      let globusNaoUsadas = 0;
-      for (const viagemGb of viagensGlobus) {
+    for (const viagemGb of viagensGlobus) {
         if (!globusUsados.has(viagemGb.id)) {
-          const comparacao = this.criarComparacaoApenasGlobus(dataReferencia, viagemGb);
-          todasComparacoes.push(comparacao);
-          comparacoesProcessadas++; // �� DEBUG
-          globusNaoUsadas++;
-          estatisticas.apenasGlobus++;
-          
-          this.logger.debug(`📋 APENAS GLOBUS: Linha ${viagemGb.codigoLinha}, Serviço ${viagemGb.codServicoNumero}, Horário ${viagemGb.horSaidaTime}`);
+            estatisticas.apenasGlobus++;
+            todasComparacoes.push(this.criarComparacaoApenasGlobus(dataReferencia, viagemGb));
         }
-      }
+    }
 
-      // 🆕 DEBUG: Verificação final detalhada
-      this.logger.log(`�� ==================== DEBUG FINAL ====================`);
-      this.logger.log(`📊 Dados de entrada:`);
-      this.logger.log(`   - Transdata: ${viagensTransdata.length} viagens`);
-      this.logger.log(`   - Globus: ${viagensGlobus.length} viagens`);
-      this.logger.log(`📊 Processamento:`);
-      this.logger.log(`   - Transdata processadas: ${viagensTransdata.length}`);
-      this.logger.log(`   - Globus usadas (matches): ${globusUsados.size}`);
-      this.logger.log(`   - Globus não usadas: ${globusNaoUsadas}`);
-      this.logger.log(`   - Total esperado: ${viagensTransdata.length + globusNaoUsadas}`);
-      this.logger.log(`📊 Resultado:`);
-      this.logger.log(`   - Comparações criadas: ${todasComparacoes.length}`);
-      this.logger.log(`   - Comparações processadas (contador): ${comparacoesProcessadas}`);
-      this.logger.log(`📊 Breakdown das comparações:`);
-      this.logger.log(`   - Matches (compatíveis + divergentes + horário div): ${estatisticas.matches}`);
-      this.logger.log(`   - Apenas Transdata: ${estatisticas.apenasTransdata}`);
-      this.logger.log(`   - Apenas Globus: ${estatisticas.apenasGlobus}`);
-      this.logger.log(`   - Total calculado: ${estatisticas.matches + estatisticas.apenasTransdata + estatisticas.apenasGlobus}`);
-      
-      // Verificar se há IDs duplicados nas comparações
-      const comparacaoIds = todasComparacoes.map((c, index) => `${index}-${c.transdataId || 'TD'}-${c.globusId || 'GB'}`);
-      const idsUnicos = new Set(comparacaoIds);
-      if (comparacaoIds.length !== idsUnicos.size) {
-        this.logger.warn(`⚠️ DUPLICATAS NAS COMPARAÇÕES: ${comparacaoIds.length - idsUnicos.size} duplicatas detectadas`);
-        
-        // Mostrar alguns exemplos de duplicatas
-        const duplicatas = comparacaoIds.filter((id, index) => comparacaoIds.indexOf(id) !== index);
-        this.logger.warn(`⚠️ Exemplos de duplicatas: ${duplicatas.slice(0, 5).join(', ')}`);
-      }
+    await this.salvarComparacoes(todasComparacoes);
+    this.logger.log(`💾 ${todasComparacoes.length} comparações salvas.`);
 
-      // Verificar consistência dos dados
-      const somaEstatisticas = estatisticas.compativeis + estatisticas.divergentes + estatisticas.horarioDivergente + estatisticas.apenasTransdata + estatisticas.apenasGlobus;
-      if (somaEstatisticas !== todasComparacoes.length) {
-        this.logger.warn(`⚠️ INCONSISTÊNCIA: Soma das estatísticas (${somaEstatisticas}) ≠ Total de comparações (${todasComparacoes.length})`);
-      }
-
-      this.logger.log(`🔍 =====================================================`);
-      
-      this.logger.log(`📊 Estatísticas: ${estatisticas.matches} matches, ${estatisticas.compativeis} compatíveis, ${estatisticas.divergentes} divergentes, ${estatisticas.horarioDivergente} horário div.`);
-      this.logger.log(`�� Apenas: ${estatisticas.apenasTransdata} só Transdata, ${estatisticas.apenasGlobus} só Globus`);
-      this.logger.log(`�� TOTAL DE COMPARAÇÕES: ${todasComparacoes.length}`);
-
-      await this.salvarComparacoes(todasComparacoes);
-      this.logger.log(`💾 ${todasComparacoes.length} comparações salvas (TODAS as comparações)`);
-
-      const tempoProcessamento = ((Date.now() - inicioProcessamento) / 1000).toFixed(2);
-      const resultado: ResultadoComparacaoDto = {
+    const tempoProcessamento = ((Date.now() - inicioProcessamento) / 1000).toFixed(2);
+    return {
         totalComparacoes: todasComparacoes.length,
         compativeis: estatisticas.compativeis,
         divergentes: estatisticas.divergentes,
@@ -355,119 +109,87 @@ export class ComparacaoViagensService {
         linhasAnalisadas: new Set(todasComparacoes.map(c => c.codigoLinha)).size,
         tempoProcessamento: `${tempoProcessamento}s`
       };
-
-      this.logger.log(`✅ Comparação concluída: ${resultado.totalComparacoes} comparações processadas`);
-      return resultado;
-
-    } catch (error) {
-      this.logger.error(`❌ Erro na comparação: ${error.message}`);
-      throw error;
-    }
   }
 
-  /**
-   * 🆕 NOVA FUNÇÃO: Determinar status baseado nos detalhes da compatibilidade
-   */
-  private determinarStatusComparacao(detalhes: any): StatusComparacao {
-    // Se linha, sentido e serviço são compatíveis
-    if (detalhes.linhaMesma && detalhes.sentidoMesmo && detalhes.servicoMesmo) {
-      if (detalhes.horarioCompativel) {
-        return StatusComparacao.COMPATIVEL;
-      } else {
-        return StatusComparacao.HORARIO_DIVERGENTE;
+  private determinarStatusComparacao(combinacao: CombinacaoComparacao): StatusComparacao {
+      switch (combinacao) {
+          case CombinacaoComparacao.TUDO_IGUAL:
+              return StatusComparacao.COMPATIVEL;
+          case CombinacaoComparacao.SO_HORARIO_DIFERENTE:
+              return StatusComparacao.HORARIO_DIVERGENTE;
+          default:
+              return StatusComparacao.DIVERGENTE;
       }
-    }
-    
-    // Se linha e sentido são compatíveis, mas serviço diverge
-    if (detalhes.linhaMesma && detalhes.sentidoMesmo && !detalhes.servicoMesmo) {
-      return StatusComparacao.DIVERGENTE;
-    }
-    
-    // Outros casos de divergência
-    return StatusComparacao.DIVERGENTE;
   }
 
-  /**
-   * 🆕 MÉTODO MELHORADO: Observações mais detalhadas
-   */
-  private compararViagensDetalhado(
+  private gerarObservacao(combinacao: CombinacaoComparacao, td: NormalizedTransDataTrip, gb: NormalizedGlobusTrip): string {
+      const tpl = (t: string, g: string) => `(T: ${t} vs G: ${g})`;
+      switch (combinacao) {
+          case CombinacaoComparacao.TUDO_IGUAL: return 'Tudo igual';
+          case CombinacaoComparacao.SO_HORARIO_DIFERENTE: return `Só horário diferente ${tpl(td.horario, gb.horario)}`;
+          case CombinacaoComparacao.SO_SERVICO_DIFERENTE: return `Só serviço diferente ${tpl(td.servico, gb.servico)}`;
+          case CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES: return `Serviço ${tpl(td.servico, gb.servico)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
+          case CombinacaoComparacao.SO_SENTIDO_DIFERENTE: return `Só sentido diferente ${tpl(td.sentido, gb.sentido)}`;
+          case CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES: return `Sentido ${tpl(td.sentido, gb.sentido)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
+          case CombinacaoComparacao.SENTIDO_E_SERVICO_DIFERENTES: return `Sentido ${tpl(td.sentido, gb.sentido)} e Serviço ${tpl(td.servico, gb.servico)} diferentes`;
+          case CombinacaoComparacao.SO_LINHA_IGUAL: return `Só linha igual, outros campos divergem`;
+          default: return `Divergência complexa (Combinação #${combinacao})`;
+      }
+  }
+
+  private criarComparacaoDetalhada(
     dataReferencia: string,
     transdata: ViagemTransdata,
     globus: ViagemGlobus,
-    diferencaHorarioMinutos: number,
-    statusDeterminado: StatusComparacao
+    status: StatusComparacao,
+    observacao: string,
+    combinacao: CombinacaoComparacao // ✅ Adicionar combinacao aqui
   ): ComparacaoViagem {
     const comparacao = new ComparacaoViagem();
-    
+    const normTd = normalizeTransDataTrip(transdata);
+    const normGb = normalizeGlobusTrip(globus);
+
     comparacao.dataReferencia = dataReferencia;
-    comparacao.codigoLinha = this.normalizarCodigoLinha(transdata.codigoLinha);
+    comparacao.codigoLinha = normTd.linha;
     comparacao.nomeLinhaTransdata = transdata.NomeLinha;
     comparacao.nomeLinhaGlobus = globus.nomeLinha;
 
     comparacao.transdataId = transdata.id.toString();
-    comparacao.transdataServico = this.normalizarServico(transdata.Servico);
+    comparacao.transdataServico = normTd.servico;
     comparacao.transdataSentido = transdata.SentidoText;
-    comparacao.transdataHorarioPrevisto = this.limparHorario(transdata.InicioPrevistoText);
-    comparacao.transdataHorarioRealizado = this.limparHorario(transdata.InicioRealizadoText);
+    comparacao.transdataHorarioPrevisto = normTd.horario;
 
     comparacao.globusId = globus.id;
-    comparacao.globusServico = this.normalizarServico(globus.codServicoNumero);
+    comparacao.globusServico = normGb.servico;
     comparacao.globusSentidoFlag = globus.flgSentido;
     comparacao.globusSentidoTexto = globus.sentidoTexto;
-    comparacao.globusHorarioSaida = this.limparHorario(globus.horSaidaTime);
+    comparacao.globusHorarioSaida = normGb.horario;
     comparacao.globusSetor = globus.setorPrincipal;
 
-    // Análises de compatibilidade
-    const sentidoTransdataNorm = transdata.SentidoText.trim().toUpperCase();
-    const sentidoGlobusMapeado = this.mapearSentidoGlobusParaTransdata(globus.flgSentido);
-    
-    comparacao.sentidoCompativel = sentidoTransdataNorm === sentidoGlobusMapeado;
-    comparacao.servicoCompativel = comparacao.transdataServico === comparacao.globusServico;
-    
-    comparacao.diferencaHorarioMinutos = diferencaHorarioMinutos;
-    comparacao.horarioCompativel = diferencaHorarioMinutos >= 0 && diferencaHorarioMinutos <= 2;
+    comparacao.statusComparacao = status;
+    comparacao.observacoes = observacao;
+    comparacao.tipoCombinacao = combinacao; // ✅ Usar combinacao aqui
 
-    comparacao.statusComparacao = statusDeterminado;
-
-    // 🎯 Observações MELHORADAS
-    const observacoes = [];
-    
-    if (statusDeterminado === StatusComparacao.HORARIO_DIVERGENTE) {
-      observacoes.push(`⏰ HORÁRIO DIVERGENTE: ${diferencaHorarioMinutos}min diferença (T:${comparacao.transdataHorarioPrevisto} vs G:${comparacao.globusHorarioSaida})`);
-    } else if (statusDeterminado === StatusComparacao.DIVERGENTE) {
-      if (!comparacao.servicoCompativel) {
-        observacoes.push(`🔧 SERVIÇO DIVERGENTE: T:${comparacao.transdataServico} vs G:${comparacao.globusServico}`);
-      }
-      if (!comparacao.horarioCompativel && diferencaHorarioMinutos > 2) {
-        observacoes.push(`⏰ HORÁRIO: ${diferencaHorarioMinutos}min diferença`);
-      }
-    }
-
-    if (!comparacao.sentidoCompativel) {
-      observacoes.push(`🔄 Sentido: T:${sentidoTransdataNorm} vs G:${sentidoGlobusMapeado}(${globus.flgSentido})`);
-    }
-    
-    if (globus.flgSentido === 'C') {
-      observacoes.push(`🔄 CIRCULAR→IDA`);
-    }
-    
-    comparacao.observacoes = observacoes.length > 0 ? observacoes.join(' | ') : '✅ Compatível';
+    comparacao.sentidoCompativel = normTd.sentido === normGb.sentido;
+    comparacao.servicoCompativel = normTd.servico === normGb.servico;
+    const diffHorario = Math.abs( (new Date(`1970-01-01T${normTd.horario}:00`).getTime()) - (new Date(`1970-01-01T${normGb.horario}:00`).getTime()) ) / (1000 * 60);
+    comparacao.diferencaHorarioMinutos = isNaN(diffHorario) ? -1 : diffHorario;
+    comparacao.horarioCompativel = diffHorario <= 2;
 
     return comparacao;
   }
 
-  // ✅ Métodos auxiliares permanecem iguais
   private criarComparacaoApenasTransdata(dataReferencia: string, transdata: ViagemTransdata): ComparacaoViagem {
     const comparacao = new ComparacaoViagem();
+    const normTd = normalizeTransDataTrip(transdata);
     
     comparacao.dataReferencia = dataReferencia;
-    comparacao.codigoLinha = this.normalizarCodigoLinha(transdata.codigoLinha);
+    comparacao.codigoLinha = normTd.linha;
     comparacao.nomeLinhaTransdata = transdata.NomeLinha;
     comparacao.transdataId = transdata.id.toString();
-    comparacao.transdataServico = this.normalizarServico(transdata.Servico);
+    comparacao.transdataServico = normTd.servico;
     comparacao.transdataSentido = transdata.SentidoText;
-    comparacao.transdataHorarioPrevisto = this.limparHorario(transdata.InicioPrevistoText);
-    comparacao.transdataHorarioRealizado = this.limparHorario(transdata.InicioRealizadoText);
+    comparacao.transdataHorarioPrevisto = normTd.horario;
     
     comparacao.statusComparacao = StatusComparacao.APENAS_TRANSDATA;
     comparacao.observacoes = `Viagem encontrada apenas no Transdata - Status: ${transdata.statusCumprimento}`;
@@ -477,15 +199,16 @@ export class ComparacaoViagensService {
 
   private criarComparacaoApenasGlobus(dataReferencia: string, globus: ViagemGlobus): ComparacaoViagem {
     const comparacao = new ComparacaoViagem();
+    const normGb = normalizeGlobusTrip(globus);
     
     comparacao.dataReferencia = dataReferencia;
-    comparacao.codigoLinha = this.normalizarCodigoLinha(globus.codigoLinha);
+    comparacao.codigoLinha = normGb.linha;
     comparacao.nomeLinhaGlobus = globus.nomeLinha;
     comparacao.globusId = globus.id;
-    comparacao.globusServico = this.normalizarServico(globus.codServicoNumero);
+    comparacao.globusServico = normGb.servico;
     comparacao.globusSentidoFlag = globus.flgSentido;
     comparacao.globusSentidoTexto = globus.sentidoTexto;
-    comparacao.globusHorarioSaida = this.limparHorario(globus.horSaidaTime);
+    comparacao.globusHorarioSaida = normGb.horario;
     comparacao.globusSetor = globus.setorPrincipal;
     
     comparacao.statusComparacao = StatusComparacao.APENAS_GLOBUS;
@@ -494,7 +217,6 @@ export class ComparacaoViagensService {
     return comparacao;
   }
 
-  // ✅ Resto dos métodos permanecem iguais
   private async buscarViagensTransdata(dataReferencia: string): Promise<ViagemTransdata[]> {
     return await this.transdataRepository.find({
       where: { 
@@ -503,7 +225,7 @@ export class ComparacaoViagensService {
       },
       select: [
         'id', 'codigoLinha', 'NomeLinha', 'Servico', 'SentidoText',
-        'InicioPrevistoText', 'InicioRealizadoText', 'statusCumprimento'
+        'InicioPrevisto', 'InicioRealizadoText', 'statusCumprimento'
       ]
     });
   }
@@ -542,9 +264,8 @@ export class ComparacaoViagensService {
       .where('comp.dataReferencia = :dataReferencia', { dataReferencia });
 
     if (filtros.codigoLinha) {
-      const codigoNormalizado = this.normalizarCodigoLinha(filtros.codigoLinha);
       queryBuilder.andWhere('comp.codigoLinha = :codigoLinha', { 
-        codigoLinha: codigoNormalizado 
+        codigoLinha: filtros.codigoLinha 
       });
     }
 
@@ -561,13 +282,15 @@ export class ComparacaoViagensService {
     }
 
     const total = await queryBuilder.getCount();
-    const limite = parseInt(filtros.limite) || 100;
+    const limit = filtros.limit || 50;
+    const page = filtros.page || 1;
     
     queryBuilder
       .orderBy('comp.statusComparacao', 'ASC')
       .addOrderBy('comp.codigoLinha', 'ASC')
       .addOrderBy('comp.transdataHorarioPrevisto', 'ASC')
-      .limit(limite);
+      .limit(limit)
+      .offset((page - 1) * limit);
 
     const comparacoes = await queryBuilder.getMany();
     return { comparacoes, total };

@@ -8,8 +8,8 @@ import {
 } from 'typeorm';
 
 @Entity('controle_horarios')
-@Index(['dataReferencia', 'codigoLinha'])
-@Index(['dataReferencia', 'viagemGlobusId'])
+@Index(['dataReferencia', 'viagemGlobusId']) // ✅ CORRIGIDO: Removido codigoLinha
+@Index(['dataReferencia', 'isAtivo']) // ✅ ADICIONADO: Índice útil para consultas
 export class ControleHorario {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -27,20 +27,20 @@ export class ControleHorario {
   @Column({ name: 'numero_carro', length: 50, nullable: true })
   numeroCarro: string;
 
-  @Column({ name: 'informacao_recolhe', length: 200, nullable: true })
+  @Column({ name: 'informacao_recolhe', length: 300, nullable: true }) // ✅ CORRIGIDO: 300 como no banco
   informacaoRecolhe: string;
 
   @Column({ name: 'cracha_funcionario', length: 50, nullable: true })
   crachaFuncionario: string;
 
-  @Column({ name: 'observacoes', length: 500, nullable: true })
+  @Column({ name: 'observacoes', type: 'text', nullable: true }) // ✅ CORRIGIDO: text como no banco
   observacoes: string;
 
   // Auditoria
-  @Column({ name: 'usuario_edicao', length: 500 }) // ✅ ATUALIZADO: 500
+  @Column({ name: 'usuario_edicao', length: 500, nullable: true }) // ✅ CORRIGIDO: nullable como no banco
   usuarioEdicao: string;
 
-  @Column({ name: 'usuario_email', length: 500, nullable: true }) // ✅ ATUALIZADO: 500
+  @Column({ name: 'usuario_email', length: 500, nullable: true })
   usuarioEmail: string;
 
   @CreateDateColumn({ name: 'created_at' })

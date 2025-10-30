@@ -187,6 +187,23 @@ export class ViagensGlobusController {
     };
   }
 
+  // ✅ OBTER SETORES ÚNICOS
+  @Get(':data/setores')
+  @Roles(UserRole.OPERADOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Obter setores únicos para uma data' })
+  async obterSetoresUnicos(@Param('data') data: string) {
+    const setores = await this.viagensGlobusService.obterSetoresUnicos(data);
+
+    return {
+      success: true,
+      message: 'Setores únicos obtidos com sucesso',
+      data: setores,
+      count: setores.length,
+      dataReferencia: data
+    };
+  }
+
   // ✅ TESTAR CONEXÃO ORACLE
   @Get('oracle/teste-conexao')
   @Roles(UserRole.GERENTE)

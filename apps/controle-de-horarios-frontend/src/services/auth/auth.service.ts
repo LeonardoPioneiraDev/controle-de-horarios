@@ -1,3 +1,4 @@
+// src/services/auth/auth.service.ts
 import { BaseApiService } from '../shared/api.service';
 import { LoginRequest, LoginResponse, RegisterRequest, User, EmailTestRequest, EmailTestResponse } from '../../types';
 
@@ -8,9 +9,28 @@ export class AuthService extends BaseApiService {
 
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     console.log('🔑 Iniciando login...');
-    const response = await this.api.post<LoginResponse>('/auth/login', credentials);
-    console.log('✅ Login realizado com sucesso');
-    return response.data;
+    
+    try {
+      const response = await this.api.post<LoginResponse>('/auth/login', credentials);
+      
+      // ✅ ADICIONADO: Log detalhado da resposta
+      console.log('📦 [AUTH] Resposta bruta do backend:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: response.data,
+        dataKeys: Object.keys(response.data || {}),
+        hasAccessToken: !!(response.data as any)?.accessToken,
+        hasToken: !!(response.data as any)?.token,
+        hasUser: !!(response.data as any)?.user,
+        fullResponse: JSON.stringify(response.data, null, 2)
+      });
+      
+      console.log('✅ Login realizado com sucesso');
+      return response.data;
+    } catch (error) {
+      console.error('❌ [AUTH] Erro no login:', error);
+      throw error;
+    }
   }
 
   async register(userData: RegisterRequest): Promise<{ message: string; user: User }> {
@@ -22,9 +42,14 @@ export class AuthService extends BaseApiService {
 
   async logout(): Promise<{ message: string }> {
     console.log('🚪 Realizando logout...');
-    const response = await this.api.post('/auth/logout');
-    console.log('✅ Logout realizado com sucesso');
-    return response.data;
+    try {
+      const response = await this.api.post('/auth/logout');
+      console.log('✅ Logout realizado com sucesso');
+      return response.data;
+    } catch (error) {
+      console.log('⚠️ [AUTH] Erro no logout (ignorado):', error);
+      return { message: 'Logout local realizado' };
+    }
   }
 
   async getProfile(): Promise<{ user: User }> {
@@ -45,7 +70,7 @@ export class AuthService extends BaseApiService {
   }
 
   async validateResetToken(token: string): Promise<{ valid: boolean; message: string }> {
-    console.log(` Validando token de reset: ${token.substring(0, 8)}...`);
+    console.log(`🔍 Validando token de reset: ${token.substring(0, 8)}...`);
     const response = await this.api.post('/auth/validate-reset-token', { token });
     console.log('✅ Token validado');
     return response.data;

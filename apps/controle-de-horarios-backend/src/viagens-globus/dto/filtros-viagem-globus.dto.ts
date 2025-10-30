@@ -68,7 +68,7 @@ export class FiltrosViagemGlobusDto {
   @Type(() => Number)
   @IsNumber()
   @Min(1)
-  pagina?: number = 1;
+  page?: number = 1;
 
   @IsOptional()
   @Transform(({ value }) => value === 'true')

@@ -1,3 +1,5 @@
+// src/comparacao-viagens/utils/trip-comparator.util.ts
+
 import { ViagemGlobusBaseDto } from '../../controle-horarios/dto/response-controle-horarios.dto';
 
 // Mapeamento de Sentido
@@ -45,20 +47,37 @@ export interface NormalizedGlobusTrip {
   horario: string;
 }
 
+// ✅ Interface flexível para dados Oracle (campos em maiúsculo)
+export interface OracleGlobusData {
+  CODIGOLINHA?: string;
+  FLG_SENTIDO?: string;
+  COD_SERVICO_NUMERO?: string;
+  HOR_SAIDA?: string;
+  SETOR_PRINCIPAL_LINHA?: string;
+  COD_LOCAL_TERMINAL_SEC?: string;
+  NOMELINHA?: string;
+  DATA_VIAGEM?: string;
+  HOR_CHEGADA?: string;
+  TOTAL_HORARIOS?: string;
+  COD_LOCALIDADE?: string;
+  LOCAL_ORIGEM_VIAGEM?: string;
+  COD_SERVICO_COMPLETO?: string;
+  COD_MOTORISTA?: string;
+  NOME_MOTORISTA?: string;
+  COD_COBRADOR?: string;
+  NOME_COBRADOR?: string;
+  [key: string]: any; // Para outros campos
+}
+
 // Função para normalizar os dados da TransData
 export function normalizeTransDataTrip(transDataTrip: any): NormalizedTransDataTrip {
-  const linhaMatch = transDataTrip.NomeLinha.match(/^(\d{1,})[\.\s-]?(\d{1,})?/);
-  let linha = '';
-  if (linhaMatch) {
-    linha = linhaMatch[1];
-    if (linhaMatch[2]) {
-      linha += linhaMatch[2];
-    }
-  }
+  // Extrai os primeiros 6 caracteres que são dígitos, ignorando o resto.
+  const linha = (transDataTrip.NomeLinha.match(/\d/g) || []).join('').substring(0, 6);
 
   const sentido = SENTIDO_MAP[transDataTrip.SentidoText.toUpperCase()] || transDataTrip.SentidoText.toUpperCase();
   const servico = String(transDataTrip.Servico);
-  const horario = transDataTrip.InicioPrevistoText.substring(0, 5); // HH:MM
+  // Extrai HH:mm de uma string de data/hora como "26/10/2025 15:40:00"
+  const horario = transDataTrip.InicioPrevisto.split(' ')[1]?.substring(0, 5) || '';
 
   return {
     linha,
@@ -68,12 +87,35 @@ export function normalizeTransDataTrip(transDataTrip: any): NormalizedTransDataT
   };
 }
 
-// Função para normalizar os dados da Globus
-export function normalizeGlobusTrip(globusTrip: ViagemGlobusBaseDto): NormalizedGlobusTrip {
-  const linha = String(globusTrip.codigoLinha).replace(/[^0-9]/g, ''); // Apenas números
-  const sentido = SENTIDO_MAP[globusTrip.flgSentido.toUpperCase()] || globusTrip.flgSentido.toUpperCase();
-  const servico = String(globusTrip.codServicoNumero).padStart(2, '0'); // Garante 2 dígitos
-  const horario = globusTrip.horSaidaTime.substring(0, 5); // HH:MM
+// ✅ Função para normalizar os dados da Globus (aceita tanto DTO quanto dados Oracle)
+export function normalizeGlobusTrip(globusTrip: ViagemGlobusBaseDto | OracleGlobusData): NormalizedGlobusTrip {
+  const isOracleData = 'CODIGOLINHA' in globusTrip;
+  
+  let linha: string;
+  let sentido: string;
+  let servico: string;
+  let horario: string;
+
+  if (isOracleData) {
+    const oracleData = globusTrip as OracleGlobusData;
+    linha = String(oracleData.CODIGOLINHA || '').replace(/[^0-9]/g, '').substring(0, 6);
+    sentido = SENTIDO_MAP[String(oracleData.FLG_SENTIDO || '').toUpperCase()] || String(oracleData.FLG_SENTIDO || '').toUpperCase();
+    servico = String(oracleData.COD_SERVICO_NUMERO || '').trim();
+    
+    const horarioOracle = String(oracleData.HOR_SAIDA || '');
+    if (horarioOracle.includes(' ')) {
+      const timePart = horarioOracle.split(' ')[1];
+      horario = timePart ? timePart.substring(0, 5) : '';
+    } else {
+      horario = horarioOracle.substring(0, 5);
+    }
+  } else {
+    const dtoData = globusTrip as ViagemGlobusBaseDto;
+    linha = String(dtoData.codigoLinha || '').replace(/[^0-9]/g, '').substring(0, 6);
+    sentido = SENTIDO_MAP[String(dtoData.flgSentido || '').toUpperCase()] || String(dtoData.flgSentido || '').toUpperCase();
+    servico = String(dtoData.codServicoNumero || '').trim();
+    horario = String(dtoData.horSaidaTime || '').substring(0, 5);
+  }
 
   return {
     linha,

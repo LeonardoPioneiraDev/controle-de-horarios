@@ -1,3 +1,5 @@
+// src/modules/controle-horarios/controllers/controle-horarios.controller.ts
+
 import {
   Controller,
   Get,
@@ -79,7 +81,6 @@ export class ControleHorariosController {
     }
   }
 
-  // ✅ CORREÇÃO: Endpoint para salvamento múltiplo
   @Post('salvar-multiplos')
   @Roles(UserRole.OPERADOR)
   async salvarMultiplosControles(
@@ -111,7 +112,7 @@ export class ControleHorariosController {
     @CurrentUser('email') usuarioEmail: string,
   ): Promise<{ success: boolean; message: string; data: OpcoesControleHorariosDto }> {
     try {
-      this.logger.log(`🔍 [${usuarioEmail}] Buscando opções para filtros da data ${data}`);
+      this.logger.log(`�� [${usuarioEmail}] Buscando opções para filtros da data ${data}`);
       
       const opcoes = await this.controleHorariosService.buscarOpcoesControleHorarios(data);
       
