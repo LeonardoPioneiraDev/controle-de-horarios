@@ -1,24 +1,11 @@
 // src/features/controle-horarios/components/StatusCards/StatusCards.tsx
 import React from 'react';
 import { CheckCircle, AlertCircle } from 'lucide-react';
+import { StatusControleHorarios, EstatisticasControleHorarios } from '../../types/controle-horarios.types';
 
 interface StatusCardsProps {
-  statusDados: {
-    existeViagensGlobus: boolean;
-    totalViagensGlobus: number;
-    viagensEditadas: number;
-    percentualEditado: number;
-    ultimaAtualizacao: Date | null;
-  };
-  estatisticas: {
-    totalViagens: number;
-    viagensEditadas: number;
-    viagensNaoEditadas: number;
-    percentualEditado: number;
-    setoresUnicos: string[];
-    linhasUnicas: string[];
-    servicosUnicos: string[];
-  };
+  statusDados: StatusControleHorarios;
+  estatisticas: EstatisticasControleHorarios;
 }
 
 export const StatusCards: React.FC<StatusCardsProps> = ({ statusDados, estatisticas }) => {
@@ -78,11 +65,11 @@ export const StatusCards: React.FC<StatusCardsProps> = ({ statusDados, estatisti
       <div className="bg-purple-50 p-4 rounded-lg">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-2xl font-bold text-purple-600">{estatisticas.setoresUnicos.length}</div>
+            <div className="text-2xl font-bold text-purple-600">{statusDados.totalSetores}</div>
             <div className="text-sm text-purple-600">Setores Ativos</div>
           </div>
           <div className="text-xs text-purple-600 font-medium">
-            {estatisticas.linhasUnicas.length} linhas
+            {statusDados.totalLinhas} linhas
           </div>
         </div>
       </div>

@@ -298,8 +298,9 @@ export class ControleHorariosService {
 
         this.controleHorarioRepository
           .createQueryBuilder('ch')
-          .select('DISTINCT ch.crachaMotoristaGlobus', 'cracha') // Filtrar por crachá do Globus
-          .addSelect('DISTINCT ch.nomeMotoristaGlobus', 'nome') // Adicionar nome para exibição
+          .select('ch.crachaMotoristaGlobus', 'cracha') // Filtrar por crachá do Globus
+          .addSelect('ch.nomeMotoristaGlobus', 'nome') // Adicionar nome para exibição
+          .distinct(true)
           .where('ch.dataReferencia = :dataReferencia AND ch.crachaMotoristaGlobus IS NOT NULL', { dataReferencia })
           .orderBy('cracha')
           .limit(100)

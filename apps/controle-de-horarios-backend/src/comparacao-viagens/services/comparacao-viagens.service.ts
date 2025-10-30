@@ -211,7 +211,7 @@ export class ComparacaoViagensService {
           case CombinacaoComparacao.SO_HORARIO_DIFERENTE:
           case CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES: // If service and horario differ, but line/sentido are same
           case CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES: // If sentido and horario differ, but line/service are same
-          case CombinacaoComparacao.SO_LINHA_IGUAL: // If only line is same, implies horario is different
+          case CombinacaoComparacao.SO_LINHA_IGUAL:
               return StatusComparacao.HORARIO_DIVERGENTE;
           default:
               return StatusComparacao.DIVERGENTE;

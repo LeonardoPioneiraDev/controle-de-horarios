@@ -156,13 +156,16 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
         {/* Motorista */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Motorista</label>
-          <input
-            type="text"
+          <select
             value={filtros.nomeMotorista || ''}
             onChange={(e) => handleFilterChange('nomeMotorista', e.target.value || undefined)}
-            placeholder="Nome do motorista"
             className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+          >
+            <option value="">Todos</option>
+            {opcoesFiltros.motoristas.map(motorista => (
+              <option key={motorista.cracha} value={motorista.nome}>{motorista.nome} ({motorista.cracha})</option>
+            ))}
+          </select>
         </div>
 
         {/* Crachá Motorista */}
@@ -253,6 +256,34 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
             placeholder="Buscar em todos os campos"
             className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+        </div>
+
+        {/* Ordenar Por */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Ordenar Por</label>
+          <select
+            value={filtros.ordenarPor || 'horaSaida'}
+            onChange={(e) => handleFilterChange('ordenarPor', e.target.value)}
+            className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="horaSaida">Hora de Saída</option>
+            <option value="setorPrincipalLinha">Setor</option>
+            <option value="codigoLinha">Linha</option>
+            <option value="nomeMotoristaGlobus">Motorista</option>
+          </select>
+        </div>
+
+        {/* Ordem */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
+          <select
+            value={filtros.ordem || 'ASC'}
+            onChange={(e) => handleFilterChange('ordem', e.target.value as "ASC" | "DESC")}
+            className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="ASC">Ascendente</option>
+            <option value="DESC">Descendente</option>
+          </select>
         </div>
         
         {/* Mostrar apenas editadas por mim */}

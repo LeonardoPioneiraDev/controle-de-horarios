@@ -1,5 +1,9 @@
 import { ControleHorarioItemDto } from '../../controle-horarios/dto/response-controle-horarios.dto';
 import { CombinacaoComparacao } from '../entities/comparacao-viagem.entity'; // ✅ Importar CombinacaoComparacao da entidade
+import { Logger } from '@nestjs/common';
+import { ViagemGlobus } from '../../viagens-globus/entities/viagem-globus.entity'; // Import ViagemGlobus entity
+
+const logger = new Logger('TripComparatorUtil');
 
 // Mapeamento de Sentido
 const SENTIDO_MAP: { [key: string]: string } = {
@@ -69,8 +73,8 @@ export function normalizeTransDataTrip(transDataTrip: any): NormalizedTransDataT
   };
 }
 
-// ✅ Função para normalizar os dados da Globus (aceita tanto DTO quanto dados Oracle)
-export function normalizeGlobusTrip(globusTrip: ControleHorarioItemDto | OracleGlobusData): NormalizedGlobusTrip {
+// ✅ Função para normalizar os dados da Globus (aceita tanto DTO quanto dados Oracle e a entidade ViagemGlobus)
+export function normalizeGlobusTrip(globusTrip: ControleHorarioItemDto | OracleGlobusData | ViagemGlobus): NormalizedGlobusTrip {
   // ✅ Detectar se é dados Oracle (campos em maiúsculo) ou DTO (camelCase)
   const isOracleData = 'CODIGOLINHA' in globusTrip;
   
@@ -82,6 +86,7 @@ export function normalizeGlobusTrip(globusTrip: ControleHorarioItemDto | OracleG
   if (isOracleData) {
     // ✅ Dados Oracle (campos em maiúsculo)
     const oracleData = globusTrip as OracleGlobusData;
+    logger.debug(`[normalizeGlobusTrip] Oracle Data - HOR_SAIDA: ${oracleData.HOR_SAIDA}`);
     linha = String(oracleData.CODIGOLINHA || '').replace(/[^0-9]/g, '').trim();
     linha = String(parseInt(linha, 10)); // Convert to int, then back to string to remove leading zeros
     sentido = SENTIDO_MAP[String(oracleData.FLG_SENTIDO || '').toUpperCase()] || String(oracleData.FLG_SENTIDO || '').toUpperCase();
@@ -96,14 +101,25 @@ export function normalizeGlobusTrip(globusTrip: ControleHorarioItemDto | OracleG
       horario = horarioOracle.substring(0, 5);
     }
   } else {
-    // ✅ DTO (camelCase)
-    const dtoData = globusTrip as ControleHorarioItemDto;
+    // ✅ DTO (camelCase) or ViagemGlobus entity
+    const dtoData = globusTrip as ViagemGlobus; // Cast to ViagemGlobus directly as it's the entity
+    logger.debug(`[normalizeGlobusTrip] DTO Data - horSaida: ${dtoData.horSaida}, horSaidaTime: ${dtoData.horSaidaTime}`);
+
     linha = String(dtoData.codigoLinha || '').replace(/[^0-9]/g, '').trim();
     linha = String(parseInt(linha, 10)); // Convert to int, then back to string to remove leading zeros
     sentido = SENTIDO_MAP[String(dtoData.flgSentido || '').toUpperCase()] || String(dtoData.flgSentido || '').toUpperCase();
     servico = String(parseInt(String(dtoData.codServicoNumero || '').replace(/[^0-9]/g, ''), 10));
-    horario = String(dtoData.horaSaida || '').substring(0, 5);
+
+    // Prioritize horSaida (Date object) if available and valid
+    if (dtoData.horSaida instanceof Date && !isNaN(dtoData.horSaida.getTime())) {
+      horario = dtoData.horSaida.toTimeString().substring(0, 5); // Format to HH:mm
+    } else {
+      // Fallback to horSaidaTime string
+      horario = String(dtoData.horSaidaTime || '').substring(0, 5);
+    }
   }
+
+  logger.debug(`[normalizeGlobusTrip] Final Horario: ${horario}`);
 
   return {
     linha,
@@ -125,7 +141,7 @@ export function compareTrips(
     (new Date(`1970-01-01T${transDataTrip.horario}:00`).getTime()) -
     (new Date(`1970-01-01T${globusTrip.horario}:00`).getTime())
   ) / (1000 * 60);
-  const horarioIgual = diffHorario <= 2; // Consider times equal if within 2 minutes
+  const horarioIgual = diffHorario <= 1; // Consider times equal if within 2 minutes
 
   if (linhaIgual && sentidoIgual && servicoIgual && horarioIgual) {
     return CombinacaoComparacao.TUDO_IGUAL; // 1

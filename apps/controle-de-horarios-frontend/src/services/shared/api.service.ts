@@ -12,7 +12,7 @@ export class BaseApiService {
 
   constructor() {
     this.baseURL = '/api';
-    this.timeout = 10000;
+    this.timeout = 500000;
     this.debug = true; // process.env.NODE_ENV !== 'production';
 
     this.api = axios.create({

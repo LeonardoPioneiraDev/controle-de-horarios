@@ -1,5 +1,5 @@
-import { BaseApiService } from "../../../services/shared/api.service"; // ✅ CAMINHO CORRIGIDO
-import { ControleHorarioResponse, FiltrosControleHorarios, OpcoesControleHorarios, SalvarControleHorario, SalvarMultiplosControles, EstatisticasControleHorarios } from  '../types/controle-horarios.types'; // ✅ CAMINHO CORRIGIDO
+import { BaseApiService } from "../../../services/shared/api.service";
+import { ControleHorarioResponse, FiltrosControleHorarios, OpcoesControleHorarios, SalvarControleHorario, SalvarMultiplosControles, EstatisticasControleHorarios, SincronizarControleHorariosDto, SincronizacaoResponse } from  '../types/controle-horarios.types'; // ✅ CAMINHO CORRIGIDO
 
 export class ControleHorariosService extends BaseApiService {
   constructor() {
@@ -74,6 +74,16 @@ export class ControleHorariosService extends BaseApiService {
     console.log(`📊 Verificando status do controle para ${data}...`);
     const response = await this.api.get(`/controle-horarios/${data}/status`);
     console.log('✅ Status verificado');
+    return response.data;
+  }
+
+  /**
+   * ✅ Sincronizar dados com o Globus
+   */
+  async sincronizarControleHorarios(data: string, payload?: SincronizarControleHorariosDto): Promise<SincronizacaoResponse> {
+    console.log(`🔄 Sincronizando controle de horários para ${data}...`, payload);
+    const response = await this.api.post(`/controle-horarios/${data}/sincronizar`, payload);
+    console.log('✅ Sincronização concluída');
     return response.data;
   }
 

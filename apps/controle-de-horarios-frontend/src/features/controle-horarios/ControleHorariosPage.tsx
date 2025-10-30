@@ -13,6 +13,7 @@ import {
 export const ControleHorariosPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [showLinhaMultiSelect, setShowLinhaMultiSelect] = useState(false);
+  const [sincronizando, setSincronizando] = useState(false);
 
   const {
     // Estados
@@ -38,6 +39,7 @@ export const ControleHorariosPage: React.FC = () => {
     limparFiltros,
     contarFiltrosAtivos,
     contarAlteracoesPendentes,
+    sincronizarControleHorarios,
   } = useControleHorarios();
 
   return (
@@ -54,8 +56,7 @@ export const ControleHorariosPage: React.FC = () => {
         onDescartarAlteracoes={descartarAlteracoes}
         onSalvarAlteracoes={salvarTodasAlteracoes}
         saving={saving}
-        onAtualizar={buscarControleHorarios}
-        loading={loading}
+        sincronizando={sincronizando}
       />
 
       {/* Status Cards */}

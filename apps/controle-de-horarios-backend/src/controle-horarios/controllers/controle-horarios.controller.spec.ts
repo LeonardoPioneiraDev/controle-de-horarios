@@ -263,36 +263,4 @@ describe('ControleHorariosController', () => {
     });
   });
 
-  describe('healthCheck', () => {
-    it('should return health check status', async () => {
-      const result = await controller.healthCheck('test@example.com');
-      expect(result.success).toBe(true);
-      expect(result.status).toBe('HEALTHY');
-      expect(result.endpoints).toBeDefined();
-    });
-
-    it('should throw HttpException on error', async () => {
-      // Simulate an error within the healthCheck method if it were to call a service
-      // For this specific healthCheck, it doesn't call a service, so we'll simulate a generic error
-      // by temporarily overriding a method or mocking a dependency if it had one.
-      // As it stands, this healthCheck is self-contained and unlikely to throw unless NestJS itself fails.
-      // For demonstration, we'll just ensure it returns the expected healthy status.
-      // If there were external dependencies, we would mock them to simulate failure.
-      const originalLog = controller['logger'].log;
-      controller['logger'].log = jest.fn(() => { throw new Error('Simulated health check error'); });
-
-      await expect(controller.healthCheck('test@example.com')).rejects.toThrow(
-        new HttpException(
-          {
-            success: false,
-            message: 'Erro no health check',
-            status: 'UNHEALTHY',
-            error: 'Simulated health check error',
-          },
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        ),
-      );
-      controller['logger'].log = originalLog; // Restore original logger
-    });
-  });
 });

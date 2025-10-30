@@ -1,12 +1,12 @@
 // src/features/controle-horarios/components/ObservacoesSection/ObservacoesSection.tsx
 import React from 'react';
 import { FileText } from 'lucide-react';
-import { ControleHorarioItem, DadosEditaveis } from '../../types/controle-horarios.types';
+import { ControleHorarioItem } from '../../types/controle-horarios.types';
 
 interface ObservacoesSectionProps {
   controleHorarios: ControleHorarioItem[];
   controleHorariosOriginais: ControleHorarioItem[];
-  onInputChange: (viagemId: string, field: keyof DadosEditaveis, value: string) => void;
+  onInputChange: (viagemId: string, field: keyof ControleHorarioItem, value: string) => void;
 }
 
 export const ObservacoesSection: React.FC<ObservacoesSectionProps> = ({
@@ -25,20 +25,20 @@ export const ObservacoesSection: React.FC<ObservacoesSectionProps> = ({
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {controleHorarios
-          .filter(item => item.dadosEditaveis.jaFoiEditado || item.dadosEditaveis.observacoes)
+          .filter(item => item.jaFoiEditado || item.observacoes)
           .slice(0, 4)
           .map((item) => {
-            const original = controleHorariosOriginais.find(orig => orig.viagemGlobus.id === item.viagemGlobus.id);
-            const observacaoAlterada = original && item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes;
+            const original = controleHorariosOriginais.find(orig => orig.id === item.id);
+            const observacaoAlterada = original && item.observacoes !== original.observacoes;
 
             return (
-              <div key={item.viagemGlobus.id} className="border border-gray-200 rounded-lg p-4">
+              <div key={item.id} className="border border-gray-200 rounded-lg p-4">
                 <div className="text-sm font-medium text-gray-900 mb-2">
-                  Linha {item.viagemGlobus.codigoLinha} - Serviço {item.viagemGlobus.codServicoNumero}
+                  Linha {item.codigoLinha} - Serviço {item.codServicoNumero}
                 </div>
                 <textarea
-                  value={item.dadosEditaveis.observacoes || ''}
-                  onChange={(e) => onInputChange(item.viagemGlobus.id, 'observacoes', e.target.value)}
+                  value={item.observacoes || ''}
+                  onChange={(e) => onInputChange(item.id, 'observacoes', e.target.value)}
                   placeholder="Observações sobre esta viagem..."
                   rows={3}
                   className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
@@ -49,7 +49,7 @@ export const ObservacoesSection: React.FC<ObservacoesSectionProps> = ({
                 />
                 <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                   <span>
-                    {item.dadosEditaveis.observacoes?.length || 0}/500 caracteres
+                    {item.observacoes?.length || 0}/500 caracteres
                   </span>
                   {observacaoAlterada && (
                     <span className="text-yellow-600 font-medium">
@@ -62,7 +62,7 @@ export const ObservacoesSection: React.FC<ObservacoesSectionProps> = ({
           })}
       </div>
 
-      {controleHorarios.filter(item => item.dadosEditaveis.jaFoiEditado || item.dadosEditaveis.observacoes).length === 0 && (
+      {controleHorarios.filter(item => item.jaFoiEditado || item.observacoes).length === 0 && (
         <div className="text-center py-8 text-gray-500">
           <FileText className="h-8 w-8 mx-auto mb-2 text-gray-300" />
           <p>Nenhuma viagem editada ainda.</p>

@@ -13,8 +13,8 @@ interface HeaderProps {
   onDescartarAlteracoes: () => void;
   onSalvarAlteracoes: () => void;
   saving: boolean;
-  onAtualizar: () => void;
-  loading: boolean;
+  onSincronizar: () => void;
+  sincronizando: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,8 +28,8 @@ export const Header: React.FC<HeaderProps> = ({
   onDescartarAlteracoes,
   onSalvarAlteracoes,
   saving,
-  onAtualizar,
-  loading
+  onSincronizar,
+  sincronizando
 }) => {
   return (
     <div className="bg-white shadow rounded-lg p-6">
@@ -93,14 +93,14 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           )}
 
-          {/* Botão Atualizar */}
+          {/* Botão Sincronizar com Globus */}
           <button
-            onClick={onAtualizar}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={onSincronizar}
+            disabled={sincronizando}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
+            <RefreshCw className={`h-4 w-4 ${sincronizando ? 'animate-spin' : ''}`} />
+            {sincronizando ? 'Sincronizando...' : 'Sincronizar Globus'}
           </button>
         </div>
       </div>

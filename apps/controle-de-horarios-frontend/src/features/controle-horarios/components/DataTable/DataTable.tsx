@@ -18,24 +18,17 @@ import {
   X,
   ClipboardList
 } from 'lucide-react';
-import { ControleHorarioItem, DadosEditaveis } from '../../types/controle-horarios.types';
+import { ControleHorarioItem, StatusControleHorarios, EstatisticasControleHorarios } from '../../types/controle-horarios.types';
 
 interface DataTableProps {
   controleHorarios: ControleHorarioItem[];
   controleHorariosOriginais: ControleHorarioItem[];
-  onInputChange: (viagemId: string, field: keyof DadosEditaveis, value: string) => void;
+  onInputChange: (viagemId: string, field: keyof ControleHorarioItem, value: string) => void;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
-  statusDados: {
-    existeViagensGlobus: boolean;
-  };
-  estatisticas: {
-    totalViagens: number;
-    viagensEditadas: number;
-    viagensNaoEditadas: number;
-    percentualEditado: number;
-  };
+  statusDados: StatusControleHorarios;
+  estatisticas: EstatisticasControleHorarios;
   temAlteracoesPendentes: boolean;
   contarAlteracoesPendentes: () => number;
 }
@@ -44,16 +37,16 @@ interface DataTableProps {
 interface DriverOptionsModalProps {
   driver: ControleHorarioItem;
   onClose: () => void;
-  onInputChange: (viagemId: string, field: keyof DadosEditaveis, value: string) => void;
+  onInputChange: (viagemId: string, field: keyof ControleHorarioItem, value: string) => void;
 }
 
 const DriverOptionsModal: React.FC<DriverOptionsModalProps> = ({
   driver, onClose, onInputChange
 }) => {
-  const [tempCracha, setTempCracha] = useState(driver.dadosEditaveis.crachaFuncionario || '');
+  const [tempCracha, setTempCracha] = useState(driver.crachaMotoristaEditado || '');
 
   const handleSave = () => {
-    onInputChange(driver.viagemGlobus.id, 'crachaFuncionario', tempCracha);
+    onInputChange(driver.id, 'crachaMotoristaEditado', tempCracha);
     onClose();
   };
 
@@ -67,12 +60,12 @@ const DriverOptionsModal: React.FC<DriverOptionsModalProps> = ({
           <h3 className="text-lg leading-6 font-medium text-gray-900">Opções do Motorista</h3>
           <div className="mt-2 px-7 py-3">
             <p className="text-sm text-gray-500 mb-2">
-              Motorista: <strong>{driver.viagemGlobus.nomeMotorista || 'Não informado'}</strong> (Cód: {driver.viagemGlobus.codMotorista})
+              Motorista: <strong>{driver.nomeMotoristaGlobus || 'Não informado'}</strong> (Cód: {driver.codMotorista})
             </p>
             
             {/* Botão Ver Escala */}
             <button
-              onClick={() => { alert(`Visualizando escala de ${driver.viagemGlobus.nomeMotorista}`); onClose(); }}
+              onClick={() => { alert(`Visualizando escala de ${driver.nomeMotoristaGlobus}`); onClose(); }}
               className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mb-3"
             >
               <ClipboardList className="h-4 w-4 mr-2" /> Ver Escala
@@ -113,6 +106,7 @@ const DriverOptionsModal: React.FC<DriverOptionsModalProps> = ({
     </div>
   );
 };
+// Force type re-evaluation
 export const DataTable: React.FC<DataTableProps> = ({
   controleHorarios,
   controleHorariosOriginais,
@@ -195,10 +189,10 @@ export const DataTable: React.FC<DataTableProps> = ({
     if (!original) return false;
     
     return (
-      item.dadosEditaveis.numeroCarro !== original.dadosEditaveis.numeroCarro ||
-      item.dadosEditaveis.informacaoRecolhe !== original.dadosEditaveis.informacaoRecolhe ||
-      item.dadosEditaveis.crachaFuncionario !== original.dadosEditaveis.crachaFuncionario ||
-      item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes
+      item.numeroCarro !== original.numeroCarro ||
+      item.informacaoRecolhe !== original.informacaoRecolhe ||
+      item.crachaMotoristaEditado !== original.crachaMotoristaEditado ||
+      item.observacoes !== original.observacoes
     );
   };
 
@@ -281,10 +275,10 @@ export const DataTable: React.FC<DataTableProps> = ({
             <tbody className="bg-white divide-y divide-gray-200">
               {controleHorarios.map((item, index) => {
                 const foiAlterado = isRowChanged(item, index);
-                const isExpanded = expandedRows.has(item.viagemGlobus.id);
+                const isExpanded = expandedRows.has(item.id);
 
                 return (
-                  <React.Fragment key={item.viagemGlobus.id}>
+                  <React.Fragment key={item.id}>
                     {/* Linha Principal */}
                     <tr 
                       className={`transition-colors hover:bg-gray-50 ${
@@ -294,7 +288,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                       {/* Botão de Expansão */}
                       <td className="px-3 py-4">
                         <button
-                          onClick={() => toggleRowExpansion(item.viagemGlobus.id)}
+                          onClick={() => toggleRowExpansion(item.id)}
                           className="text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600"
                         >
                           {isExpanded ? (
@@ -310,13 +304,13 @@ export const DataTable: React.FC<DataTableProps> = ({
                         <div className="flex items-start space-x-3">
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium text-gray-900">
-                              {item.viagemGlobus.codigoLinha} - Serviço {item.viagemGlobus.codServicoNumero}
+                              {item.codigoLinha} - Serviço {item.codServicoNumero}
                             </div>
-                            <div className="text-sm text-gray-500 truncate max-w-xs" title={item.viagemGlobus.nomeLinha}>
-                              {item.viagemGlobus.nomeLinha}
+                            <div className="text-sm text-gray-500 truncate max-w-xs" title={item.nomeLinha}>
+                              {item.nomeLinha}
                             </div>
                             <div className="mt-2">
-                              {renderSetorBadge(item.viagemGlobus.setorPrincipal)}
+                              {renderSetorBadge(item.setorPrincipalLinha)}
                             </div>
                           </div>
                         </div>
@@ -325,15 +319,15 @@ export const DataTable: React.FC<DataTableProps> = ({
                       {/* Sentido / Horários */}
                       <td className="px-6 py-4">
                         <div className="space-y-2">
-                          {renderSentidoBadge(item.viagemGlobus.sentidoTexto)}
+                          {renderSentidoBadge(item.flgSentido)}
                           <div className="flex items-center text-sm text-gray-600">
                             <Clock className="h-4 w-4 mr-1 text-gray-400" />
                             <span className="font-mono">
-                              {formatTime(item.viagemGlobus.horSaidaTime)} → {formatTime(item.viagemGlobus.horChegadaTime)}
+                              {formatTime(item.horaSaida)} → {formatTime(item.horaChegada)}
                             </span>
                           </div>
                           <div className="text-xs text-gray-500">
-                            {item.viagemGlobus.duracaoMinutos}min • {item.viagemGlobus.periodoDoDia}
+                            {item.duracaoMinutos}min • {item.descTipoDia}
                           </div>
                         </div>
                       </td>
@@ -344,11 +338,11 @@ export const DataTable: React.FC<DataTableProps> = ({
                           <User className="h-4 w-4 text-gray-400 mr-2" />
                           <div>
                             <div className="text-sm font-medium text-gray-900">
-                              {item.viagemGlobus.nomeMotorista || 'Não informado'}
+                              {item.nomeMotoristaGlobus || 'Não informado'}
                             </div>
-                            {item.viagemGlobus.codMotorista && (
+                            {item.codMotorista && (
                               <div className="text-xs text-gray-500">
-                                Cód: {item.viagemGlobus.codMotorista}
+                                Cód: {item.codMotorista}
                               </div>
                             )}
                           </div>
@@ -359,12 +353,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                       <td className="px-6 py-4">
                         <input
                           type="text"
-                          value={item.dadosEditaveis.numeroCarro || ''}
-                          onChange={(e) => onInputChange(item.viagemGlobus.id, 'numeroCarro', e.target.value)}
+                          value={item.numeroCarro || ''}
+                          onChange={(e) => onInputChange(item.id, 'numeroCarro', e.target.value)}
                           placeholder="Número do veículo"
                           className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                             controleHorariosOriginais[index] && 
-                            item.dadosEditaveis.numeroCarro !== controleHorariosOriginais[index].dadosEditaveis.numeroCarro
+                            item.numeroCarro !== controleHorariosOriginais[index].numeroCarro
                               ? 'border-yellow-400 bg-yellow-50'
                               : 'border-gray-300'
                           }`}
@@ -375,12 +369,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                       <td className="px-6 py-4">
                         <input
                           type="text"
-                          value={item.dadosEditaveis.crachaFuncionario || ''}
-                          onChange={(e) => onInputChange(item.viagemGlobus.id, 'crachaFuncionario', e.target.value)}
+                          value={item.crachaMotoristaEditado || ''}
+                          onChange={(e) => onInputChange(item.id, 'crachaMotoristaEditado', e.target.value)}
                           placeholder="Crachá funcionário"
                           className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                             controleHorariosOriginais[index] && 
-                            item.dadosEditaveis.crachaFuncionario !== controleHorariosOriginais[index].dadosEditaveis.crachaFuncionario
+                            item.crachaMotoristaEditado !== controleHorariosOriginais[index].crachaMotoristaEditado
                               ? 'border-yellow-400 bg-yellow-50'
                               : 'border-gray-300'
                           }`}
@@ -395,7 +389,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                               <Edit3 className="h-3 w-3" />
                               Alterado
                             </span>
-                          ) : item.dadosEditaveis.jaFoiEditado ? (
+                          ) : item.jaFoiEditado ? (
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-200">
                               <CheckCircle className="h-3 w-3" />
                               Salvo
@@ -407,15 +401,15 @@ export const DataTable: React.FC<DataTableProps> = ({
                             </span>
                           )}
                           
-                          {item.dadosEditaveis.usuarioEdicao && (
+                          {item.usuarioEdicao && (
                             <div className="text-xs text-gray-500">
-                              por {item.dadosEditaveis.usuarioEdicao}
+                              por {item.usuarioEdicao}
                             </div>
                           )}
                           
-                          {item.dadosEditaveis.updatedAt && (
+                          {item.updatedAt && (
                             <div className="text-xs text-gray-400">
-                              {new Date(item.dadosEditaveis.updatedAt).toLocaleString('pt-BR')}
+                              {new Date(item.updatedAt).toLocaleString('pt-BR')}
                             </div>
                           )}
                         </div>
@@ -438,37 +432,25 @@ export const DataTable: React.FC<DataTableProps> = ({
                                   <div>
                                     <span className="text-gray-500">Origem:</span>
                                     <div className="font-medium text-gray-900">
-                                      {item.viagemGlobus.localOrigemViagem || 'N/A'}
+                                      {item.localOrigemViagem || 'N/A'}
                                     </div>
                                   </div>
                                   <div>
                                     <span className="text-gray-500">Destino:</span>
                                     <div className="font-medium text-gray-900">
-                                      {item.viagemGlobus.localDestinoViagem || 'N/A'}
+                                      {item.localDestinoLinha || 'N/A'}
                                     </div>
                                   </div>
                                   <div>
                                     <span className="text-gray-500">Terminal:</span>
                                     <div className="font-medium text-gray-900">
-                                      {item.viagemGlobus.codLocalTerminalSec || 'N/A'}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-500">Localidade:</span>
-                                    <div className="font-medium text-gray-900">
-                                      {item.viagemGlobus.codLocalidade || 'N/A'}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-500">Serviço Completo:</span>
-                                    <div className="font-medium text-gray-900">
-                                      {item.viagemGlobus.codServicoCompleto || 'N/A'}
+                                      {item.codLocalTerminalSec || 'N/A'}
                                     </div>
                                   </div>
                                   <div>
                                     <span className="text-gray-500">Total Horários:</span>
                                     <div className="font-medium text-gray-900">
-                                      {item.viagemGlobus.totalHorarios || 'N/A'}
+                                      {item.totalHorarios || 'N/A'}
                                     </div>
                                   </div>
                                 </div>
@@ -485,13 +467,13 @@ export const DataTable: React.FC<DataTableProps> = ({
                                 <div className="text-sm">
                                   <span className="text-gray-500">Nome:</span>
                                   <div className="font-medium text-gray-900">
-                                    {item.viagemGlobus.nomeCobrador || 'Não informado'}
+                                    {item.nomeCobradorGlobus || 'Não informado'}
                                   </div>
                                 </div>
                                 <div className="text-sm">
                                   <span className="text-gray-500">Código:</span>
                                   <div className="font-medium text-gray-900">
-                                    {item.viagemGlobus.codCobrador || 'N/A'}
+                                    {item.codCobrador || 'N/A'}
                                   </div>
                                 </div>
                               </div>
@@ -510,12 +492,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                                   </label>
                                   <input
                                     type="text"
-                                    value={item.dadosEditaveis.informacaoRecolhe || ''}
-                                    onChange={(e) => onInputChange(item.viagemGlobus.id, 'informacaoRecolhe', e.target.value)}
+                                    value={item.informacaoRecolhe || ''}
+                                    onChange={(e) => onInputChange(item.id, 'informacaoRecolhe', e.target.value)}
                                     placeholder="Informações sobre recolhimento"
                                     className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                                       controleHorariosOriginais[index] && 
-                                      item.dadosEditaveis.informacaoRecolhe !== controleHorariosOriginais[index].dadosEditaveis.informacaoRecolhe
+                                      item.informacaoRecolhe !== controleHorariosOriginais[index].informacaoRecolhe
                                         ? 'border-yellow-400 bg-yellow-50'
                                         : 'border-gray-300'
                                     }`}
@@ -527,16 +509,16 @@ export const DataTable: React.FC<DataTableProps> = ({
                                     Observações
                                   </label>
                                   <div className="relative">
-                                    {editingObservacoes === item.viagemGlobus.id ? (
+                                    {editingObservacoes === item.id ? (
                                       <div className="space-y-2">
                                         <textarea
-                                          value={item.dadosEditaveis.observacoes || ''}
-                                          onChange={(e) => onInputChange(item.viagemGlobus.id, 'observacoes', e.target.value)}
+                                          value={item.observacoes || ''}
+                                          onChange={(e) => onInputChange(item.id, 'observacoes', e.target.value)}
                                           placeholder="Observações gerais"
                                           rows={4}
                                           className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                                             controleHorariosOriginais[index] && 
-                                            item.dadosEditaveis.observacoes !== controleHorariosOriginais[index].dadosEditaveis.observacoes
+                                            item.observacoes !== controleHorariosOriginais[index].observacoes
                                               ? 'border-yellow-400 bg-yellow-50'
                                               : 'border-gray-300'
                                           }`}
@@ -560,15 +542,15 @@ export const DataTable: React.FC<DataTableProps> = ({
                                       </div>
                                     ) : (
                                       <div
-                                        onClick={() => setEditingObservacoes(item.viagemGlobus.id)}
+                                        onClick={() => setEditingObservacoes(item.id)}
                                         className={`min-h-[80px] w-full px-3 py-2 text-sm border rounded-md cursor-text transition-colors ${
                                           controleHorariosOriginais[index] && 
-                                          item.dadosEditaveis.observacoes !== controleHorariosOriginais[index].dadosEditaveis.observacoes
+                                          item.observacoes !== controleHorariosOriginais[index].observacoes
                                             ? 'border-yellow-400 bg-yellow-50'
                                             : 'border-gray-300 hover:border-gray-400'
                                         }`}
                                       >
-                                        {item.dadosEditaveis.observacoes || (
+                                        {item.observacoes || (
                                           <span className="text-gray-400">Clique para adicionar observações...</span>
                                         )}
                                       </div>
@@ -580,31 +562,31 @@ export const DataTable: React.FC<DataTableProps> = ({
                           </div>
 
                           {/* Informações de Auditoria */}
-                          {(item.dadosEditaveis.usuarioEdicao || item.dadosEditaveis.updatedAt || item.dadosEditaveis.createdAt) && (
+                          {(item.usuarioEdicao || item.updatedAt || item.createdAt) && (
                             <div className="mt-6 pt-4 border-t border-gray-200">
                               <div className="flex items-center justify-between text-xs text-gray-500">
                                 <div className="flex items-center space-x-4">
-                                  {item.dadosEditaveis.usuarioEdicao && (
+                                  {item.usuarioEdicao && (
                                     <div className="flex items-center">
                                       <User className="h-3 w-3 mr-1" />
-                                      <span>Editado por: <strong>{item.dadosEditaveis.usuarioEdicao}</strong></span>
-                                      {item.dadosEditaveis.usuarioEmail && (
-                                        <span className="ml-1 text-gray-400">({item.dadosEditaveis.usuarioEmail})</span>
+                                      <span>Editado por: <strong>{item.usuarioEdicao}</strong></span>
+                                      {item.usuarioEmail && (
+                                        <span className="ml-1 text-gray-400">({item.usuarioEmail})</span>
                                       )}
                                     </div>
                                   )}
                                 </div>
                                 <div className="flex items-center space-x-4">
-                                  {item.dadosEditaveis.createdAt && (
+                                  {item.createdAt && (
                                     <div className="flex items-center">
                                       <Calendar className="h-3 w-3 mr-1" />
-                                      <span>Criado: {new Date(item.dadosEditaveis.createdAt).toLocaleString('pt-BR')}</span>
+                                      <span>Criado: {new Date(item.createdAt).toLocaleString('pt-BR')}</span>
                                     </div>
                                   )}
-                                  {item.dadosEditaveis.updatedAt && (
+                                  {item.updatedAt && (
                                     <div className="flex items-center">
                                       <Clock className="h-3 w-3 mr-1" />
-                                      <span>Atualizado: {new Date(item.dadosEditaveis.updatedAt).toLocaleString('pt-BR')}</span>
+                                      <span>Atualizado: {new Date(item.updatedAt).toLocaleString('pt-BR')}</span>
                                     </div>
                                   )}
                                 </div>

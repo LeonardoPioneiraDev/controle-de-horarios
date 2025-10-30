@@ -2,44 +2,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { controleHorariosService } from '../services/controle-horarios.service';
-import { 
-  ControleHorarioItem, 
-  FiltrosControleHorarios, 
-  OpcoesControleHorarios, 
-  DadosEditaveis,
-  UsuarioAtual
+import {
+  ControleHorarioItem,
+  FiltrosControleHorarios,
+  OpcoesControleHorarios,
+  UsuarioAtual,
+  SincronizacaoResponse,
+  SincronizarControleHorariosDto,
+  StatusControleHorarios,
+  EstatisticasControleHorarios
 } from '../types/controle-horarios.types';
 
-// ✅ Interface para as estatísticas locais
-interface EstatisticasLocal {
-  totalViagens: number;
-  viagensEditadas: number;
-  viagensNaoEditadas: number;
-  percentualEditado: number;
-  setoresUnicos: string[];
-  linhasUnicas: string[];
-  servicosUnicos: string[];
-  motoristasUnicos: string[];
-  cobradoresUnicos: string[];
-  terminaisUnicos: string[];
-}
-
-// ✅ Interface para status dos dados
-interface StatusDados {
-  existeViagensGlobus: boolean;
-  totalViagensGlobus: number;
-  viagensEditadas: number;
-  percentualEditado: number;
-  ultimaAtualizacao: Date | null;
-  totalMotoristas: number;
-  totalCobradores: number;
-  totalLinhas: number;
-  totalServicos: number;
-  totalSetores: number;
-}
-
-export const useControleHorarios = () => {
-  // ✅ Usar o hook useAuth
+export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
   const { user } = useAuth();
 
   // ✅ Função para obter dados do usuário atual
@@ -107,27 +81,22 @@ export const useControleHorarios = () => {
     motoristas: [],
     locaisOrigem: [],
     locaisDestino: [],
-    cobradores: [],
-    terminais: [],
-    localidades: [],
   });
 
   // ✅ Estatísticas com interface completa
-  const [estatisticas, setEstatisticas] = useState<EstatisticasLocal>({
+  const [estatisticas, setEstatisticas] = useState<EstatisticasControleHorarios>({
+    dataReferencia: '',
     totalViagens: 0,
     viagensEditadas: 0,
     viagensNaoEditadas: 0,
     percentualEditado: 0,
+    ultimaAtualizacao: null,
     setoresUnicos: [],
     linhasUnicas: [],
     servicosUnicos: [],
-    motoristasUnicos: [],
-    cobradoresUnicos: [],
-    terminaisUnicos: [],
   });
 
-  // ✅ Status dos dados com interface completa
-  const [statusDados, setStatusDados] = useState<StatusDados>({
+  const [statusDados, setStatusDados] = useState<StatusControleHorarios>({
     existeViagensGlobus: false,
     totalViagensGlobus: 0,
     viagensEditadas: 0,
@@ -150,13 +119,9 @@ export const useControleHorarios = () => {
     try {
       console.log('🔍 Iniciando busca com filtros:', { dataReferencia, filtros });
       
-      // ✅ CORRIGIDO: Filtrar apenas campos suportados pelo backend
+      // Todos os campos em FiltrosControleHorarios são agora suportados pelo backend
       const filtrosLimpos = Object.fromEntries(
-        Object.entries(filtros).filter(([key, value]) => {
-          // Remover campos que o backend não suporta
-          const camposNaoSuportados = ['statusEdicao', 'nomeCobrador', 'codCobrador', 'numeroCarro', 'informacaoRecolhe'];
-          return !camposNaoSuportados.includes(key) && value !== undefined && value !== null && value !== '';
-        })
+        Object.entries(filtros).filter(([key, value]) => value !== undefined && value !== null && value !== '')
       );
       
       console.log('🧹 Filtros limpos para envio:', filtrosLimpos);
@@ -166,39 +131,20 @@ export const useControleHorarios = () => {
       console.log('�� Resposta completa da API:', response);
 
       if (response.success) {
-        // ✅ Processar dados com informações do usuário
-        const dadosProcessados = response.data.map(item => ({
-          ...item,
-          dadosEditaveis: {
-            ...item.dadosEditaveis,
-            usuarioEdicao: item.dadosEditaveis.usuarioEdicao || undefined,
-            usuarioEmail: item.dadosEditaveis.usuarioEmail || undefined,
-            updatedAt: item.dadosEditaveis.updatedAt ? new Date(item.dadosEditaveis.updatedAt) : undefined,
-            createdAt: item.dadosEditaveis.createdAt ? new Date(item.dadosEditaveis.createdAt) : undefined,
-          }
-        }));
-
-        setControleHorarios(dadosProcessados);
-        setControleHorariosOriginais(JSON.parse(JSON.stringify(dadosProcessados)));
+        // Os dados já vêm achatados do backend, sem a necessidade de dadosProcessados
+        setControleHorarios(response.data);
+        setControleHorariosOriginais(JSON.parse(JSON.stringify(response.data)));
         
         // ✅ Atualizar estatísticas com dados completos
         setEstatisticas({
-          totalViagens: response.estatisticas.totalViagens || 0,
-          viagensEditadas: response.estatisticas.viagensEditadas || 0,
-          viagensNaoEditadas: response.estatisticas.viagensNaoEditadas || 0,
-          percentualEditado: response.estatisticas.percentualEditado || 0,
-          setoresUnicos: response.estatisticas.setoresUnicos || [],
-          linhasUnicas: response.estatisticas.linhasUnicas || [],
-          servicosUnicos: response.estatisticas.servicosUnicos || [],
-          motoristasUnicos: response.estatisticas.motoristasUnicos || [],
-          cobradoresUnicos: response.estatisticas.cobradoresUnicos || [],
-          terminaisUnicos: response.estatisticas.terminaisUnicos || [],
+          ...response.estatisticas,
+          ultimaAtualizacao: response.estatisticas.ultimaAtualizacao ? new Date(response.estatisticas.ultimaAtualizacao) : null,
         });
         
         setTemAlteracoesPendentes(false);
         
         console.log('✅ Estado atualizado:', {
-          totalItens: dadosProcessados.length,
+          totalItens: response.data.length,
           estatisticas: response.estatisticas
         });
       } else {
@@ -252,9 +198,6 @@ export const useControleHorarios = () => {
           motoristas: response.data.motoristas || [],
           locaisOrigem: response.data.locaisOrigem || [],
           locaisDestino: response.data.locaisDestino || [],
-          cobradores: response.data.cobradores || [],
-          terminais: response.data.terminais || [],
-          localidades: response.data.localidades || [],
         });
       }
     } catch (err) {
@@ -280,10 +223,10 @@ export const useControleHorarios = () => {
         if (!original) return true;
         
         return (
-          item.dadosEditaveis.numeroCarro !== original.dadosEditaveis.numeroCarro ||
-          item.dadosEditaveis.informacaoRecolhe !== original.dadosEditaveis.informacaoRecolhe ||
-          item.dadosEditaveis.crachaFuncionario !== original.dadosEditaveis.crachaFuncionario ||
-          item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes
+          item.numeroCarro !== original.numeroCarro ||
+          item.informacaoRecolhe !== original.informacaoRecolhe ||
+          item.crachaMotoristaEditado !== original.crachaMotoristaEditado ||
+          item.observacoes !== original.observacoes
         );
       });
 
@@ -300,11 +243,11 @@ export const useControleHorarios = () => {
         usuarioEdicao: usuarioAtual.nome,
         usuarioEmail: usuarioAtual.email,
         controles: itensAlterados.map(item => ({
-          viagemGlobusId: item.viagemGlobus.id,
-          numeroCarro: item.dadosEditaveis.numeroCarro?.trim() || undefined,
-          informacaoRecolhe: item.dadosEditaveis.informacaoRecolhe?.trim() || undefined,
-          crachaFuncionario: item.dadosEditaveis.crachaFuncionario?.trim() || undefined,
-          observacoes: item.dadosEditaveis.observacoes?.trim() || undefined,
+          viagemGlobusId: item.viagemGlobusId,
+          numeroCarro: item.numeroCarro?.trim() || undefined,
+          informacaoRecolhe: item.informacaoRecolhe?.trim() || undefined,
+          crachaFuncionario: item.crachaMotoristaEditado?.trim() || undefined,
+          observacoes: item.observacoes?.trim() || undefined,
         }))
       };
 
@@ -340,17 +283,38 @@ export const useControleHorarios = () => {
     setError(null);
   };
 
+  // ✅ Função para sincronizar dados com o Globus
+  const sincronizarControleHorarios = useCallback(async (overwrite: boolean = false) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await controleHorariosService.sincronizarControleHorarios(dataReferencia, { overwrite });
+      if (response.success) {
+        console.log('✅ Sincronização bem-sucedida:', response.message);
+        await Promise.all([
+          buscarControleHorarios(),
+          verificarStatusDados(),
+          buscarOpcoesFiltros()
+        ]);
+      } else {
+        setError(response.message || 'Erro ao sincronizar com o Globus');
+      }
+    } catch (err: any) {
+      console.error('❌ Erro ao sincronizar:', err);
+      setError(err.response?.data?.message || err.message || 'Erro ao sincronizar com o Globus');
+    } finally {
+      setLoading(false);
+    }
+  }, [dataReferencia, buscarControleHorarios, verificarStatusDados]);
+
   // ✅ Função de edição aprimorada
-  const handleInputChange = useCallback((viagemId: string, field: keyof DadosEditaveis, value: string) => {
+  const handleInputChange = useCallback((viagemId: string, field: keyof ControleHorarioItem, value: string) => {
     setControleHorarios(prev => 
       prev.map(item => 
-        item.viagemGlobus.id === viagemId
+        item.viagemGlobusId === viagemId
           ? {
               ...item,
-              dadosEditaveis: {
-                ...item.dadosEditaveis,
-                [field]: value,
-              }
+              [field]: value,
             }
           : item
       )
@@ -364,6 +328,8 @@ export const useControleHorarios = () => {
     setFiltros({
       limite: 100,
       pagina: 0,
+      ordenarPor: "horaSaida",
+      ordem: "ASC",
     });
   };
 
@@ -407,6 +373,8 @@ export const useControleHorarios = () => {
     if (filtros.crachaMotorista) count++;
     if (filtros.buscaTexto) count++;
     if (filtros.editadoPorUsuario === true || filtros.editadoPorUsuario === false) count++;
+    if (filtros.ordenarPor && filtros.ordenarPor !== "horaSaida") count++;
+    if (filtros.ordem && filtros.ordem !== "ASC") count++;
     return count;
   };
 
@@ -416,25 +384,19 @@ export const useControleHorarios = () => {
       if (!original) return true;
       
       return (
-        item.dadosEditaveis.numeroCarro !== original.dadosEditaveis.numeroCarro ||
-        item.dadosEditaveis.informacaoRecolhe !== original.dadosEditaveis.informacaoRecolhe ||
-        item.dadosEditaveis.crachaFuncionario !== original.dadosEditaveis.crachaFuncionario ||
-        item.dadosEditaveis.observacoes !== original.dadosEditaveis.observacoes
+        item.numeroCarro !== original.numeroCarro ||
+        item.informacaoRecolhe !== original.informacaoRecolhe ||
+        item.crachaMotoristaEditado !== original.crachaMotoristaEditado ||
+        item.observacoes !== original.observacoes
       );
     }).length;
   };
 
   // ✅ Efeitos
   useEffect(() => {
-    if (dataReferencia) {
-      Promise.all([
-        verificarStatusDados(),
-        buscarOpcoesFiltros(),
-      ]).then(() => {
-        buscarControleHorarios();
-      });
-    }
-  }, [dataReferencia, verificarStatusDados, buscarOpcoesFiltros, buscarControleHorarios]);
+    // Initial load or dataReferencia change should not trigger automatic data fetch
+    // Data will be fetched via manual sync or filter application
+  }, [dataReferencia]);
 
   // ✅ Efeito para recarregar quando filtros mudam
   useEffect(() => {
@@ -468,6 +430,7 @@ export const useControleHorarios = () => {
     buscarOpcoesFiltros,
     salvarTodasAlteracoes,
     descartarAlteracoes,
+    sincronizarControleHorarios,
     handleInputChange,
     
     // Funções de filtros
