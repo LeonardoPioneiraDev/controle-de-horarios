@@ -14,12 +14,12 @@ const Header: FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpande
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-30 bg-primary-800 shadow-md py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+    <header className="sticky top-0 z-30 bg-primary-900 shadow-md py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
       {/* Left Section: Logo and Company Name */}
       <div className="flex items-center gap-2">
         {/* Placeholder for Logo */}
         <img src={logo} alt="Logo" className="h-8 w-8" /> {/* Replace with actual logo path */}
-        <span className="text-secondary-100 text-lg font-semibold hidden sm:block">Viacao Pioneira Ltda</span>
+        <span className="text-accent-500 text-lg font-semibold hidden sm:block">Viacao Pioneira Ltda</span>
       </div>
 
       {/* Center Section: System Name (Mobile & Desktop) */}
@@ -34,8 +34,7 @@ const Header: FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpande
           {!sidebarOpen ? (
             <button
               type="button"
-              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-secondary-100"
-              onClick={() => setSidebarOpen(true)}
+              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-accent-500"
             >
               <span className="sr-only">Open sidebar</span>
               <Menu className="h-6 w-6" aria-hidden="true" />
@@ -43,7 +42,7 @@ const Header: FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpande
           ) : (
             <button
               type="button"
-              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-secondary-100"
+              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-accent-500"
               onClick={() => setSidebarOpen(false)}
             >
               <span className="sr-only">Close sidebar</span>
@@ -56,13 +55,13 @@ const Header: FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpande
         {(!sidebarOpen && !isSidebarExpanded) && (
           <div className="hidden lg:flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-500">
-              <span className="text-sm font-medium text-primary-900">
+              <span className="text-primary-900 text-sm font-medium">
                 {user?.firstName?.charAt(0)?.toUpperCase()}
               </span>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center justify-center gap-2 rounded-md bg-accent-600 px-3 py-2 text-sm text-primary-900 hover:bg-accent-500 transition-colors"
+              className="flex items-center justify-center gap-2 rounded-md bg-accent-500 px-3 py-2 text-sm text-primary-900 hover:bg-accent-600 transition-colors"
             >
               <LogOut className="h-4 w-4" />
               Sair

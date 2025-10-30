@@ -42,6 +42,6 @@ export interface FiltrosComparacao {
   sentidoCompativel?: boolean;
   horarioCompativel?: boolean;
   servicoCompativel?: boolean;
-  limite?: number;
+  limit?: number;
   page?: number;
 }

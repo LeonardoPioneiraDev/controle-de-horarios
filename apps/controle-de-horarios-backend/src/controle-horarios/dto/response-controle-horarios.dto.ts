@@ -1,47 +1,53 @@
 // src/modules/controle-horarios/dto/controle-horario-response.dto.ts
 
-export interface ViagemGlobusBaseDto {
+export interface ControleHorarioItemDto {
   id: string;
-  codigoLinha: string;
-  nomeLinha: string;
-  codDestinoLinha?: number;
+  viagemGlobusId: string;
+  dataReferencia: string;
+
+  // Campos do Globus
+  setorPrincipalLinha?: string;
+  codLocalTerminalSec?: number;
+  codigoLinha?: string;
+  nomeLinha?: string;
+  codDestinoLinha?: string;
   localDestinoLinha?: string;
-  codServicoNumero: string;
-  sentidoTexto: string;
-  horSaidaTime: string;
-  horChegadaTime: string;
-  nomeMotorista: string;
-  setorPrincipal: string;
-  localOrigemViagem: string;
-  duracaoMinutos: number;
-  periodoDoDia: string;
-  flgSentido: string;
+  flgSentido?: string;
   descTipoDia?: string;
-  codOrigemViagem?: number;
+  horaSaida?: string;
+  horaChegada?: string;
+  codOrigemViagem?: string;
+  localOrigemViagem?: string;
+  codServicoNumero?: string;
   codAtividade?: number;
   nomeAtividade?: string;
   flgTipo?: string;
-  crachaMotorista?: string;
-  chapaFuncMotorista?: string;
-  crachaCobrador?: string;
-  chapaFuncCobrador?: string;
-}
+  codMotorista?: string;
+  nomeMotoristaGlobus?: string;
+  crachaMotoristaGlobus?: string;
+  chapaFuncMotoristaGlobus?: string;
+  codCobrador?: string;
+  nomeCobradorGlobus?: string;
+  crachaCobradorGlobus?: string;
+  chapaFuncCobradorGlobus?: string;
+  totalHorarios?: number;
 
-export interface DadosEditaveisDto {
-  id?: string;
+  // Campos Editáveis
   numeroCarro?: string;
+  nomeMotoristaEditado?: string;
+  crachaMotoristaEditado?: string;
+  nomeCobradorEditado?: string;
+  crachaCobradorEditado?: string;
   informacaoRecolhe?: string;
-  crachaFuncionario?: string;
   observacoes?: string;
+
+  // Auditoria e Status
   usuarioEdicao?: string;
   usuarioEmail?: string;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  isAtivo: boolean;
   jaFoiEditado: boolean;
-}
-
-export interface ControleHorarioItemDto {
-  viagemGlobus: ViagemGlobusBaseDto;
-  dadosEditaveis: DadosEditaveisDto;
 }
 
 export interface EstatisticasControleHorariosDto {

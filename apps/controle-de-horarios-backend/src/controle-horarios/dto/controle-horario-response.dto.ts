@@ -1,47 +1,52 @@
 // src/modules/controle-horarios/dto/controle-horario-response.dto.ts
 
-export interface ViagemGlobusBaseDto {
-  id: string;
-  codigoLinha: string;
-  nomeLinha: string;
-  codDestinoLinha?: number;
+export interface ControleHorarioItemDto {
+  // Campos do ControleHorario (dados do Globus + editáveis)
+  id?: string;
+  viagemGlobusId: string;
+  dataReferencia: string;
+
+  setorPrincipalLinha?: string;
+  codLocalTerminalSec?: number;
+  codigoLinha?: string;
+  nomeLinha?: string;
+  codDestinoLinha?: string;
   localDestinoLinha?: string;
-  codServicoNumero: string;
-  sentidoTexto: string;
-  horSaidaTime: string;
-  horChegadaTime: string;
-  nomeMotorista: string;
-  setorPrincipal: string;
-  localOrigemViagem: string;
-  duracaoMinutos: number;
-  periodoDoDia: string;
-  flgSentido: string;
+  flgSentido?: string;
   descTipoDia?: string;
-  codOrigemViagem?: number;
+  horaSaida?: string;
+  horaChegada?: string;
+  codOrigemViagem?: string;
+  localOrigemViagem?: string;
+  codServicoNumero?: string;
   codAtividade?: number;
   nomeAtividade?: string;
   flgTipo?: string;
-  crachaMotorista?: string;
-  chapaFuncMotorista?: string;
-  crachaCobrador?: string;
-  chapaFuncCobrador?: string;
-}
+  codMotorista?: string;
+  nomeMotoristaGlobus?: string;
+  crachaMotoristaGlobus?: string;
+  chapaFuncMotoristaGlobus?: string;
+  codCobrador?: string;
+  nomeCobradorGlobus?: string;
+  crachaCobradorGlobus?: string;
+  chapaFuncCobradorGlobus?: string;
+  totalHorarios?: number;
 
-export interface DadosEditaveisDto {
-  id?: string;
   numeroCarro?: string;
+  nomeMotoristaEditado?: string;
+  crachaMotoristaEditado?: string;
+  nomeCobradorEditado?: string;
+  crachaCobradorEditado?: string;
   informacaoRecolhe?: string;
-  crachaFuncionario?: string;
   observacoes?: string;
+
   usuarioEdicao?: string;
   usuarioEmail?: string;
+  createdAt?: Date;
   updatedAt?: Date;
-  jaFoiEditado: boolean;
-}
+  isAtivo?: boolean;
 
-export interface ControleHorarioItemDto {
-  viagemGlobus: ViagemGlobusBaseDto;
-  dadosEditaveis: DadosEditaveisDto;
+  jaFoiEditado: boolean;
 }
 
 export interface EstatisticasControleHorariosDto {
@@ -52,6 +57,7 @@ export interface EstatisticasControleHorariosDto {
   setoresUnicos: string[];
   linhasUnicas: string[];
   servicosUnicos: string[];
+  ultimaAtualizacao?: Date;
 }
 
 export interface ControleHorarioResponseDto {

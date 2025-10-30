@@ -56,13 +56,13 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
 
       <div
         ref={sidebarRef}
-        className={`fixed top-16 bottom-0 left-0 z-50 bg-primary-800 shadow-2xl transform transition-all duration-300 ease-in-out ${
+        className={`fixed top-16 bottom-0 left-0 z-50 bg-primary-900 shadow-2xl transform transition-all duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'
         } ${isSidebarExpanded ? 'lg:w-64' : 'lg:w-20'} lg:translate-x-0 lg:static lg:inset-y-0`}
       >
         <div className="flex h-full flex-col">
           {/* Logo and Toggle Button */}
-          <div className={`flex h-16 shrink-0 items-center border-b border-primary-700 ${isSidebarExpanded ? 'px-6' : 'justify-center'}`}>
+          <div className={`flex h-16 shrink-0 items-center border-b border-accent-500 ${isSidebarExpanded ? 'px-6' : 'justify-center'}`}>
             {isSidebarExpanded ? (
               <h1 className="text-xl font-bold text-accent-500">Controle de Horários</h1>
             ) : (
@@ -71,7 +71,7 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
             {/* Toggle button for desktop sidebar */}
             <button
               type="button"
-              className={`-m-2.5 p-2.5 text-secondary-100 ${isSidebarExpanded ? 'ml-auto' : 'mx-auto'}`}
+              className={`-m-2.5 p-2.5 text-accent-500 ${isSidebarExpanded ? 'ml-auto' : 'mx-auto'}`}
               onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
             >
               <span className="sr-only">Toggle sidebar</span>
@@ -96,14 +96,14 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
                       to={item.href}
                       className={`group flex items-center gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors duration-200 ease-in-out ${
                         isActive
-                          ? 'bg-accent-600 text-primary-900'
-                          : 'text-secondary-300 hover:text-white hover:bg-primary-700'
+                          ? 'bg-accent-500 text-primary-900'
+                          : 'text-accent-500 hover:text-primary-900 hover:bg-accent-500'
                       }`}
                       onClick={() => setSidebarOpen(false)} // Close sidebar on navigation
                     >
                       <item.icon
                         className={`h-5 w-5 shrink-0 ${
-                          isActive ? 'text-primary-900' : 'text-secondary-400 group-hover:text-white'
+                          isActive ? 'text-primary-900' : 'text-accent-500 group-hover:text-primary-900'
                         }`}
                       />
                       {isSidebarExpanded && item.name}
@@ -115,23 +115,23 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
 
             {/* ✅ SEÇÃO DE INFORMAÇÕES DO SISTEMA */}
             {isSidebarExpanded && (
-              <div className="mt-auto pt-4 border-t border-primary-700">
-                <div className="text-xs text-secondary-400 space-y-1">
+              <div className="mt-auto pt-4 border-t border-accent-500">
+                <div className="text-xs text-accent-500 space-y-1">
                   <div className="flex justify-between">
                     <span>Ambiente:</span>
-                    <span className="font-medium text-green-400">Development</span>
+                    <span className="font-medium text-accent-500">Development</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Backend:</span>
-                    <span className="font-medium text-secondary-200">:3335</span>
+                    <span className="font-medium text-accent-500">:3335</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Frontend:</span>
-                    <span className="font-medium text-secondary-200">:3000</span>
+                    <span className="font-medium text-accent-500">:3000</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Versão:</span>
-                    <span className="font-medium text-blue-400">v2.1</span>
+                    <span className="font-medium text-accent-500">v2.1</span>
                   </div>
                 </div>
               </div>
@@ -139,32 +139,32 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
           </nav>
 
           {/* User menu */}
-          <div className="border-t border-primary-700 p-4">
+          <div className="border-t border-accent-500 p-4">
             <div className="flex items-center gap-x-3 mb-4">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-500">
-                <span className="text-sm font-medium text-primary-900">
+                <span className="text-primary-900 text-sm font-medium">
                   {user?.firstName?.charAt(0)?.toUpperCase()}
                 </span>
               </div>
               {isSidebarExpanded && (
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-secondary-100">
+                  <p className="text-sm font-medium text-accent-500">
                     {user?.firstName} {user?.lastName}
                   </p>
-                  <p className="text-xs text-secondary-400 capitalize">{user?.role}</p>
+                  <p className="text-xs text-accent-500 capitalize">{user?.role}</p>
                 </div>
               )}
             </div>
             
             {isSidebarExpanded && (
               <div className="flex flex-col gap-2">
-                <button className="flex items-center justify-center gap-2 rounded-md bg-primary-700 px-3 py-2 text-sm text-secondary-100 hover:bg-primary-600 transition-colors w-full">
+                <button className="flex items-center justify-center gap-2 rounded-md bg-accent-500 px-3 py-2 text-sm text-primary-900 hover:bg-accent-600 transition-colors w-full">
                   <Settings className="h-4 w-4" />
                   Configurações
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center justify-center gap-2 rounded-md bg-accent-600 px-3 py-2 text-sm text-primary-900 hover:bg-accent-500 transition-colors w-full"
+                  className="flex items-center justify-center gap-2 rounded-md bg-accent-500 px-3 py-2 text-sm text-primary-900 hover:bg-accent-600 transition-colors w-full"
                 >
                   <LogOut className="h-4 w-4" />
                   Sair

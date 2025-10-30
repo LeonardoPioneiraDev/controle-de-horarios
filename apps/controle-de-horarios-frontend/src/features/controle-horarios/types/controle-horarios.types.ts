@@ -55,6 +55,8 @@ export interface FiltrosControleHorarios {
   horarioInicio?: string;
   horarioFim?: string;
   nomeMotorista?: string;
+  nomeCobrador?: string; // Adicionado
+  codCobrador?: string; // Adicionado
   localOrigem?: string;
   codAtividade?: string;
   localDestino?: string;
@@ -63,13 +65,6 @@ export interface FiltrosControleHorarios {
   limite?: number;
   pagina?: number;
   editadoPorUsuario?: boolean;
-  
-  // ✅ CAMPOS REMOVIDOS: Não suportados pelo backend atual
-  // statusEdicao?: 'todos' | 'editados' | 'nao_editados';
-  // nomeCobrador?: string;
-  // codCobrador?: string;
-  // numeroCarro?: string;
-  // informacaoRecolhe?: string;
 }
 
 // ✅ NOVA: Interface para filtros locais (frontend only)

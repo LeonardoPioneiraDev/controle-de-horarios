@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import defaultTheme from 'tailwindcss/defaultTheme';
+
 export default {
   content: [
     "./index.html",
@@ -6,21 +8,24 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', ...defaultTheme.fontFamily.sans],
+      },
       colors: {
         primary: {
-          DEFAULT: '#1a1a1a', // A dark black/charcoal
-          50: '#f2f2f2',
-          100: '#e6e6e6',
-          200: '#cccccc',
-          300: '#b3b3b3',
-          400: '#808080',
-          500: '#4d4d4d',
-          600: '#333333',
-          700: '#1a1a1a',
-          800: '#0d0d0d',
-          900: '#000000',
+          DEFAULT: '#111827', // A dark blue-gray for backgrounds
+          50: '#f9fafb',
+          100: '#f3f4f6',
+          200: '#e5e7eb',
+          300: '#d1d5db',
+          400: '#9ca3af',
+          500: '#6b7280',
+          600: '#4b5563',
+          700: '#374151',
+          800: '#1f2937',
+          900: '#111827',
         },
-        accent: { // Using 'accent' for yellow to avoid confusion with 'secondary'
+        accent: { // Using 'accent' for yellow
           DEFAULT: '#FFD700', // Gold/Vibrant Yellow
           50: '#fffbe6',
           100: '#fff7cc',
@@ -46,7 +51,14 @@ export default {
           800: '#212529',
           900: '#000000',
         }
-      }
+      },
+      backgroundImage: {
+        'gradient-to-br-accent': 'linear-gradient(to bottom right, var(--tw-gradient-stops))',
+      },
+      gradientColorStops: theme => ({
+        'accent-start': theme('colors.accent.400'),
+        'accent-end': theme('colors.accent.600'),
+      }),
     },
   },
   plugins: [],

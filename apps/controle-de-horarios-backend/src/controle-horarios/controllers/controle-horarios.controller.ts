@@ -24,6 +24,7 @@ import {
   SalvarMultiplosControleHorariosDto,
   ControleHorarioResponseDto,
   OpcoesControleHorariosDto,
+  SincronizarControleHorariosDto,
 } from '../dto';
 
 @Controller('controle-horarios')
@@ -38,12 +39,13 @@ export class ControleHorariosController {
   async buscarControleHorarios(
     @Param('data') data: string,
     @Query() filtros: FiltrosControleHorariosDto,
+    @CurrentUser('id') usuarioId: string,
     @CurrentUser('email') usuarioEmail: string,
   ): Promise<ControleHorarioResponseDto> {
     try {
       this.logger.log(`🔍 [${usuarioEmail}] Buscando controle de horários para ${data}`);
       
-      return await this.controleHorariosService.buscarControleHorarios(data, filtros, usuarioEmail);
+      return await this.controleHorariosService.buscarControleHorarios(data, filtros, usuarioId, usuarioEmail);
     } catch (error) {
       this.logger.error(`❌ Erro ao buscar controle de horários: ${error.message}`);
       throw new HttpException(
@@ -62,12 +64,13 @@ export class ControleHorariosController {
   async salvarControleHorario(
     @Param('data') data: string,
     @Body() dados: SalvarControleHorariosDto,
+    @CurrentUser('id') usuarioId: string,
     @CurrentUser('email') usuarioEmail: string,
   ) {
     try {
       this.logger.log(`💾 [${usuarioEmail}] Salvando controle para viagem ${dados.viagemGlobusId}`);
       
-      return await this.controleHorariosService.salvarControleHorario(data, dados, usuarioEmail);
+      return await this.controleHorariosService.salvarControleHorario(data, dados, usuarioId, usuarioEmail);
     } catch (error) {
       this.logger.error(`❌ Erro ao salvar controle: ${error.message}`);
       throw new HttpException(
@@ -85,13 +88,14 @@ export class ControleHorariosController {
   @Roles(UserRole.OPERADOR)
   async salvarMultiplosControles(
     @Body() dados: SalvarMultiplosControleHorariosDto,
+    @CurrentUser('id') usuarioId: string,
     @CurrentUser('email') usuarioEmail: string,
   ) {
     try {
       this.logger.log(`💾 [${usuarioEmail}] Salvando múltiplos controles para ${dados.dataReferencia}`);
       this.logger.log(`📊 Total de controles a salvar: ${dados.controles.length}`);
       
-      return await this.controleHorariosService.salvarMultiplosControles(dados, usuarioEmail);
+      return await this.controleHorariosService.salvarMultiplosControles(dados, usuarioId, usuarioEmail);
     } catch (error) {
       this.logger.error(`❌ Erro ao salvar múltiplos controles: ${error.message}`);
       throw new HttpException(
@@ -199,42 +203,33 @@ export class ControleHorariosController {
     }
   }
 
-  @Get('health')
+  @Post(':data/sincronizar')
   @Roles(UserRole.OPERADOR)
-  async healthCheck(@CurrentUser('email') usuarioEmail: string) {
+  async sincronizarViagensGlobus(
+    @Param('data') data: string,
+    @Body() { overwrite }: SincronizarControleHorariosDto,
+    @CurrentUser('id') usuarioId: string,
+    @CurrentUser('email') usuarioEmail: string,
+  ) {
     try {
-      this.logger.log(`🏥 [${usuarioEmail}] Health check do módulo Controle de Horários`);
+      this.logger.log(`🔄 [${usuarioEmail}] Sincronizando viagens Globus para ${data} (overwrite: ${overwrite})`);
+      
+      const resultado = await this.controleHorariosService.sincronizarViagensGlobus(data, overwrite, usuarioId, usuarioEmail);
       
       return {
         success: true,
-        message: 'Módulo Controle de Horários funcionando',
-        status: 'HEALTHY',
-        timestamp: new Date().toISOString(),
-        endpoints: {
-          buscarControleHorarios: '/controle-horarios/{data}',
-          salvarControle: '/controle-horarios/{data}/salvar',
-          salvarMultiplos: '/controle-horarios/salvar-multiplos',
-          opcoesFiltros: '/controle-horarios/{data}/opcoes',
-          estatisticas: '/controle-horarios/{data}/estatisticas',
-          statusDados: '/controle-horarios/{data}/status',
-          healthCheck: '/controle-horarios/health',
-        },
-        permissoes: {
-          roleMinima: 'operador',
-          acessoCompleto: ['operador', 'analista', 'gerente', 'diretor', 'administrador'],
-        },
+        message: 'Sincronização de viagens Globus concluída com sucesso',
+        data: resultado,
       };
     } catch (error) {
-      this.logger.error(`❌ Erro no health check: ${error.message}`);
+      this.logger.error(`❌ Erro ao sincronizar viagens Globus: ${error.message}`);
       throw new HttpException(
         {
           success: false,
-          message: 'Erro no health check',
-          status: 'UNHEALTHY',
+          message: 'Erro ao sincronizar viagens Globus',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
-}

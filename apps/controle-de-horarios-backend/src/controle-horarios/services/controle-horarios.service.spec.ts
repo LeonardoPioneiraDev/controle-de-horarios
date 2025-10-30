@@ -3,18 +3,17 @@ import { ControleHorariosService } from './controle-horarios.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ControleHorario } from '../entities/controle-horario.entity';
-import { ViagemGlobus } from '../../viagens-globus/entities/viagem-globus.entity';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { FiltrosControleHorariosDto, SalvarControleHorariosDto, SalvarMultiplosControleHorariosDto } from '../dto';
-import { CombinacaoComparacao } from '../../comparacao-viagens/utils/trip-comparator.util';
+import { FiltrosControleHorariosDto, SalvarControleHorariosDto, SalvarMultiplosControleHorariosDto, ControleHorarioItemDto } from '../dto';
+import { OracleService } from '../../database/oracle/services/oracle.service';
+import { IGlobusHorario } from '../interfaces/globus-horario.interface';
 
 describe('ControleHorariosService', () => {
   let service: ControleHorariosService;
   let controleHorarioRepository: Repository<ControleHorario>;
-  let viagemGlobusRepository: Repository<ViagemGlobus>;
+  let oracleService: OracleService;
 
   let mockControleHorarioQueryBuilder: any;
-  let mockViagemGlobusQueryBuilder: any;
 
   const createMockQueryBuilder = () => ({
     select: jest.fn().mockReturnThis(),
@@ -39,64 +38,13 @@ describe('ControleHorariosService', () => {
     createQueryBuilder: jest.fn(() => mockControleHorarioQueryBuilder),
   };
 
-  const mockViagemGlobusRepository = {
-    findOne: jest.fn(),
-    count: jest.fn(),
-    createQueryBuilder: jest.fn(() => mockViagemGlobusQueryBuilder),
+  const mockOracleService = {
+    isEnabled: jest.fn().mockReturnValue(true),
+    executeQuery: jest.fn().mockResolvedValue([]),
   };
 
   beforeEach(async () => {
     mockControleHorarioQueryBuilder = createMockQueryBuilder();
-    mockViagemGlobusQueryBuilder = createMockQueryBuilder();
-
-    const mockViagemGlobus = {
-      id: 'vg1',
-      setorPrincipal: 'SETOR A',
-      codLocalTerminalSec: 123,
-      codigoLinha: '123',
-      nomeLinha: 'LINHA TESTE',
-      codDestinoLinha: 456,
-      localDestinoLinha: 'DESTINO TESTE',
-      flgSentido: 'I',
-      dataViagem: new Date('2023-01-01'),
-      descTipoDia: 'UTIL',
-      horSaida: new Date('2023-01-01T08:00:00Z'),
-      horChegada: new Date('2023-01-01T09:00:00Z'),
-      horSaidaTime: '08:00',
-      horChegadaTime: '09:00',
-      codOrigemViagem: 789,
-      localOrigemViagem: 'ORIGEM TESTE',
-      codAtividade: 1,
-      nomeAtividade: 'ATIVIDADE TESTE',
-      flgTipo: 'T',
-      codServicoCompleto: 'SERV-COMP',
-      codServicoNumero: '01',
-      codMotorista: 111,
-      nomeMotorista: 'MOTORISTA TESTE',
-      codCobrador: 222,
-      nomeCobrador: 'COBRADOR TESTE',
-      crachaMotorista: 'CRACHA-MOT',
-      chapaFuncMotorista: 'CHAPA-MOT',
-      crachaCobrador: 'CRACHA-COB',
-      chapaFuncCobrador: 'CHAPA-COB',
-      totalHorarios: 1,
-      duracaoMinutos: 60,
-      dataReferencia: '2023-01-01',
-      hashDados: 'HASH-TESTE',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      sentidoTexto: 'IDA',
-      periodoDoDia: 'MANHA',
-      temCobrador: false,
-      origemDados: 'ORACLE_GLOBUS',
-      isAtivo: true,
-    } as ViagemGlobus;
-
-    const mockControleHorario = {
-      id: 'ch1', viagemGlobusId: 'vg1', dataReferencia: '2023-01-01', numeroCarro: 'A1',
-      informacaoRecolhe: 'Info', crachaFuncionario: 'C1', observacoes: 'Obs', usuarioEdicao: 'user@test.com',
-      usuarioEmail: 'user@test.com', isAtivo: true, createdAt: new Date(), updatedAt: new Date(),
-    } as ControleHorario;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -106,8 +54,8 @@ describe('ControleHorariosService', () => {
           useValue: mockControleHorarioRepository,
         },
         {
-          provide: getRepositoryToken(ViagemGlobus),
-          useValue: mockViagemGlobusRepository,
+          provide: OracleService,
+          useValue: mockOracleService,
         },
       ],
     }).compile();
@@ -116,222 +64,357 @@ describe('ControleHorariosService', () => {
     controleHorarioRepository = module.get<Repository<ControleHorario>>(
       getRepositoryToken(ControleHorario),
     );
-    viagemGlobusRepository = module.get<Repository<ViagemGlobus>>(
-      getRepositoryToken(ViagemGlobus),
-    );
+    oracleService = module.get<OracleService>(OracleService);
+
+    // Reset mocks before each test
+    jest.clearAllMocks();
+    mockOracleService.isEnabled.mockReturnValue(true);
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
-  describe('buscarControleHorarios', () => {
-    const mockViagemGlobus = {
-      id: 'vg1',
-      setorPrincipal: 'SETOR A',
-      codLocalTerminalSec: 123,
-      codigoLinha: '123',
-      nomeLinha: 'LINHA TESTE',
-      codDestinoLinha: 456,
-      localDestinoLinha: 'DESTINO TESTE',
-      flgSentido: 'I',
-      dataViagem: new Date('2023-01-01'),
-      descTipoDia: 'UTIL',
-      horSaida: new Date('2023-01-01T08:00:00Z'),
-      horChegada: new Date('2023-01-01T09:00:00Z'),
-      horSaidaTime: '08:00',
-      horChegadaTime: '09:00',
-      codOrigemViagem: 789,
-      localOrigemViagem: 'ORIGEM TESTE',
-      codAtividade: 1,
-      nomeAtividade: 'ATIVIDADE TESTE',
-      flgTipo: 'T',
-      codServicoCompleto: 'SERV-COMP',
-      codServicoNumero: '01',
-      codMotorista: 111,
-      nomeMotorista: 'MOTORISTA TESTE',
-      codCobrador: 222,
-      nomeCobrador: 'COBRADOR TESTE',
-      crachaMotorista: 'CRACHA-MOT',
-      chapaFuncMotorista: 'CHAPA-MOT',
-      crachaCobrador: 'CRACHA-COB',
-      chapaFuncCobrador: 'CHAPA-COB',
-      totalHorarios: 1,
-      duracaoMinutos: 60,
-      dataReferencia: '2023-01-01',
-      hashDados: 'HASH-TESTE',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      sentidoTexto: 'IDA',
-      periodoDoDia: 'MANHA',
-      temCobrador: false,
-      origemDados: 'ORACLE_GLOBUS',
-      isAtivo: true,
-    } as ViagemGlobus;
+  const mockGlobusHorarioRaw: IGlobusHorario = {
+    SETOR_PRINCIPAL_LINHA: 'GAMA',
+    COD_LOCAL_TERMINAL_SEC: 7000,
+    CODIGOLINHA: '123',
+    NOMELINHA: 'Linha Teste',
+    COD_DESTINO_LINHA: '456',
+    LOCAL_DESTINO_LINHA: 'Destino Teste',
+    FLG_SENTIDO: 'I',
+    DATA_VIAGEM: '2023-01-01',
+    DESC_TIPODIA: 'DIAS UTEIS',
+    HOR_SAIDA: '08:00',
+    HOR_CHEGADA: '09:00',
+    COD_ORIGEM_VIAGEM: '789',
+    LOCAL_ORIGEM_VIAGEM: 'Origem Teste',
+    COD_SERVICO_COMPLETO: 'SERV-001',
+    COD_SERVICO_NUMERO: '001',
+    COD_ATIVIDADE: 2,
+    NOME_ATIVIDADE: 'REGULAR',
+    FLG_TIPO: 'R',
+    COD_MOTORISTA: '111',
+    NOME_MOTORISTA: 'Motorista Globus',
+    CRACHA_MOTORISTA: 'CRACHA-MOT',
+    CHAPAFUNC_MOTORISTA: 'CHAPA-MOT',
+    COD_COBRADOR: '222',
+    NOME_COBRADOR: 'Cobrador Globus',
+    CRACHA_COBRADOR: 'CRACHA-COB',
+    CHAPAFUNC_COBRADOR: 'CHAPA-COB',
+    TOTAL_HORARIOS: 1,
+  };
 
-    const mockControleHorario = {
-      id: 'ch1', viagemGlobusId: 'vg1', dataReferencia: '2023-01-01', numeroCarro: 'A1',
-      informacaoRecolhe: 'Info', crachaFuncionario: 'C1', observacoes: 'Obs', usuarioEdicao: 'user@test.com',
-      usuarioEmail: 'user@test.com', isAtivo: true, createdAt: new Date(), updatedAt: new Date(),
-    } as ControleHorario;
+  const mockControleHorario: ControleHorario = {
+    id: 'ch1',
+    viagemGlobusId: 'SERV-001',
+    dataReferencia: '2023-01-01',
+    setorPrincipalLinha: 'GAMA',
+    codLocalTerminalSec: 7000,
+    codigoLinha: '123',
+    nomeLinha: 'Linha Teste',
+    codDestinoLinha: '456',
+    localDestinoLinha: 'Destino Teste',
+    flgSentido: 'I',
+    descTipoDia: 'DIAS UTEIS',
+    horaSaida: '08:00',
+    horaChegada: '09:00',
+    codOrigemViagem: '789',
+    localOrigemViagem: 'Origem Teste',
+    codServicoNumero: '001',
+    codAtividade: 2,
+    nomeAtividade: 'REGULAR',
+    flgTipo: 'R',
+    codMotorista: '111',
+    nomeMotoristaGlobus: 'Motorista Globus',
+    crachaMotoristaGlobus: 'CRACHA-MOT',
+    chapaFuncMotoristaGlobus: 'CHAPA-MOT',
+    codCobrador: '222',
+    nomeCobradorGlobus: 'Cobrador Globus',
+    crachaCobradorGlobus: 'CRACHA-COB',
+    chapaFuncCobradorGlobus: 'CHAPA-COB',
+    totalHorarios: 1,
+    numeroCarro: 'A1',
+    nomeMotoristaEditado: 'Motorista Editado',
+    crachaMotoristaEditado: 'C1',
+    nomeCobradorEditado: 'Cobrador Editado',
+    crachaCobradorEditado: 'C2',
+    informacaoRecolhe: 'Info',
+    observacoes: 'Obs',
+    usuarioEdicao: 'user-id-123',
+    usuarioEmail: 'user@test.com',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    isAtivo: true,
+  };
+
+  describe('buscarControleHorarios', () => {
+    const usuarioId = 'user-id-123';
+    const usuarioEmail = 'test@example.com';
 
     it('should return empty response if no globus trips found', async () => {
-      mockViagemGlobusQueryBuilder.getManyAndCount.mockResolvedValue([[], 0]);
-      mockControleHorarioRepository.count.mockResolvedValue(0);
+      mockOracleService.executeQuery.mockResolvedValueOnce([]); // For getGlobusDataFromOracle
+      mockOracleService.executeQuery.mockResolvedValueOnce([{ TOTAL: 0 }]); // For countGlobusDataFromOracle
 
-      const result = await service.buscarControleHorarios('2023-01-01', {}, 'test@example.com');
+      const result = await service.buscarControleHorarios('2023-01-01', {}, usuarioId, usuarioEmail);
       expect(result.data).toEqual([]);
       expect(result.total).toBe(0);
       expect(result.message).toBe('Nenhuma viagem encontrada para os filtros aplicados');
     });
 
     it('should return merged data when trips and controls exist', async () => {
-      mockViagemGlobusQueryBuilder.getManyAndCount.mockResolvedValue([[mockViagemGlobus], 1]);
-      mockControleHorarioQueryBuilder.getMany.mockResolvedValue([mockControleHorario]);
-      mockViagemGlobusRepository.count.mockResolvedValue(1);
-      mockControleHorarioRepository.count.mockResolvedValue(1);
-      mockControleHorarioQueryBuilder.getRawOne.mockResolvedValue({ ultima: new Date() });
-      mockViagemGlobusQueryBuilder.getRawMany.mockResolvedValue([]); // For estatisticas
+      mockOracleService.executeQuery.mockResolvedValueOnce([mockGlobusHorarioRaw]); // For getGlobusDataFromOracle
+      mockOracleService.executeQuery.mockResolvedValueOnce([{ TOTAL: 1 }]); // For countGlobusDataFromOracle
+      mockControleHorarioRepository.find.mockResolvedValueOnce([mockControleHorario]); // For buscarControlesExistentes
+      mockControleHorarioRepository.count.mockResolvedValueOnce(1); // For estatisticas
+      mockControleHorarioQueryBuilder.getRawOne.mockResolvedValueOnce({ ultima: new Date() }); // For estatisticas
+      mockControleHorarioQueryBuilder.getRawMany.mockResolvedValue([]); // For estatisticas (setores, linhas, servicos)
 
-      const result = await service.buscarControleHorarios('2023-01-01', {}, 'test@example.com');
-      expect(result.data.length).toBe(1);
-      expect(result.data[0].viagemGlobus.id).toBe('vg1');
-      expect(result.data[0].dadosEditaveis.id).toBe('ch1');
+      const result = await service.buscarControleHorarios('2023-01-01', {}, usuarioId, usuarioEmail);
+      const expectedControleHorarioItemDto: ControleHorarioItemDto = {
+        id: mockControleHorario.id,
+        viagemGlobusId: mockGlobusHorarioRaw.COD_SERVICO_COMPLETO,
+        dataReferencia: mockGlobusHorarioRaw.DATA_VIAGEM,
+        setorPrincipalLinha: mockGlobusHorarioRaw.SETOR_PRINCIPAL_LINHA,
+        codLocalTerminalSec: mockGlobusHorarioRaw.COD_LOCAL_TERMINAL_SEC,
+        codigoLinha: mockGlobusHorarioRaw.CODIGOLINHA,
+        nomeLinha: mockGlobusHorarioRaw.NOMELINHA,
+        codDestinoLinha: mockGlobusHorarioRaw.COD_DESTINO_LINHA,
+        localDestinoLinha: mockGlobusHorarioRaw.LOCAL_DESTINO_LINHA,
+        flgSentido: mockGlobusHorarioRaw.FLG_SENTIDO,
+        descTipoDia: mockGlobusHorarioRaw.DESC_TIPODIA,
+        horaSaida: mockGlobusHorarioRaw.HOR_SAIDA,
+        horaChegada: mockGlobusHorarioRaw.HOR_CHEGADA,
+        codOrigemViagem: mockGlobusHorarioRaw.COD_ORIGEM_VIAGEM,
+        localOrigemViagem: mockGlobusHorarioRaw.LOCAL_ORIGEM_VIAGEM,
+        codServicoNumero: mockGlobusHorarioRaw.COD_SERVICO_NUMERO,
+        codAtividade: mockGlobusHorarioRaw.COD_ATIVIDADE,
+        nomeAtividade: mockGlobusHorarioRaw.NOME_ATIVIDADE,
+        flgTipo: mockGlobusHorarioRaw.FLG_TIPO,
+        codMotorista: mockGlobusHorarioRaw.COD_MOTORISTA,
+        nomeMotoristaGlobus: mockGlobusHorarioRaw.NOME_MOTORISTA,
+        crachaMotoristaGlobus: mockGlobusHorarioRaw.CRACHA_MOTORISTA,
+        chapaFuncMotoristaGlobus: mockGlobusHorarioRaw.CHAPAFUNC_MOTORISTA,
+        codCobrador: mockGlobusHorarioRaw.COD_COBRADOR,
+        nomeCobradorGlobus: mockGlobusHorarioRaw.NOME_COBRADOR,
+        crachaCobradorGlobus: mockGlobusHorarioRaw.CRACHA_COBRADOR,
+        chapaFuncCobradorGlobus: mockGlobusHorarioRaw.CHAPAFUNC_COBRADOR,
+        totalHorarios: mockGlobusHorarioRaw.TOTAL_HORARIOS,
+        numeroCarro: mockControleHorario.numeroCarro,
+        nomeMotoristaEditado: mockControleHorario.nomeMotoristaEditado,
+        crachaMotoristaEditado: mockControleHorario.crachaMotoristaEditado,
+        nomeCobradorEditado: mockControleHorario.nomeCobradorEditado,
+        crachaCobradorEditado: mockControleHorario.crachaCobradorEditado,
+        informacaoRecolhe: mockControleHorario.informacaoRecolhe,
+        observacoes: mockControleHorario.observacoes,
+        usuarioEdicao: mockControleHorario.usuarioEdicao,
+        usuarioEmail: mockControleHorario.usuarioEmail,
+        createdAt: mockControleHorario.createdAt,
+        updatedAt: mockControleHorario.updatedAt,
+        isAtivo: mockControleHorario.isAtivo,
+        jaFoiEditado: true,
+      };
+
+      expect(result.data[0]).toEqual(expectedControleHorarioItemDto);
     });
 
     it('should throw BadRequestException for invalid date format', async () => {
-      await expect(service.buscarControleHorarios('2023/01/01', {}, 'test@example.com')).rejects.toThrow(BadRequestException);
+      await expect(service.buscarControleHorarios('2023/01/01', {}, usuarioId, usuarioEmail)).rejects.toThrow(BadRequestException);
     });
 
     it('should apply editadoPorUsuario filter correctly', async () => {
-      const mockViagemGlobus2 = { ...mockViagemGlobus, id: 'vg2' };
-      const mockViagemGlobus3 = { ...mockViagemGlobus, id: 'vg3' }; // Viagem sem controle
-      const mockControleHorario2 = { ...mockControleHorario, viagemGlobusId: 'vg2', usuarioEmail: 'other@test.com' };
+      const mockGlobusHorarioRaw2 = { ...mockGlobusHorarioRaw, COD_SERVICO_COMPLETO: 'SERV-002' };
+      const mockGlobusHorarioRaw3 = { ...mockGlobusHorarioRaw, COD_SERVICO_COMPLETO: 'SERV-003' };
 
-      mockViagemGlobusQueryBuilder.getManyAndCount.mockResolvedValue([[mockViagemGlobus, mockViagemGlobus2, mockViagemGlobus3], 3]);
-      mockControleHorarioQueryBuilder.getMany.mockResolvedValue([mockControleHorario, mockControleHorario2]); // vg3 does not have a control
-      mockViagemGlobusRepository.count.mockResolvedValue(3);
-      mockControleHorarioRepository.count.mockResolvedValue(2);
-      mockControleHorarioQueryBuilder.getRawOne.mockResolvedValue({ ultima: new Date() });
-      mockViagemGlobusQueryBuilder.getRawMany.mockResolvedValue([]);
+      const mockControleHorario2 = { ...mockControleHorario, viagemGlobusId: 'SERV-002', usuarioEmail: 'other@test.com' };
+      const mockControleHorario3 = { ...mockControleHorario, viagemGlobusId: 'SERV-003', id: undefined }; // Viagem sem controle
+
+      mockOracleService.executeQuery.mockResolvedValueOnce([mockGlobusHorarioRaw, mockGlobusHorarioRaw2, mockGlobusHorarioRaw3]); // For getGlobusDataFromOracle
+      mockOracleService.executeQuery.mockResolvedValueOnce([{ TOTAL: 3 }]); // For countGlobusDataFromOracle
+      mockControleHorarioRepository.find.mockResolvedValueOnce([mockControleHorario, mockControleHorario2]); // For buscarControlesExistentes
+      mockControleHorarioRepository.count.mockResolvedValue(0); // For estatisticas
+      mockControleHorarioQueryBuilder.getRawOne.mockResolvedValue(null); // For estatisticas
+      mockControleHorarioQueryBuilder.getRawMany.mockResolvedValue([]); // For estatisticas
 
       // Test with editadoPorUsuario = true
-      let result = await service.buscarControleHorarios('2023-01-01', { editadoPorUsuario: true }, 'user@test.com');
+      let result = await service.buscarControleHorarios('2023-01-01', { editadoPorUsuario: true }, usuarioId, usuarioEmail);
       expect(result.data.length).toBe(1);
-      expect(result.data[0].viagemGlobus.id).toBe('vg1');
+
+      const expectedControleHorarioItemDtoTrue: ControleHorarioItemDto = {
+        id: mockControleHorario.id,
+        viagemGlobusId: mockGlobusHorarioRaw.COD_SERVICO_COMPLETO,
+        dataReferencia: mockGlobusHorarioRaw.DATA_VIAGEM,
+        setorPrincipalLinha: mockGlobusHorarioRaw.SETOR_PRINCIPAL_LINHA,
+        codLocalTerminalSec: mockGlobusHorarioRaw.COD_LOCAL_TERMINAL_SEC,
+        codigoLinha: mockGlobusHorarioRaw.CODIGOLINHA,
+        nomeLinha: mockGlobusHorarioRaw.NOMELINHA,
+        codDestinoLinha: mockGlobusHorarioRaw.COD_DESTINO_LINHA,
+        localDestinoLinha: mockGlobusHorarioRaw.LOCAL_DESTINO_LINHA,
+        flgSentido: mockGlobusHorarioRaw.FLG_SENTIDO,
+        descTipoDia: mockGlobusHorarioRaw.DESC_TIPODIA,
+        horaSaida: mockGlobusHorarioRaw.HOR_SAIDA,
+        horaChegada: mockGlobusHorarioRaw.HOR_CHEGADA,
+        codOrigemViagem: mockGlobusHorarioRaw.COD_ORIGEM_VIAGEM,
+        localOrigemViagem: mockGlobusHorarioRaw.LOCAL_ORIGEM_VIAGEM,
+        codServicoNumero: mockGlobusHorarioRaw.COD_SERVICO_NUMERO,
+        codAtividade: mockGlobusHorarioRaw.COD_ATIVIDADE,
+        nomeAtividade: mockGlobusHorarioRaw.NOME_ATIVIDADE,
+        flgTipo: mockGlobusHorarioRaw.FLG_TIPO,
+        codMotorista: mockGlobusHorarioRaw.COD_MOTORISTA,
+        nomeMotoristaGlobus: mockGlobusHorarioRaw.NOME_MOTORISTA,
+        crachaMotoristaGlobus: mockGlobusHorarioRaw.CRACHA_MOTORISTA,
+        chapaFuncMotoristaGlobus: mockGlobusHorarioRaw.CHAPAFUNC_MOTORISTA,
+        codCobrador: mockGlobusHorarioRaw.COD_COBRADOR,
+        nomeCobradorGlobus: mockGlobusHorarioRaw.NOME_COBRADOR,
+        crachaCobradorGlobus: mockGlobusHorarioRaw.CRACHA_COBRADOR,
+        chapaFuncCobradorGlobus: mockGlobusHorarioRaw.CHAPAFUNC_COBRADOR,
+        totalHorarios: mockGlobusHorarioRaw.TOTAL_HORARIOS,
+        numeroCarro: mockControleHorario.numeroCarro,
+        nomeMotoristaEditado: mockControleHorario.nomeMotoristaEditado,
+        crachaMotoristaEditado: mockControleHorario.crachaMotoristaEditado,
+        nomeCobradorEditado: mockControleHorario.nomeCobradorEditado,
+        crachaCobradorEditado: mockControleHorario.crachaCobradorEditado,
+        informacaoRecolhe: mockControleHorario.informacaoRecolhe,
+        observacoes: mockControleHorario.observacoes,
+        usuarioEdicao: mockControleHorario.usuarioEdicao,
+        usuarioEmail: mockControleHorario.usuarioEmail,
+        createdAt: mockControleHorario.createdAt,
+        updatedAt: mockControleHorario.updatedAt,
+        isAtivo: mockControleHorario.isAtivo,
+        jaFoiEditado: true,
+      };
+      expect(result.data[0]).toEqual(expectedControleHorarioItemDtoTrue);
 
       // Test with editadoPorUsuario = false
-      result = await service.buscarControleHorarios('2023-01-01', { editadoPorUsuario: false }, 'user@test.com');
+      result = await service.buscarControleHorarios('2023-01-01', { editadoPorUsuario: false }, usuarioId, usuarioEmail);
       expect(result.data.length).toBe(1);
-      expect(result.data[0].viagemGlobus.id).toBe('vg3');
-    });
 
-    it('should apply combinacaoComparacao filter correctly', async () => {
-      const mockViagemGlobusA = { ...mockViagemGlobus, id: 'vgA', codigoLinha: '1002', nomeLinha: '100.2 - Linha A', sentidoTexto: 'IDA', codServicoNumero: '01', horSaidaTime: '08:00', CODIGOLINHA: '1002', FLG_SENTIDO: 'I', COD_SERVICO_NUMERO: '01', HOR_SAIDA: '01/01/1900 08:00:00' };
-      const mockViagemGlobusB = { ...mockViagemGlobus, id: 'vgB', codigoLinha: '2001', nomeLinha: '200.1 - Linha B', sentidoTexto: 'VOLTA', codServicoNumero: '02', horSaidaTime: '09:00', CODIGOLINHA: '2001', FLG_SENTIDO: 'V', COD_SERVICO_NUMERO: '02', HOR_SAIDA: '01/01/1900 09:00:00' };
-      const mockViagemGlobusC = { ...mockViagemGlobus, id: 'vgC', codigoLinha: '1002', nomeLinha: '100.2 - Linha C', sentidoTexto: 'IDA', codServicoNumero: '01', horSaidaTime: '08:00', CODIGOLINHA: '1002', FLG_SENTIDO: 'I', COD_SERVICO_NUMERO: '01', HOR_SAIDA: '01/01/1900 08:00:00' }; // Igual a A
-
-      const mockControleHorarioA = { ...mockControleHorario, viagemGlobusId: 'vgA' };
-      const mockControleHorarioB = { ...mockControleHorario, viagemGlobusId: 'vgB' };
-      const mockControleHorarioC = { ...mockControleHorario, viagemGlobusId: 'vgC' };
-
-      mockViagemGlobusQueryBuilder.getManyAndCount.mockResolvedValue([[mockViagemGlobusA, mockViagemGlobusB, mockViagemGlobusC], 3]);
-      mockControleHorarioQueryBuilder.getMany.mockResolvedValue([mockControleHorarioA, mockControleHorarioB, mockControleHorarioC]);
-      mockViagemGlobusRepository.count.mockResolvedValue(3);
-      mockControleHorarioRepository.count.mockResolvedValue(3);
-      mockControleHorarioQueryBuilder.getRawOne.mockResolvedValue({ ultima: new Date() });
-      mockViagemGlobusQueryBuilder.getRawMany.mockResolvedValue([]);
-
-      // Testar com CombinacaoComparacao.TUDO_IGUAL (simulando TransData igual a Globus)
-      // Para este teste, vamos fazer com que a simulação da TransData seja idêntica à Globus
-      // para que a comparação resulte em TUDO_IGUAL.
-      let result = await service.buscarControleHorarios(
-        '2023-01-01',
-        { combinacaoComparacao: CombinacaoComparacao.TUDO_IGUAL },
-        'user@test.com',
-      );
-      // Como a simulação de TransData é baseada na própria Globus, todas as viagens serão TUDO_IGUAL
-      expect(result.data.length).toBe(3);
-
-      // Testar com uma combinação que não deve existir com a simulação atual (ex: SO_HORARIO_DIFERENTE)
-      result = await service.buscarControleHorarios(
-        '2023-01-01',
-        { combinacaoComparacao: CombinacaoComparacao.SO_HORARIO_DIFERENTE },
-        'user@test.com',
-      );
-      // Com a simulação atual (TransData = Globus), nenhuma viagem terá SO_HORARIO_DIFERENTE
-      expect(result.data.length).toBe(0);
+      const expectedControleHorarioItemDtoFalse: ControleHorarioItemDto = {
+        id: null, // No existing control
+        viagemGlobusId: mockGlobusHorarioRaw3.COD_SERVICO_COMPLETO,
+        dataReferencia: mockGlobusHorarioRaw3.DATA_VIAGEM,
+        setorPrincipalLinha: mockGlobusHorarioRaw3.SETOR_PRINCIPAL_LINHA,
+        codLocalTerminalSec: mockGlobusHorarioRaw3.COD_LOCAL_TERMINAL_SEC,
+        codigoLinha: mockGlobusHorarioRaw3.CODIGOLINHA,
+        nomeLinha: mockGlobusHorarioRaw3.NOMELINHA,
+        codDestinoLinha: mockGlobusHorarioRaw3.COD_DESTINO_LINHA,
+        localDestinoLinha: mockGlobusHorarioRaw3.LOCAL_DESTINO_LINHA,
+        flgSentido: mockGlobusHorarioRaw3.FLG_SENTIDO,
+        descTipoDia: mockGlobusHorarioRaw3.DESC_TIPODIA,
+        horaSaida: mockGlobusHorarioRaw3.HOR_SAIDA,
+        horaChegada: mockGlobusHorarioRaw3.HOR_CHEGADA,
+        codOrigemViagem: mockGlobusHorarioRaw3.COD_ORIGEM_VIAGEM,
+        localOrigemViagem: mockGlobusHorarioRaw3.LOCAL_ORIGEM_VIAGEM,
+        codServicoNumero: mockGlobusHorarioRaw3.COD_SERVICO_NUMERO,
+        codAtividade: mockGlobusHorarioRaw3.COD_ATIVIDADE,
+        nomeAtividade: mockGlobusHorarioRaw3.NOME_ATIVIDADE,
+        flgTipo: mockGlobusHorarioRaw3.FLG_TIPO,
+        codMotorista: mockGlobusHorarioRaw3.COD_MOTORISTA,
+        nomeMotoristaGlobus: mockGlobusHorarioRaw3.NOME_MOTORISTA,
+        crachaMotoristaGlobus: mockGlobusHorarioRaw3.CRACHA_MOTORISTA,
+        chapaFuncMotoristaGlobus: mockGlobusHorarioRaw3.CHAPAFUNC_MOTORISTA,
+        codCobrador: mockGlobusHorarioRaw3.COD_COBRADOR,
+        nomeCobradorGlobus: mockGlobusHorarioRaw3.NOME_COBRADOR,
+        crachaCobradorGlobus: mockGlobusHorarioRaw3.CRACHA_COBRADOR,
+        chapaFuncCobradorGlobus: mockGlobusHorarioRaw3.CHAPAFUNC_COBRADOR,
+        totalHorarios: mockGlobusHorarioRaw3.TOTAL_HORARIOS,
+        numeroCarro: null,
+        nomeMotoristaEditado: null,
+        crachaMotoristaEditado: null,
+        nomeCobradorEditado: null,
+        crachaCobradorEditado: null,
+        informacaoRecolhe: null,
+        observacoes: null,
+        usuarioEdicao: null,
+        usuarioEmail: null,
+        createdAt: expect.any(Date), // Default value
+        updatedAt: expect.any(Date), // Default value
+        isAtivo: true, // Default value
+        jaFoiEditado: false,
+      };
+      expect(result.data[0]).toEqual(expectedControleHorarioItemDtoFalse);
     });
   });
 
   describe('salvarControleHorario', () => {
+    const usuarioId = 'user-id-123';
+    const usuarioEmail = 'test@example.com';
+
     const salvarDto: SalvarControleHorariosDto = {
-      viagemGlobusId: 'vg1',
+      viagemGlobusId: 'SERV-001',
       numeroCarro: 'A1',
       informacaoRecolhe: 'Info',
-      crachaFuncionario: 'C1',
+      nomeMotoristaEditado: 'Motorista Editado',
+      crachaMotoristaEditado: 'C1',
       observacoes: 'Obs',
     };
-    const mockViagemGlobus = { id: 'vg1', dataReferencia: '2023-01-01' } as ViagemGlobus;
 
-    it('should throw NotFoundException if ViagemGlobus not found', async () => {
-      mockViagemGlobusRepository.findOne.mockResolvedValue(undefined);
-      await expect(service.salvarControleHorario('2023-01-01', salvarDto, 'test@example.com')).rejects.toThrow(NotFoundException);
+    it('should throw NotFoundException if Globus data not found', async () => {
+      mockOracleService.executeQuery.mockResolvedValueOnce([]); // For getGlobusDataFromOracleById
+      await expect(service.salvarControleHorario('2023-01-01', salvarDto, usuarioId, usuarioEmail)).rejects.toThrow(NotFoundException);
     });
 
     it('should create a new controle horario if not exists', async () => {
-      mockViagemGlobusRepository.findOne.mockResolvedValue(mockViagemGlobus);
-      mockControleHorarioRepository.findOne.mockResolvedValue(undefined);
-      mockControleHorarioRepository.create.mockReturnValue({ ...salvarDto, dataReferencia: '2023-01-01', usuarioEmail: 'test@example.com' });
-      mockControleHorarioRepository.save.mockResolvedValue({ id: 'new-ch', ...salvarDto });
+      mockOracleService.executeQuery.mockResolvedValueOnce([mockGlobusHorarioRaw]); // For getGlobusDataFromOracleById
+      mockControleHorarioRepository.findOne.mockResolvedValueOnce(undefined);
+      mockControleHorarioRepository.create.mockReturnValue(mockControleHorario);
+      mockControleHorarioRepository.save.mockResolvedValueOnce(mockControleHorario);
+      mockOracleService.executeQuery.mockResolvedValueOnce([]); // For aplicarAtualizacaoEmEscala -> getGlobusDataFromOracle
 
-      // Mock for aplicarAtualizacaoEmEscala
-      mockViagemGlobusQueryBuilder.getMany.mockResolvedValue([]);
-
-      const result = await service.salvarControleHorario('2023-01-01', salvarDto, 'test@example.com');
+      const result = await service.salvarControleHorario('2023-01-01', salvarDto, usuarioId, usuarioEmail);
       expect(result.success).toBe(true);
       expect(controleHorarioRepository.create).toHaveBeenCalled();
       expect(controleHorarioRepository.save).toHaveBeenCalled();
+      expect(result.data.viagemGlobusId).toBe(salvarDto.viagemGlobusId);
+      expect(result.data.usuarioEdicao).toBe(usuarioId);
     });
 
     it('should update existing controle horario', async () => {
-      const existingControle = { ...salvarDto, id: 'ch1', usuarioEdicao: 'old@test.com', updatedAt: new Date() } as ControleHorario;
-      mockViagemGlobusRepository.findOne.mockResolvedValue(mockViagemGlobus);
-      mockControleHorarioRepository.findOne.mockResolvedValue(existingControle);
-      mockControleHorarioRepository.save.mockResolvedValue({ ...existingControle, numeroCarro: 'A2' });
-
-      // Mock for aplicarAtualizacaoEmEscala
-      mockViagemGlobusQueryBuilder.getMany.mockResolvedValue([]);
+      const existingControle = { ...mockControleHorario, numeroCarro: 'OLD_CAR' };
+      mockOracleService.executeQuery.mockResolvedValueOnce([mockGlobusHorarioRaw]); // For getGlobusDataFromOracleById
+      mockControleHorarioRepository.findOne.mockResolvedValueOnce(existingControle);
+      mockControleHorarioRepository.save.mockResolvedValueOnce({ ...existingControle, numeroCarro: 'A2' });
+      mockOracleService.executeQuery.mockResolvedValueOnce([]); // For aplicarAtualizacaoEmEscala -> getGlobusDataFromOracle
 
       const updatedDto = { ...salvarDto, numeroCarro: 'A2' };
-      const result = await service.salvarControleHorario('2023-01-01', updatedDto, 'test@example.com');
+      const result = await service.salvarControleHorario('2023-01-01', updatedDto, usuarioId, usuarioEmail);
       expect(result.success).toBe(true);
-      expect(controleHorarioRepository.save).toHaveBeenCalledWith(expect.objectContaining({ numeroCarro: 'A2' }));
+      expect(controleHorarioRepository.save).toHaveBeenCalledWith(expect.objectContaining({ numeroCarro: 'A2', usuarioEdicao: usuarioId }));
     });
   });
 
   describe('salvarMultiplosControles', () => {
-    const mockViagemGlobus = { id: 'vg1', dataReferencia: '2023-01-01' } as ViagemGlobus;
+    const usuarioId = 'user-id-123';
+    const usuarioEmail = 'test@example.com';
+
     const salvarMultiplosDto: SalvarMultiplosControleHorariosDto = {
       dataReferencia: '2023-01-01',
       controles: [
-        { viagemGlobusId: 'vg1', numeroCarro: 'A1' },
-        { viagemGlobusId: 'vg2', numeroCarro: 'A2' },
+        { 
+          viagemGlobusId: 'SERV-001', 
+          numeroCarro: 'A1',
+          nomeMotoristaEditado: 'Motorista 1',
+        },
+        { 
+          viagemGlobusId: 'SERV-002', 
+          numeroCarro: 'A2',
+          nomeMotoristaEditado: 'Motorista 2',
+        },
       ],
     };
 
     it('should throw BadRequestException if no controls provided', async () => {
-      await expect(service.salvarMultiplosControles({ dataReferencia: '2023-01-01', controles: [] }, 'test@example.com')).rejects.toThrow(BadRequestException);
+      await expect(service.salvarMultiplosControles({ dataReferencia: '2023-01-01', controles: [] }, usuarioId, usuarioEmail)).rejects.toThrow(BadRequestException);
     });
 
     it('should throw BadRequestException if dataReferencia is missing', async () => {
-      await expect(service.salvarMultiplosControles({ controles: [{ viagemGlobusId: 'vg1' }] } as any, 'test@example.com')).rejects.toThrow(BadRequestException);
+      await expect(service.salvarMultiplosControles({ controles: [{ viagemGlobusId: 'SERV-001' }] } as any, usuarioId, usuarioEmail)).rejects.toThrow(BadRequestException);
     });
 
     it('should save multiple controls successfully', async () => {
-      jest.spyOn(service, 'salvarControleHorario').mockResolvedValue({ success: true, message: '', data: {} });
+      jest.spyOn(service, 'salvarControleHorario').mockResolvedValue({ success: true, message: '', data: mockControleHorario });
 
-      const result = await service.salvarMultiplosControles(salvarMultiplosDto, 'test@example.com');
+      const result = await service.salvarMultiplosControles(salvarMultiplosDto, usuarioId, usuarioEmail);
       expect(result.salvos).toBe(2);
       expect(result.erros).toBe(0);
       expect(result.success).toBe(true);
@@ -340,10 +423,10 @@ describe('ControleHorariosService', () => {
 
     it('should handle errors during multiple saves', async () => {
       jest.spyOn(service, 'salvarControleHorario')
-        .mockResolvedValueOnce({ success: true, message: '', data: {} })
+        .mockResolvedValueOnce({ success: true, message: '', data: mockControleHorario })
         .mockRejectedValueOnce(new Error('Save error'));
 
-      const result = await service.salvarMultiplosControles(salvarMultiplosDto, 'test@example.com');
+      const result = await service.salvarMultiplosControles(salvarMultiplosDto, usuarioId, usuarioEmail);
       expect(result.salvos).toBe(1);
       expect(result.erros).toBe(1);
       expect(result.success).toBe(false);
@@ -352,52 +435,51 @@ describe('ControleHorariosService', () => {
 
   describe('buscarOpcoesControleHorarios', () => {
     it('should return unique options for filters', async () => {
-      mockViagemGlobusRepository.createQueryBuilder.mockReturnValue(mockViagemGlobusQueryBuilder);
+      mockControleHorarioRepository.createQueryBuilder.mockReturnValue(mockControleHorarioQueryBuilder);
 
-      mockViagemGlobusQueryBuilder.getRawMany
+      mockControleHorarioQueryBuilder.getRawMany
         .mockResolvedValueOnce([{ setor: 'SETOR A' }, { setor: 'SETOR B' }]) // setores
         .mockResolvedValueOnce([{ codigo: '123', nome: 'Linha 123' }]) // linhas
         .mockResolvedValueOnce([{ servico: '01' }]) // servicos
-        .mockResolvedValueOnce([{ sentido: 'IDA' }]) // sentidos
-        .mockResolvedValueOnce([{ motorista: 'Motorista X' }]); // motoristas
+        .mockResolvedValueOnce([{ sentido: 'I' }]) // sentidos (flgSentido)
+        .mockResolvedValueOnce([{ cracha: 'CRACHA-MOT', nome: 'Motorista X' }]) // motoristas
+        .mockResolvedValueOnce([{ local: 'LOCAL ORIGEM A' }]); // locaisOrigem
 
       const result = await service.buscarOpcoesControleHorarios('2023-01-01');
       expect(result.setores).toEqual(['SETOR A', 'SETOR B']);
       expect(result.linhas).toEqual([{ codigo: '123', nome: 'Linha 123' }]);
       expect(result.servicos).toEqual(['01']);
-      expect(result.sentidos).toEqual(['IDA']);
-      expect(result.motoristas).toEqual(['Motorista X']);
+      expect(result.sentidos).toEqual(['I']);
+      expect(result.motoristas).toEqual([{ cracha: 'CRACHA-MOT', nome: 'Motorista X' }]);
+      expect(result.locaisOrigem).toEqual(['LOCAL ORIGEM A']);
+      expect(result.locaisDestino).toEqual([]);
     });
   });
 
   describe('obterEstatisticasControleHorarios', () => {
     it('should return correct statistics', async () => {
-      mockViagemGlobusRepository.count.mockResolvedValue(10);
-      mockControleHorarioRepository.count.mockResolvedValue(5);
+      mockOracleService.executeQuery.mockResolvedValueOnce([mockGlobusHorarioRaw, mockGlobusHorarioRaw]); // For totalViagens
+      mockControleHorarioRepository.count.mockResolvedValueOnce(1); // For viagensEditadas
 
       mockControleHorarioRepository.createQueryBuilder.mockReturnValue(mockControleHorarioQueryBuilder);
-      mockControleHorarioQueryBuilder.getRawOne.mockResolvedValue({ ultima: new Date('2023-01-01T10:00:00Z') });
-
-      mockViagemGlobusRepository.createQueryBuilder.mockReturnValue(mockViagemGlobusQueryBuilder); // Ensure this is the correct mock instance
-      mockViagemGlobusQueryBuilder.getRawMany.mockResolvedValue([]); // For unique values
+      mockControleHorarioQueryBuilder.getRawOne.mockResolvedValueOnce({ ultima: new Date('2023-01-01T10:00:00Z') });
+      mockControleHorarioQueryBuilder.getRawMany.mockResolvedValue([]); // For unique values
 
       const result = await service.obterEstatisticasControleHorarios('2023-01-01');
-      expect(result.totalViagens).toBe(10);
-      expect(result.viagensEditadas).toBe(5);
-      expect(result.viagensNaoEditadas).toBe(5);
+      expect(result.totalViagens).toBe(2);
+      expect(result.viagensEditadas).toBe(1);
+      expect(result.viagensNaoEditadas).toBe(1);
       expect(result.percentualEditado).toBe(50);
       expect(result.ultimaAtualizacao).toEqual(new Date('2023-01-01T10:00:00Z'));
     });
 
     it('should handle zero total trips', async () => {
-      mockViagemGlobusRepository.count.mockResolvedValue(0);
-      mockControleHorarioRepository.count.mockResolvedValue(0);
+      mockOracleService.executeQuery.mockResolvedValueOnce([]); // For totalViagens
+      mockControleHorarioRepository.count.mockResolvedValueOnce(0); // For viagensEditadas
 
       mockControleHorarioRepository.createQueryBuilder.mockReturnValue(mockControleHorarioQueryBuilder);
-      mockControleHorarioQueryBuilder.getRawOne.mockResolvedValue({ ultima: null });
-
-      mockViagemGlobusRepository.createQueryBuilder.mockReturnValue(mockViagemGlobusQueryBuilder);
-      mockViagemGlobusQueryBuilder.getRawMany.mockResolvedValue([]);
+      mockControleHorarioQueryBuilder.getRawOne.mockResolvedValueOnce({ ultima: null });
+      mockControleHorarioQueryBuilder.getRawMany.mockResolvedValue([]); // For unique values
 
       const result = await service.obterEstatisticasControleHorarios('2023-01-01');
       expect(result.totalViagens).toBe(0);

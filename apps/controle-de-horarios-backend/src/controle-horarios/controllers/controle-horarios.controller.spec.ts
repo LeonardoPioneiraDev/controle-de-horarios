@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { UserRole } from '../../common/enums/user-role.enum';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { SalvarControleHorariosDto } from '../dto';
 
 describe('ControleHorariosController', () => {
   let controller: ControleHorariosController;
@@ -47,14 +48,18 @@ describe('ControleHorariosController', () => {
       const result = { success: true, data: [], total: 0, pagina: 0, limite: 100, temMaisPaginas: false, filtrosAplicados: {}, estatisticas: {}, executionTime: '0ms', dataReferencia: '2023-01-01' };
       mockControleHorariosService.buscarControleHorarios.mockResolvedValue(result);
 
-      expect(await controller.buscarControleHorarios('2023-01-01', {}, 'test@example.com')).toEqual(result);
-      expect(service.buscarControleHorarios).toHaveBeenCalledWith('2023-01-01', {}, 'test@example.com');
+      const usuarioId = 'test-user-id';
+      const usuarioEmail = 'test@example.com';
+      expect(await controller.buscarControleHorarios('2023-01-01', {}, usuarioId, usuarioEmail)).toEqual(result);
+      expect(service.buscarControleHorarios).toHaveBeenCalledWith('2023-01-01', {}, usuarioId, usuarioEmail);
     });
 
     it('should throw HttpException on service error', async () => {
       mockControleHorariosService.buscarControleHorarios.mockRejectedValue(new Error('Service error'));
 
-      await expect(controller.buscarControleHorarios('2023-01-01', {}, 'test@example.com')).rejects.toThrow(
+      const usuarioId = 'test-user-id';
+      const usuarioEmail = 'test@example.com';
+      await expect(controller.buscarControleHorarios('2023-01-01', {}, usuarioId, usuarioEmail)).rejects.toThrow(
         new HttpException(
           {
             success: false,
@@ -72,16 +77,34 @@ describe('ControleHorariosController', () => {
       const result = { success: true, message: 'Controle de horário criado com sucesso', data: {} };
       mockControleHorariosService.salvarControleHorario.mockResolvedValue(result);
 
-      const dto = { viagemGlobusId: '123', numeroCarro: 'A1', informacaoRecolhe: 'info', crachaFuncionario: 'C1', observacoes: 'obs' };
-      expect(await controller.salvarControleHorario('2023-01-01', dto, 'test@example.com')).toEqual(result);
-      expect(service.salvarControleHorario).toHaveBeenCalledWith('2023-01-01', dto, 'test@example.com');
+      const dto: SalvarControleHorariosDto = { 
+        viagemGlobusId: '123', 
+        numeroCarro: 'A1', 
+        informacaoRecolhe: 'info', 
+        nomeMotoristaEditado: 'Motorista Teste',
+        crachaMotoristaEditado: 'C1',
+        observacoes: 'obs' 
+      };
+      const usuarioId = 'test-user-id';
+      const usuarioEmail = 'test@example.com';
+      expect(await controller.salvarControleHorario('2023-01-01', dto, usuarioId, usuarioEmail)).toEqual(result);
+      expect(service.salvarControleHorario).toHaveBeenCalledWith('2023-01-01', dto, usuarioId, usuarioEmail);
     });
 
     it('should throw HttpException on service error', async () => {
       mockControleHorariosService.salvarControleHorario.mockRejectedValue(new Error('Service error'));
 
-      const dto = { viagemGlobusId: '123', numeroCarro: 'A1', informacaoRecolhe: 'info', crachaFuncionario: 'C1', observacoes: 'obs' };
-      await expect(controller.salvarControleHorario('2023-01-01', dto, 'test@example.com')).rejects.toThrow(
+      const dto: SalvarControleHorariosDto = { 
+        viagemGlobusId: '123', 
+        numeroCarro: 'A1', 
+        informacaoRecolhe: 'info', 
+        nomeMotoristaEditado: 'Motorista Teste',
+        crachaMotoristaEditado: 'C1',
+        observacoes: 'obs' 
+      };
+      const usuarioId = 'test-user-id';
+      const usuarioEmail = 'test@example.com';
+      await expect(controller.salvarControleHorario('2023-01-01', dto, usuarioId, usuarioEmail)).rejects.toThrow(
         new HttpException(
           {
             success: false,
@@ -99,16 +122,40 @@ describe('ControleHorariosController', () => {
       const result = { success: true, message: 'Salvamento concluído: 1 sucessos, 0 erros', salvos: 1, erros: 0 };
       mockControleHorariosService.salvarMultiplosControles.mockResolvedValue(result);
 
-      const dto = { dataReferencia: '2023-01-01', controles: [{ viagemGlobusId: '123', numeroCarro: 'A1' }] };
-      expect(await controller.salvarMultiplosControles(dto, 'test@example.com')).toEqual(result);
-      expect(service.salvarMultiplosControles).toHaveBeenCalledWith(dto, 'test@example.com');
+      const dto = { 
+        dataReferencia: '2023-01-01', 
+        controles: [
+          { 
+            viagemGlobusId: '123', 
+            numeroCarro: 'A1',
+            nomeMotoristaEditado: 'Motorista Teste',
+            crachaMotoristaEditado: 'C1',
+          }
+        ]
+      };
+      const usuarioId = 'test-user-id';
+      const usuarioEmail = 'test@example.com';
+      expect(await controller.salvarMultiplosControles(dto, usuarioId, usuarioEmail)).toEqual(result);
+      expect(service.salvarMultiplosControles).toHaveBeenCalledWith(dto, usuarioId, usuarioEmail);
     });
 
     it('should throw HttpException on service error', async () => {
       mockControleHorariosService.salvarMultiplosControles.mockRejectedValue(new Error('Service error'));
 
-      const dto = { dataReferencia: '2023-01-01', controles: [{ viagemGlobusId: '123', numeroCarro: 'A1' }] };
-      await expect(controller.salvarMultiplosControles(dto, 'test@example.com')).rejects.toThrow(
+      const dto = { 
+        dataReferencia: '2023-01-01', 
+        controles: [
+          { 
+            viagemGlobusId: '123', 
+            numeroCarro: 'A1',
+            nomeMotoristaEditado: 'Motorista Teste',
+            crachaMotoristaEditado: 'C1',
+          }
+        ]
+      };
+      const usuarioId = 'test-user-id';
+      const usuarioEmail = 'test@example.com';
+      await expect(controller.salvarMultiplosControles(dto, usuarioId, usuarioEmail)).rejects.toThrow(
         new HttpException(
           {
             success: false,
@@ -123,10 +170,14 @@ describe('ControleHorariosController', () => {
 
   describe('buscarOpcoesControleHorarios', () => {
     it('should return options for controle horarios', async () => {
-      const result = { success: true, message: 'Opções obtidas com sucesso', data: { setores: [], linhas: [], servicos: [], sentidos: [], motoristas: [] } };
-      mockControleHorariosService.buscarOpcoesControleHorarios.mockResolvedValue(result.data);
+      const result = { setores: [], linhas: [], servicos: [], sentidos: [], motoristas: [], locaisOrigem: [], locaisDestino: [] };
+      mockControleHorariosService.buscarOpcoesControleHorarios.mockResolvedValue(result);
 
-      expect(await controller.buscarOpcoesControleHorarios('2023-01-01', 'test@example.com')).toEqual(result);
+      expect(await controller.buscarOpcoesControleHorarios('2023-01-01', 'test@example.com')).toEqual({
+        success: true,
+        message: 'Opções obtidas com sucesso',
+        data: result,
+      });
       expect(service.buscarOpcoesControleHorarios).toHaveBeenCalledWith('2023-01-01');
     });
 
@@ -148,10 +199,14 @@ describe('ControleHorariosController', () => {
 
   describe('obterEstatisticas', () => {
     it('should return statistics', async () => {
-      const result = { success: true, message: 'Estatísticas obtidas com sucesso', data: { totalViagens: 10, viagensEditadas: 5 } };
-      mockControleHorariosService.obterEstatisticasControleHorarios.mockResolvedValue(result.data);
+      const result = { totalViagens: 10, viagensEditadas: 5, viagensNaoEditadas: 5, percentualEditado: 50, setoresUnicos: [], linhasUnicas: [], servicosUnicos: [], ultimaAtualizacao: new Date() };
+      mockControleHorariosService.obterEstatisticasControleHorarios.mockResolvedValue(result);
 
-      expect(await controller.obterEstatisticas('2023-01-01', 'test@example.com')).toEqual(result);
+      expect(await controller.obterEstatisticas('2023-01-01', 'test@example.com')).toEqual({
+        success: true,
+        message: 'Estatísticas obtidas com sucesso',
+        data: result,
+      });
       expect(service.obterEstatisticasControleHorarios).toHaveBeenCalledWith('2023-01-01');
     });
 

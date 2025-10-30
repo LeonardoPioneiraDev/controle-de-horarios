@@ -76,6 +76,7 @@ export const ControleHorariosPage: React.FC = () => {
         showLinhaMultiSelect={showLinhaMultiSelect}
         setShowLinhaMultiSelect={setShowLinhaMultiSelect}
         onLimparFiltros={limparFiltros}
+        onAplicarFiltros={buscarControleHorarios}
       />
 
       {/* Tabela de Controle */}

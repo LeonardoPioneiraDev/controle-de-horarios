@@ -49,10 +49,10 @@ export const Layout: React.FC = () => {
           handleLogout={handleLogout}
         />
 
-        <main className={`flex-1 overflow-y-auto p-6 bg-gray-100 dark:bg-gray-900 ${
+        <main className={`flex-1 overflow-y-auto p-6 bg-primary-800 ${
           isSidebarExpanded ? 'lg:ml-64' : 'lg:ml-20'
         }`}> {/* Adjust margin for sidebar */}
-          <div className="mx-auto max-w-7xl rounded-lg shadow-md bg-white dark:bg-gray-800 p-6 min-h-[calc(100vh-120px)]"> {/* Adjust padding and add card-like styling */}
+          <div className="mx-auto max-w-7xl rounded-lg shadow-md bg-primary-700 p-6 min-h-[calc(100vh-120px)]"> {/* Adjust padding and add card-like styling */}
             <Outlet />
           </div>
         </main>

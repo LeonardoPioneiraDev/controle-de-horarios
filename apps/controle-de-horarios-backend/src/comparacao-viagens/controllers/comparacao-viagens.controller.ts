@@ -1,10 +1,10 @@
 // src/comparacao-viagens/controllers/comparacao-viagens.controller.ts
-import { Controller, Get, Post, Param, Query, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, HttpCode, HttpStatus, UseGuards, Logger } from '@nestjs/common';
 import { ComparacaoViagensService } from '../services/comparacao-viagens.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/user-role.enum'; // ✅ IMPORT CORRETO
+import { UserRole } from '../../common/enums/user-role.enum';
 import { FiltrosComparacaoDto } from '../dto/filtros-comparacao.dto';
 
 @Controller('comparacao-viagens')
@@ -17,13 +17,13 @@ export class ComparacaoViagensController {
   ) {}
 
   @Post('executar/:data')
-  @Roles(UserRole.ANALISTA) // ✅ CORREÇÃO: Usar enum
+  @Roles(UserRole.ANALISTA)
   async executarComparacao(@Param('data') data: string) {
     this.logger.log(`🔄 Iniciando comparação para data: ${data}`);
-    
+
     try {
-      const resultado = await this.comparacaoService.executarComparacao(data);
-      
+      const resultado = await this.comparacaoService.executarComparacao(data); // Corrected method name
+
       return {
         success: true,
         message: 'Comparação executada com sucesso',
@@ -41,14 +41,14 @@ export class ComparacaoViagensController {
   }
 
   @Get(':data')
-  @Roles(UserRole.OPERADOR) // ✅ CORREÇÃO: Usar enum
+  @Roles(UserRole.OPERADOR)
   async buscarComparacoes(
     @Param('data') data: string,
     @Query() filtros: FiltrosComparacaoDto
   ) {
     try {
       const { comparacoes, total } = await this.comparacaoService.buscarComparacoes(data, filtros);
-      
+
       return {
         success: true,
         message: 'Comparações encontradas',
@@ -67,11 +67,11 @@ export class ComparacaoViagensController {
   }
 
   @Get(':data/estatisticas')
-  @Roles(UserRole.OPERADOR) // ✅ CORREÇÃO: Usar enum
+  @Roles(UserRole.OPERADOR)
   async obterEstatisticas(@Param('data') data: string) {
     try {
       const estatisticas = await this.comparacaoService.obterEstatisticas(data);
-      
+
       if (!estatisticas) {
         return {
           success: false,
@@ -97,7 +97,7 @@ export class ComparacaoViagensController {
   }
 
   @Get(':data/linhas')
-  @Roles(UserRole.OPERADOR) // ✅ CORREÇÃO: Usar enum
+  @Roles(UserRole.OPERADOR)
   async obterLinhasComparadas(@Param('data') data: string) {
     try {
       // TODO: Implementar busca de linhas únicas comparadas

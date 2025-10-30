@@ -12,10 +12,11 @@ import {
   ChevronRight,
   MapPin,
   Users,
-  Calendar,
+    Calendar,
   Edit3,
   Save,
-  X
+  X,
+  ClipboardList
 } from 'lucide-react';
 import { ControleHorarioItem, DadosEditaveis } from '../../types/controle-horarios.types';
 
@@ -39,6 +40,79 @@ interface DataTableProps {
   contarAlteracoesPendentes: () => number;
 }
 
+// Componente Modal/Popover para opções do motorista
+interface DriverOptionsModalProps {
+  driver: ControleHorarioItem;
+  onClose: () => void;
+  onInputChange: (viagemId: string, field: keyof DadosEditaveis, value: string) => void;
+}
+
+const DriverOptionsModal: React.FC<DriverOptionsModalProps> = ({
+  driver, onClose, onInputChange
+}) => {
+  const [tempCracha, setTempCracha] = useState(driver.dadosEditaveis.crachaFuncionario || '');
+
+  const handleSave = () => {
+    onInputChange(driver.viagemGlobus.id, 'crachaFuncionario', tempCracha);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" onClick={onClose}>
+      <div
+        className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white"
+        onClick={e => e.stopPropagation()} // Evita fechar o modal ao clicar dentro dele
+      >
+        <div className="mt-3 text-center">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Opções do Motorista</h3>
+          <div className="mt-2 px-7 py-3">
+            <p className="text-sm text-gray-500 mb-2">
+              Motorista: <strong>{driver.viagemGlobus.nomeMotorista || 'Não informado'}</strong> (Cód: {driver.viagemGlobus.codMotorista})
+            </p>
+            
+            {/* Botão Ver Escala */}
+            <button
+              onClick={() => { alert(`Visualizando escala de ${driver.viagemGlobus.nomeMotorista}`); onClose(); }}
+              className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mb-3"
+            >
+              <ClipboardList className="h-4 w-4 mr-2" /> Ver Escala
+            </button>
+
+            {/* Editar Crachá */}
+            <div className="text-left mb-4">
+              <label htmlFor="cracha-input" className="block text-sm font-medium text-gray-700">Crachá do Motorista</label>
+              <input
+                id="cracha-input"
+                type="text"
+                value={tempCracha}
+                onChange={(e) => setTempCracha(e.target.value)}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="Crachá do motorista"
+              />
+            </div>
+
+            <div className="items-center px-4 py-3">
+              <button
+                id="ok-btn"
+                onClick={handleSave}
+                className="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              >
+                <Save className="h-4 w-4 mr-2 inline" /> Salvar
+              </button>
+              <button
+                id="cancel-btn"
+                onClick={onClose}
+                className="mt-3 px-4 py-2 bg-white text-gray-700 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"
+              >
+                <X className="h-4 w-4 mr-2 inline" /> Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 export const DataTable: React.FC<DataTableProps> = ({
   controleHorarios,
   controleHorariosOriginais,
@@ -53,6 +127,7 @@ export const DataTable: React.FC<DataTableProps> = ({
 }) => {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [editingObservacoes, setEditingObservacoes] = useState<string | null>(null);
+  const [showDriverOptionsModal, setShowDriverOptionsModal] = useState<ControleHorarioItem | null>(null);
 
   const toggleRowExpansion = (id: string) => {
     const newExpanded = new Set(expandedRows);

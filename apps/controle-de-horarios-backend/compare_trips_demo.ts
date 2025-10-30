@@ -1,4 +1,5 @@
-import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, CombinacaoComparacao, OracleGlobusData } from './src/comparacao-viagens/utils/trip-comparator.util';
+import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, OracleGlobusData } from './src/comparacao-viagens/utils/trip-comparator.util';
+import { CombinacaoComparacao } from './src/comparacao-viagens/entities/comparacao-viagem.entity';
 
 const transDataTrip1 = {
     "SentidoText": "IDA",

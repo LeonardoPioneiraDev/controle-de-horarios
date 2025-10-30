@@ -5,7 +5,7 @@ export interface OpcoesControleHorariosDto {
   linhas: { codigo: string; nome: string }[];
   servicos: string[];
   sentidos: string[];
-  motoristas: string[];
+  motoristas: { cracha: string; nome: string }[];
   locaisOrigem: string[];
   locaisDestino: string[];
 }

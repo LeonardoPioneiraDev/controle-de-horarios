@@ -1,4 +1,3 @@
-// src/comparacao-viagens/entities/comparacao-viagem.entity.ts
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 
 export enum StatusComparacao {
@@ -9,9 +8,30 @@ export enum StatusComparacao {
   HORARIO_DIVERGENTE = 'horario_divergente'
 }
 
+// Enum para as combinações de comparação (MOVIDO PARA AQUI e AGORA BASEADO EM STRINGS)
+export enum CombinacaoComparacao {
+  TUDO_IGUAL = 'TUDO_IGUAL',
+  SO_HORARIO_DIFERENTE = 'SO_HORARIO_DIFERENTE',
+  SO_SERVICO_DIFERENTE = 'SO_SERVICO_DIFERENTE',
+  SERVICO_E_HORARIO_DIFERENTES = 'SERVICO_E_HORARIO_DIFERENTES',
+  SO_SENTIDO_DIFERENTE = 'SO_SENTIDO_DIFERENTE',
+  SENTIDO_E_HORARIO_DIFERENTES = 'SENTIDO_E_HORARIO_DIFERENTES',
+  SENTIDO_E_SERVICO_DIFERENTES = 'SENTIDO_E_SERVICO_DIFERENTES',
+  SO_LINHA_IGUAL = 'SO_LINHA_IGUAL',
+  SO_LINHA_DIFERENTE = 'SO_LINHA_DIFERENTE',
+  LINHA_E_HORARIO_DIFERENTES = 'LINHA_E_HORARIO_DIFERENTES',
+  LINHA_E_SERVICO_DIFERENTES = 'LINHA_E_SERVICO_DIFERENTES',
+  SO_SENTIDO_IGUAL = 'SO_SENTIDO_IGUAL',
+  LINHA_E_SENTIDO_DIFERENTES = 'LINHA_E_SENTIDO_DIFERENTES',
+  SO_SERVICO_IGUAL = 'SO_SERVICO_IGUAL',
+  SO_HORARIO_IGUAL = 'SO_HORARIO_IGUAL',
+  TUDO_DIFERENTE = 'TUDO_DIFERENTE',
+}
+
 @Entity('comparacao_viagens')
 @Index(['dataReferencia', 'codigoLinha'])
 @Index(['dataReferencia', 'statusComparacao'])
+@Index(['dataReferencia', 'tipoCombinacao']) // Novo índice
 export class ComparacaoViagem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -38,7 +58,6 @@ export class ComparacaoViagem {
   @Column({ name: 'transdata_sentido', type: 'varchar', length: 20, nullable: true })
   transdataSentido: string;
 
-  // ✅ CORRIGIDO: Aumentar tamanho dos campos de horário
   @Column({ name: 'transdata_horario_previsto', type: 'varchar', length: 20, nullable: true })
   transdataHorarioPrevisto: string;
 
@@ -58,7 +77,6 @@ export class ComparacaoViagem {
   @Column({ name: 'globus_sentido_texto', type: 'varchar', length: 20, nullable: true })
   globusSentidoTexto: string;
 
-  // ✅ CORRIGIDO: Aumentar tamanho do campo de horário
   @Column({ name: 'globus_horario_saida', type: 'varchar', length: 20, nullable: true })
   globusHorarioSaida: string;
 
@@ -74,6 +92,14 @@ export class ComparacaoViagem {
   })
   statusComparacao: StatusComparacao;
 
+  @Column({
+    name: 'tipo_combinacao',
+    type: 'enum', // ✅ AGORA É UM ENUM
+    enum: CombinacaoComparacao, // ✅ REFERENCIA O ENUM MOVIDO
+    nullable: true // Pode ser nulo se for apenas Transdata ou apenas Globus
+  })
+  tipoCombinacao: CombinacaoComparacao; // ✅ Tipo correto
+
   @Column({ name: 'sentido_compativel', type: 'boolean', default: false })
   sentidoCompativel: boolean;
 
@@ -88,9 +114,6 @@ export class ComparacaoViagem {
 
   @Column({ name: 'observacoes', type: 'text', nullable: true })
   observacoes: string;
-
-  @Column({ name: 'tipo_combinacao', type: 'integer', nullable: true })
-  tipoCombinacao: number;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

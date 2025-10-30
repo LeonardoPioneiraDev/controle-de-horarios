@@ -1,11 +1,30 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ComparacaoViagem, StatusComparacao } from '../entities/comparacao-viagem.entity';
+import { ComparacaoViagem, StatusComparacao, CombinacaoComparacao } from '../entities/comparacao-viagem.entity'; // ✅ Importar CombinacaoComparacao da entidade
 import { ViagemTransdata } from '../../viagens-transdata/entities/viagem-transdata.entity';
 import { ViagemGlobus } from '../../viagens-globus/entities/viagem-globus.entity';
 import { FiltrosComparacaoDto, ResultadoComparacaoDto } from '../dto';
-import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, CombinacaoComparacao, NormalizedTransDataTrip, NormalizedGlobusTrip } from '../utils/trip-comparator.util';
+import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, NormalizedTransDataTrip, NormalizedGlobusTrip } from '../utils/trip-comparator.util'; // ✅ Remover CombinacaoComparacao daqui
+
+const COMBINACAO_PRIORITY: Record<CombinacaoComparacao, number> = {
+  [CombinacaoComparacao.TUDO_IGUAL]: 0,
+  [CombinacaoComparacao.SO_HORARIO_DIFERENTE]: 1,
+  [CombinacaoComparacao.SO_SERVICO_DIFERENTE]: 2,
+  [CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES]: 3,
+  [CombinacaoComparacao.SO_SENTIDO_DIFERENTE]: 4,
+  [CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES]: 5,
+  [CombinacaoComparacao.SENTIDO_E_SERVICO_DIFERENTES]: 6,
+  [CombinacaoComparacao.SO_LINHA_IGUAL]: 7,
+  [CombinacaoComparacao.SO_LINHA_DIFERENTE]: 8,
+  [CombinacaoComparacao.LINHA_E_HORARIO_DIFERENTES]: 9,
+  [CombinacaoComparacao.LINHA_E_SERVICO_DIFERENTES]: 10,
+  [CombinacaoComparacao.SO_SENTIDO_IGUAL]: 11,
+  [CombinacaoComparacao.LINHA_E_SENTIDO_DIFERENTES]: 12,
+  [CombinacaoComparacao.SO_SERVICO_IGUAL]: 13,
+  [CombinacaoComparacao.SO_HORARIO_IGUAL]: 14,
+  [CombinacaoComparacao.TUDO_DIFERENTE]: 15,
+};
 
 @Injectable()
 export class ComparacaoViagensService {
@@ -36,63 +55,137 @@ export class ComparacaoViagensService {
     if (viagensGlobus.length === 0 || viagensTransdata.length === 0) {
         this.logger.warn(`Dados insuficientes para comparação. Abortando.`);
         return {
-            totalComparacoes: 0, compativeis: 0, divergentes: 0, apenasTransdata: viagensTransdata.length, 
+            totalComparacoes: 0, compativeis: 0, divergentes: 0, apenasTransdata: viagensTransdata.length,
             apenasGlobus: viagensGlobus.length, horarioDivergente: 0, percentualCompatibilidade: 0,
             linhasAnalisadas: 0, tempoProcessamento: '0s'
         };
     }
 
     const todasComparacoes: ComparacaoViagem[] = [];
-    const globusUsados = new Set<string>();
-    const estatisticas = {
+    let estatisticas = {
         compativeis: 0, divergentes: 0, horarioDivergente: 0,
         apenasTransdata: 0, apenasGlobus: 0, matches: 0
     };
 
+    const globusMatchedIds = new Set<string>();
+    const transdataProcessedIds = new Set<string>();
+
+    const normalizedGlobusTrips = viagensGlobus.map(trip => ({
+        original: trip,
+        normalized: normalizeGlobusTrip(trip)
+    }));
+
+    // --- FASE 1: BUSCAR MATCHES EXATOS ---
+    this.logger.log(`🔍 [FASE 1] Buscando matches exatos (TUDO_IGUAL)...`);
     for (const viagemTd of viagensTransdata) {
+        if (transdataProcessedIds.has(viagemTd.id.toString())) continue;
+
         const normTd = normalizeTransDataTrip(viagemTd);
-        let melhorMatch: { globus: ViagemGlobus; combinacao: CombinacaoComparacao } | null = null;
+        let foundExactMatch = false;
 
-        for (const viagemGb of viagensGlobus) {
-            if (globusUsados.has(viagemGb.id)) continue;
+        for (const globusWrapper of normalizedGlobusTrips) {
+            const viagemGb = globusWrapper.original;
+            const normGb = globusWrapper.normalized;
 
-            const normGb = normalizeGlobusTrip(viagemGb);
+            if (globusMatchedIds.has(viagemGb.id)) continue;
+
             const combinacao = compareTrips(normTd, normGb);
 
-            if (melhorMatch === null || combinacao < melhorMatch.combinacao) {
-                melhorMatch = { globus: viagemGb, combinacao };
+            if (combinacao === CombinacaoComparacao.TUDO_IGUAL) {
+                const comparacao = this.criarComparacaoDetalhada(
+                    dataReferencia, viagemTd, viagemGb, StatusComparacao.COMPATIVEL, 'Tudo igual', combinacao
+                );
+                todasComparacoes.push(comparacao);
+                globusMatchedIds.add(viagemGb.id);
+                transdataProcessedIds.add(viagemTd.id.toString());
+                estatisticas.compativeis++;
+                estatisticas.matches++;
+                foundExactMatch = true;
+                break; // Move to the next Transdata trip
             }
         }
+    }
+    this.logger.log(`✅ [FASE 1] Matches exatos encontrados: ${estatisticas.compativeis}`);
 
-        if (melhorMatch && melhorMatch.combinacao <= CombinacaoComparacao.SO_LINHA_IGUAL) {
-            globusUsados.add(melhorMatch.globus.id);
-            const normGb = normalizeGlobusTrip(melhorMatch.globus);
+    // --- FASE 2: COLETAR POTENCIAIS MATCHES DIVERGENTES ---
+    this.logger.log(`🔍 [FASE 2] Coletando potenciais matches divergentes...`);
+    const potentialDivergentMatches: {
+        tdTrip: ViagemTransdata;
+        gbTrip: ViagemGlobus;
+        combinacao: CombinacaoComparacao;
+        normTd: NormalizedTransDataTrip;
+        normGb: NormalizedGlobusTrip;
+    }[] = [];
 
-            const status = this.determinarStatusComparacao(melhorMatch.combinacao);
-            const observacao = this.gerarObservacao(melhorMatch.combinacao, normTd, normGb);
+    for (const viagemTd of viagensTransdata) {
+        if (transdataProcessedIds.has(viagemTd.id.toString())) continue;
+
+        const normTd = normalizeTransDataTrip(viagemTd);
+
+        for (const globusWrapper of normalizedGlobusTrips) {
+            const viagemGb = globusWrapper.original;
+            const normGb = globusWrapper.normalized;
+
+            if (globusMatchedIds.has(viagemGb.id)) continue;
+
+            const combinacao = compareTrips(normTd, normGb);
+
+            if (combinacao !== CombinacaoComparacao.TUDO_DIFERENTE) {
+                potentialDivergentMatches.push({
+                    tdTrip: viagemTd,
+                    gbTrip: viagemGb,
+                    combinacao: combinacao,
+                    normTd: normTd,
+                    normGb: normGb,
+                });
+            }
+        }
+    }
+    this.logger.log(`✅ [FASE 2] Potenciais matches divergentes coletados: ${potentialDivergentMatches.length}`);
+
+    // --- FASE 2.1: PROCESSAR MATCHES DIVERGENTES PRIORIZANDO OS MELHORES ---
+    this.logger.log(`🔍 [FASE 2.1] Processando matches divergentes priorizados...`);
+    // Sort by combination (lower enum value is a 'better' match)
+    potentialDivergentMatches.sort((a, b) => COMBINACAO_PRIORITY[a.combinacao] - COMBINACAO_PRIORITY[b.combinacao]);
+
+    for (const potentialMatch of potentialDivergentMatches) {
+        const { tdTrip, gbTrip, combinacao, normTd, normGb } = potentialMatch;
+
+        // Only process if both trips are still unmatched
+        if (!transdataProcessedIds.has(tdTrip.id.toString()) && !globusMatchedIds.has(gbTrip.id)) {
+            const status = this.determinarStatusComparacao(combinacao);
+            const observacao = this.gerarObservacao(combinacao, normTd, normGb);
 
             const comparacao = this.criarComparacaoDetalhada(
-                dataReferencia, viagemTd, melhorMatch.globus, status, observacao, melhorMatch.combinacao
+                dataReferencia, tdTrip, gbTrip, status, observacao, combinacao
             );
             todasComparacoes.push(comparacao);
-
+            globusMatchedIds.add(gbTrip.id);
+            transdataProcessedIds.add(tdTrip.id.toString());
             estatisticas.matches++;
-            if (status === StatusComparacao.COMPATIVEL) estatisticas.compativeis++;
-            else if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
+            if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
             else estatisticas.divergentes++;
+        }
+    }
+    this.logger.log(`✅ [FASE 2.1] Matches divergentes processados: ${estatisticas.divergentes + estatisticas.horarioDivergente}`);
 
-        } else {
+    // --- FASE 3: REGISTRAR VIAGENS NÃO COMBINADAS ---
+    this.logger.log(`🔍 [FASE 3] Registrando viagens não combinadas...`);
+    for (const viagemTd of viagensTransdata) {
+        if (!transdataProcessedIds.has(viagemTd.id.toString())) {
             estatisticas.apenasTransdata++;
             todasComparacoes.push(this.criarComparacaoApenasTransdata(dataReferencia, viagemTd));
         }
     }
 
-    for (const viagemGb of viagensGlobus) {
-        if (!globusUsados.has(viagemGb.id)) {
+    for (const globusWrapper of normalizedGlobusTrips) {
+        const viagemGb = globusWrapper.original;
+        if (!globusMatchedIds.has(viagemGb.id)) {
             estatisticas.apenasGlobus++;
             todasComparacoes.push(this.criarComparacaoApenasGlobus(dataReferencia, viagemGb));
         }
     }
+    this.logger.log(`✅ [FASE 3] Viagens apenas Transdata: ${estatisticas.apenasTransdata}, apenas Globus: ${estatisticas.apenasGlobus}`);
 
     await this.salvarComparacoes(todasComparacoes);
     this.logger.log(`💾 ${todasComparacoes.length} comparações salvas.`);
@@ -116,6 +209,9 @@ export class ComparacaoViagensService {
           case CombinacaoComparacao.TUDO_IGUAL:
               return StatusComparacao.COMPATIVEL;
           case CombinacaoComparacao.SO_HORARIO_DIFERENTE:
+          case CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES: // If service and horario differ, but line/sentido are same
+          case CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES: // If sentido and horario differ, but line/service are same
+          case CombinacaoComparacao.SO_LINHA_IGUAL: // If only line is same, implies horario is different
               return StatusComparacao.HORARIO_DIVERGENTE;
           default:
               return StatusComparacao.DIVERGENTE;
@@ -126,14 +222,22 @@ export class ComparacaoViagensService {
       const tpl = (t: string, g: string) => `(T: ${t} vs G: ${g})`;
       switch (combinacao) {
           case CombinacaoComparacao.TUDO_IGUAL: return 'Tudo igual';
-          case CombinacaoComparacao.SO_HORARIO_DIFERENTE: return `Só horário diferente ${tpl(td.horario, gb.horario)}`;
-          case CombinacaoComparacao.SO_SERVICO_DIFERENTE: return `Só serviço diferente ${tpl(td.servico, gb.servico)}`;
+          case CombinacaoComparacao.SO_HORARIO_DIFERENTE: return `Apenas horário diferente ${tpl(td.horario, gb.horario)}`;
+          case CombinacaoComparacao.SO_SERVICO_DIFERENTE: return `Apenas serviço diferente ${tpl(td.servico, gb.servico)}`;
           case CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES: return `Serviço ${tpl(td.servico, gb.servico)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
-          case CombinacaoComparacao.SO_SENTIDO_DIFERENTE: return `Só sentido diferente ${tpl(td.sentido, gb.sentido)}`;
+          case CombinacaoComparacao.SO_SENTIDO_DIFERENTE: return `Apenas sentido diferente ${tpl(td.sentido, gb.sentido)}`;
           case CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES: return `Sentido ${tpl(td.sentido, gb.sentido)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
           case CombinacaoComparacao.SENTIDO_E_SERVICO_DIFERENTES: return `Sentido ${tpl(td.sentido, gb.sentido)} e Serviço ${tpl(td.servico, gb.servico)} diferentes`;
-          case CombinacaoComparacao.SO_LINHA_IGUAL: return `Só linha igual, outros campos divergem`;
-          default: return `Divergência complexa (Combinação #${combinacao})`;
+          case CombinacaoComparacao.SO_LINHA_IGUAL: return `Apenas linha igual, outros campos divergem (Sentido: ${tpl(td.sentido, gb.sentido)}, Serviço: ${tpl(td.servico, gb.servico)}, Horário: ${tpl(td.horario, gb.horario)})`;
+          case CombinacaoComparacao.SO_LINHA_DIFERENTE: return `Apenas linha diferente ${tpl(td.linha, gb.linha)}`;
+          case CombinacaoComparacao.LINHA_E_HORARIO_DIFERENTES: return `Linha ${tpl(td.linha, gb.linha)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
+          case CombinacaoComparacao.LINHA_E_SERVICO_DIFERENTES: return `Linha ${tpl(td.linha, gb.linha)} e Serviço ${tpl(td.servico, gb.servico)} diferentes`;
+          case CombinacaoComparacao.SO_SENTIDO_IGUAL: return `Apenas sentido igual, outros campos divergem (Linha: ${tpl(td.linha, gb.linha)}, Serviço: ${tpl(td.servico, gb.servico)}, Horário: ${tpl(td.horario, gb.horario)})`;
+          case CombinacaoComparacao.LINHA_E_SENTIDO_DIFERENTES: return `Linha ${tpl(td.linha, gb.linha)} e Sentido ${tpl(td.sentido, gb.sentido)} diferentes`;
+          case CombinacaoComparacao.SO_SERVICO_IGUAL: return `Apenas serviço igual, outros campos divergem (Linha: ${tpl(td.linha, gb.linha)}, Sentido: ${tpl(td.sentido, gb.sentido)}, Horário: ${tpl(td.horario, gb.horario)})`;
+          case CombinacaoComparacao.SO_HORARIO_IGUAL: return `Apenas horário igual, outros campos divergem (Linha: ${tpl(td.linha, gb.linha)}, Sentido: ${tpl(td.sentido, gb.sentido)}, Serviço: ${tpl(td.servico, gb.servico)})`;
+          case CombinacaoComparacao.TUDO_DIFERENTE: return `Todos os campos (linha, sentido, serviço, horário) são diferentes`;
+          default: return `Divergência complexa (Combinação: ${combinacao})`; // Fallback, though all should be covered
       }
   }
 
@@ -143,7 +247,7 @@ export class ComparacaoViagensService {
     globus: ViagemGlobus,
     status: StatusComparacao,
     observacao: string,
-    combinacao: CombinacaoComparacao // ✅ Adicionar combinacao aqui
+    combinacao: CombinacaoComparacao 
   ): ComparacaoViagem {
     const comparacao = new ComparacaoViagem();
     const normTd = normalizeTransDataTrip(transdata);
@@ -168,7 +272,7 @@ export class ComparacaoViagensService {
 
     comparacao.statusComparacao = status;
     comparacao.observacoes = observacao;
-    comparacao.tipoCombinacao = combinacao; // ✅ Usar combinacao aqui
+    comparacao.tipoCombinacao = combinacao; 
 
     comparacao.sentidoCompativel = normTd.sentido === normGb.sentido;
     comparacao.servicoCompativel = normTd.servico === normGb.servico;

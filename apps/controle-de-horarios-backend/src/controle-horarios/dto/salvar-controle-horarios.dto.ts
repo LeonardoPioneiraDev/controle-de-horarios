@@ -4,7 +4,7 @@ import { IsString, IsOptional, IsUUID, MaxLength, IsArray, ValidateNested } from
 import { Transform, Type } from 'class-transformer';
 
 export class SalvarControleHorariosDto {
-  @IsUUID()
+  @IsString()
   viagemGlobusId: string;
 
   @IsOptional()
@@ -15,15 +15,33 @@ export class SalvarControleHorariosDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(200)
+  @MaxLength(255)
   @Transform(({ value }) => value?.trim())
-  informacaoRecolhe?: string;
+  nomeMotoristaEditado?: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(50)
+  @MaxLength(255)
   @Transform(({ value }) => value?.trim())
-  crachaFuncionario?: string;
+  crachaMotoristaEditado?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  @Transform(({ value }) => value?.trim())
+  nomeCobradorEditado?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  @Transform(({ value }) => value?.trim())
+  crachaCobradorEditado?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  @Transform(({ value }) => value?.trim())
+  informacaoRecolhe?: string;
 
   @IsOptional()
   @IsString()

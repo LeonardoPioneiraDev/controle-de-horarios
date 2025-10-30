@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,7 +14,7 @@
   }
   
   .btn-secondary {
-    @apply bg-primary-700 text-secondary-100 hover:bg-primary-600 focus:ring-primary-700;
+    @apply bg-primary-700 text-primary-100 hover:bg-primary-600 focus:ring-primary-700;
   }
   
   .btn-danger {
@@ -28,159 +30,111 @@
   }
   
   .form-input {
-    @apply w-full px-3 py-2 border border-primary-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent text-secondary-100 bg-primary-800;
+    @apply w-full px-3 py-2 border border-primary-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent text-primary-100 bg-primary-800;
   }
   
   .form-select {
-    @apply w-full px-3 py-2 border border-primary-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-primary-800 text-secondary-100;
+    @apply w-full px-3 py-2 border border-primary-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-primary-800 text-primary-100;
   }
   
   .card {
-    @apply bg-primary-800 rounded-lg shadow-2xl p-6 text-secondary-100;
+    @apply bg-primary-800 rounded-lg shadow-md p-6 text-primary-100;
   }
   
+  /* Status Badges */
   .status-badge {
-    @apply px-2 py-1 rounded-full text-xs font-medium uppercase tracking-wide;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
   
   .status-active {
-    @apply bg-accent-600 text-primary-900;
+    @apply bg-green-500 text-white;
   }
   
   .status-pending {
-    @apply bg-accent-400 text-primary-900;
+    @apply bg-yellow-500 text-white;
   }
   
   .status-inactive {
-    @apply bg-secondary-600 text-secondary-100;
+    @apply bg-red-500 text-white;
   }
   
   .status-blocked {
-    @apply bg-red-600 text-white; /* Keeping red for blocked, but adjusting shades */
+    @apply bg-gray-500 text-white;
   }
   
+  /* Role Badges */
   .role-badge {
-    @apply px-2 py-1 rounded-full text-xs font-medium capitalize;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize;
   }
   
   .role-administrador {
-    @apply bg-accent-700 text-primary-900; /* Yellow background, black text */
+    @apply bg-accent-500 text-primary-900;
   }
   
   .role-diretor {
-    @apply bg-primary-600 text-secondary-100; /* Darker background, light gray text */
+    @apply bg-primary-600 text-primary-100;
   }
   
   .role-gerente {
-    @apply bg-secondary-500 text-secondary-100; /* Gray background, light gray text */
+    @apply bg-primary-500 text-primary-100;
   }
   
   .role-analista {
-    @apply bg-accent-500 text-primary-900; /* Yellow background, black text */
+    @apply bg-accent-300 text-primary-900;
   }
   
   .role-operador {
-    @apply bg-primary-700 text-secondary-100; /* Dark background, light gray text */
+    @apply bg-primary-700 text-primary-100;
   }
-
-  /* Adicionar aos estilos existentes */
-
-/* Status Badges */
-.status-badge {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-}
-
-.status-active {
-  @apply bg-accent-600 text-primary-900;
-}
-
-.status-pending {
-  @apply bg-accent-400 text-primary-900;
-}
-
-.status-inactive {
-  @apply bg-secondary-600 text-secondary-100;
-}
-
-.status-blocked {
-  @apply bg-red-600 text-white;
-}
-
-/* Role Badges */
-.role-badge {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-}
-
-.role-administrador {
-  @apply bg-accent-700 text-primary-900;
-}
-
-.role-diretor {
-  @apply bg-primary-600 text-secondary-100;
-}
-
-.role-gerente {
-  @apply bg-secondary-500 text-secondary-100;
-}
-
-.role-analista {
-  @apply bg-accent-500 text-primary-900;
-}
-
-.role-operador {
-  @apply bg-primary-700 text-secondary-100;
-}
-
-.role-funcionario {
-  @apply bg-secondary-700 text-secondary-100; /* Adjusted for dark theme */
-}
-
-/* Adicionar aos estilos existentes */
-
-/* Form improvements */
-.form-input:disabled {
-  @apply bg-primary-700 text-secondary-400 cursor-not-allowed; /* Adjusted for dark theme */
-}
-
-.form-select:disabled {
-  @apply bg-primary-700 text-secondary-400 cursor-not-allowed; /* Adjusted for dark theme */
-}
-
-/* Focus states for error inputs */
-.form-input:focus {
-  @apply outline-none ring-2 ring-offset-2;
-}
-
-.form-input.border-red-300:focus {
-  @apply border-red-500 ring-red-500;
-}
-
-/* Modal scrollbar */
-.max-h-\[90vh\]::-webkit-scrollbar {
-  width: 6px;
-}
-
-.max-h-\[90vh\]::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 3px;
-}
-
-.max-h-\[90vh\]::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.max-h-\[90vh\]::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-/* Animation for status indicators */
-@keyframes pulse-success {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
-}
-
-.animate-pulse-success {
-  animation: pulse-success 2s infinite;
-}
+  
+  .role-funcionario {
+    @apply bg-primary-600 text-primary-100;
+  }
+  
+  /* Form improvements */
+  .form-input:disabled {
+    @apply bg-primary-700 text-primary-400 cursor-not-allowed;
+  }
+  
+  .form-select:disabled {
+    @apply bg-primary-700 text-primary-400 cursor-not-allowed;
+  }
+  
+  /* Focus states for error inputs */
+  .form-input:focus {
+    @apply outline-none ring-2 ring-offset-2;
+  }
+  
+  .form-input.border-red-300:focus {
+    @apply border-red-500 ring-red-500;
+  }
+  
+  /* Modal scrollbar */
+  .max-h-\[90vh\]::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .max-h-\[90vh\]::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+  }
+  
+  .max-h-\[90vh\]::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+  }
+  
+  .max-h-\[90vh\]::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+  
+  /* Animation for status indicators */
+  @keyframes pulse-success {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
+  
+  .animate-pulse-success {
+    animation: pulse-success 2s infinite;
+  }
 }

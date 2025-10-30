@@ -19,7 +19,7 @@ export class ComparacaoViagensService extends BaseApiService {
 
   async getComparacoes(data: string, filtros: FiltrosComparacao): Promise<ResponsePaginada<ComparacaoViagem>> {
     const params = new URLSearchParams();
-    if (filtros.limite) params.append('limite', filtros.limite.toString());
+    if (filtros.limit) params.append('limit', filtros.limit.toString());
     if (filtros.page) params.append('page', filtros.page.toString());
     if (filtros.statusComparacao) params.append('statusComparacao', filtros.statusComparacao);
     if (filtros.codigoLinha) params.append('codigoLinha', filtros.codigoLinha);
@@ -33,6 +33,11 @@ export class ComparacaoViagensService extends BaseApiService {
 
     const response = await this.api.get<ResponsePaginada<ComparacaoViagem>>(url);
     return response.data;
+  }
+
+  async getLinhas(data: string): Promise<string[]> {
+    const response = await this.api.get<{ data: string[] }>(`/comparacao-viagens/${data}/linhas`);
+    return response.data.data;
   }
 }
 

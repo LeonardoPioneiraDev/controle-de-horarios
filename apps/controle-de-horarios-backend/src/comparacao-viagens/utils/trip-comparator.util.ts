@@ -1,6 +1,5 @@
-// src/comparacao-viagens/utils/trip-comparator.util.ts
-
-import { ViagemGlobusBaseDto } from '../../controle-horarios/dto/response-controle-horarios.dto';
+import { ControleHorarioItemDto } from '../../controle-horarios/dto/response-controle-horarios.dto';
+import { CombinacaoComparacao } from '../entities/comparacao-viagem.entity'; // ✅ Importar CombinacaoComparacao da entidade
 
 // Mapeamento de Sentido
 const SENTIDO_MAP: { [key: string]: string } = {
@@ -9,27 +8,8 @@ const SENTIDO_MAP: { [key: string]: string } = {
   'V': 'VOLTA',
   'IDA': 'IDA',
   'VOLTA': 'VOLTA',
+  'CIRCULAR': 'IDA', // Map Transdata's 'CIRCULAR' to 'IDA' for comparison if that's the rule
 };
-
-// Enum para as combinações de comparação
-export enum CombinacaoComparacao {
-  TUDO_IGUAL = 1,
-  SO_HORARIO_DIFERENTE = 2,
-  SO_SERVICO_DIFERENTE = 3,
-  SERVICO_E_HORARIO_DIFERENTES = 4,
-  SO_SENTIDO_DIFERENTE = 5,
-  SENTIDO_E_HORARIO_DIFERENTES = 6,
-  SENTIDO_E_SERVICO_DIFERENTES = 7,
-  SO_LINHA_IGUAL = 8,
-  SO_LINHA_DIFERENTE = 9,
-  LINHA_E_HORARIO_DIFERENTES = 10,
-  LINHA_E_SERVICO_DIFERENTES = 11,
-  SO_SENTIDO_IGUAL = 12,
-  LINHA_E_SENTIDO_DIFERENTES = 13,
-  SO_SERVICO_IGUAL = 14,
-  SO_HORARIO_IGUAL = 15,
-  TUDO_DIFERENTE = 16,
-}
 
 // Interface para os dados normalizados de TransData
 export interface NormalizedTransDataTrip {
@@ -71,11 +51,13 @@ export interface OracleGlobusData {
 
 // Função para normalizar os dados da TransData
 export function normalizeTransDataTrip(transDataTrip: any): NormalizedTransDataTrip {
-  // Extrai os primeiros 6 caracteres que são dígitos, ignorando o resto.
-  const linha = (transDataTrip.NomeLinha.match(/\d/g) || []).join('').substring(0, 6);
+  const match = transDataTrip.NomeLinha.match(/^(\d+(\.\d+)?)/);
+  let linha = match ? match[1] : ''; // Get "0.018" or "018.1"
+  linha = linha.replace(/\./g, '').trim(); // Remove dots and trim: "0018" or "0181"
+  linha = String(parseInt(linha, 10)); // Convert to int, then back to string to remove leading zeros
 
   const sentido = SENTIDO_MAP[transDataTrip.SentidoText.toUpperCase()] || transDataTrip.SentidoText.toUpperCase();
-  const servico = String(transDataTrip.Servico);
+  const servico = String(parseInt(transDataTrip.Servico, 10));
   // Extrai HH:mm de uma string de data/hora como "26/10/2025 15:40:00"
   const horario = transDataTrip.InicioPrevisto.split(' ')[1]?.substring(0, 5) || '';
 
@@ -88,7 +70,8 @@ export function normalizeTransDataTrip(transDataTrip: any): NormalizedTransDataT
 }
 
 // ✅ Função para normalizar os dados da Globus (aceita tanto DTO quanto dados Oracle)
-export function normalizeGlobusTrip(globusTrip: ViagemGlobusBaseDto | OracleGlobusData): NormalizedGlobusTrip {
+export function normalizeGlobusTrip(globusTrip: ControleHorarioItemDto | OracleGlobusData): NormalizedGlobusTrip {
+  // ✅ Detectar se é dados Oracle (campos em maiúsculo) ou DTO (camelCase)
   const isOracleData = 'CODIGOLINHA' in globusTrip;
   
   let linha: string;
@@ -97,11 +80,14 @@ export function normalizeGlobusTrip(globusTrip: ViagemGlobusBaseDto | OracleGlob
   let horario: string;
 
   if (isOracleData) {
+    // ✅ Dados Oracle (campos em maiúsculo)
     const oracleData = globusTrip as OracleGlobusData;
-    linha = String(oracleData.CODIGOLINHA || '').replace(/[^0-9]/g, '').substring(0, 6);
+    linha = String(oracleData.CODIGOLINHA || '').replace(/[^0-9]/g, '').trim();
+    linha = String(parseInt(linha, 10)); // Convert to int, then back to string to remove leading zeros
     sentido = SENTIDO_MAP[String(oracleData.FLG_SENTIDO || '').toUpperCase()] || String(oracleData.FLG_SENTIDO || '').toUpperCase();
-    servico = String(oracleData.COD_SERVICO_NUMERO || '').trim();
+    servico = String(parseInt(String(oracleData.COD_SERVICO_NUMERO || '').replace(/[^0-9]/g, ''), 10));
     
+    // ✅ Processar horário Oracle (formato: "01/01/1900 06:07:01")
     const horarioOracle = String(oracleData.HOR_SAIDA || '');
     if (horarioOracle.includes(' ')) {
       const timePart = horarioOracle.split(' ')[1];
@@ -110,11 +96,13 @@ export function normalizeGlobusTrip(globusTrip: ViagemGlobusBaseDto | OracleGlob
       horario = horarioOracle.substring(0, 5);
     }
   } else {
-    const dtoData = globusTrip as ViagemGlobusBaseDto;
-    linha = String(dtoData.codigoLinha || '').replace(/[^0-9]/g, '').substring(0, 6);
+    // ✅ DTO (camelCase)
+    const dtoData = globusTrip as ControleHorarioItemDto;
+    linha = String(dtoData.codigoLinha || '').replace(/[^0-9]/g, '').trim();
+    linha = String(parseInt(linha, 10)); // Convert to int, then back to string to remove leading zeros
     sentido = SENTIDO_MAP[String(dtoData.flgSentido || '').toUpperCase()] || String(dtoData.flgSentido || '').toUpperCase();
-    servico = String(dtoData.codServicoNumero || '').trim();
-    horario = String(dtoData.horSaidaTime || '').substring(0, 5);
+    servico = String(parseInt(String(dtoData.codServicoNumero || '').replace(/[^0-9]/g, ''), 10));
+    horario = String(dtoData.horaSaida || '').substring(0, 5);
   }
 
   return {
@@ -133,7 +121,11 @@ export function compareTrips(
   const linhaIgual = transDataTrip.linha === globusTrip.linha;
   const sentidoIgual = transDataTrip.sentido === globusTrip.sentido;
   const servicoIgual = transDataTrip.servico === globusTrip.servico;
-  const horarioIgual = transDataTrip.horario === globusTrip.horario;
+  const diffHorario = Math.abs(
+    (new Date(`1970-01-01T${transDataTrip.horario}:00`).getTime()) -
+    (new Date(`1970-01-01T${globusTrip.horario}:00`).getTime())
+  ) / (1000 * 60);
+  const horarioIgual = diffHorario <= 2; // Consider times equal if within 2 minutes
 
   if (linhaIgual && sentidoIgual && servicoIgual && horarioIgual) {
     return CombinacaoComparacao.TUDO_IGUAL; // 1
