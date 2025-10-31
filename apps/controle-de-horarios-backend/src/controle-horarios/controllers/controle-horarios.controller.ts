@@ -45,7 +45,7 @@ export class ControleHorariosController {
     try {
       this.logger.log(`🔍 [${usuarioEmail}] Buscando controle de horários para ${data}`);
       
-      return await this.controleHorariosService.buscarControleHorarios(data, filtros, usuarioId, usuarioEmail);
+      return await this.controleHorariosService.buscarControleHorarios(data, filtros, usuarioId);
     } catch (error) {
       this.logger.error(`❌ Erro ao buscar controle de horários: ${error.message}`);
       throw new HttpException(
@@ -66,11 +66,12 @@ export class ControleHorariosController {
     @Body() dados: SalvarControleHorariosDto,
     @CurrentUser('id') usuarioId: string,
     @CurrentUser('email') usuarioEmail: string,
+    @CurrentUser('fullName') usuarioNome: string,
   ) {
     try {
       this.logger.log(`💾 [${usuarioEmail}] Salvando controle para viagem ${dados.viagemGlobusId}`);
       
-      return await this.controleHorariosService.createOrUpdateControleHorario(data, dados, usuarioId, usuarioEmail);
+      return await this.controleHorariosService.createOrUpdateControleHorario(data, dados, usuarioId, usuarioEmail, usuarioNome);
     } catch (error) {
       this.logger.error(`❌ Erro ao salvar controle: ${error.message}`);
       throw new HttpException(
@@ -90,12 +91,13 @@ export class ControleHorariosController {
     @Body() dados: SalvarMultiplosControleHorariosDto,
     @CurrentUser('id') usuarioId: string,
     @CurrentUser('email') usuarioEmail: string,
+    @CurrentUser('fullName') usuarioNome: string,
   ) {
     try {
       this.logger.log(`💾 [${usuarioEmail}] Salvando múltiplos controles para ${dados.dataReferencia}`);
       this.logger.log(`📊 Total de controles a salvar: ${dados.controles.length}`);
       
-      return await this.controleHorariosService.salvarMultiplosControles(dados, usuarioId, usuarioEmail);
+      return await this.controleHorariosService.salvarMultiplosControles(dados, usuarioId, usuarioEmail, usuarioNome);
     } catch (error) {
       this.logger.error(`❌ Erro ao salvar múltiplos controles: ${error.message}`);
       throw new HttpException(
@@ -212,11 +214,12 @@ export class ControleHorariosController {
     @Body() { overwrite }: SincronizarControleHorariosDto,
     @CurrentUser('id') usuarioId: string,
     @CurrentUser('email') usuarioEmail: string,
+    @CurrentUser('fullName') usuarioNome: string,
   ) {
     try {
       this.logger.log(`🔄 [${usuarioEmail}] Sincronizando viagens Globus para ${data} (overwrite: ${overwrite})`);
       
-      const resultado = await this.controleHorariosService.sincronizarViagensGlobus(data, overwrite, usuarioId, usuarioEmail);
+      const resultado = await this.controleHorariosService.sincronizarViagensGlobus(data, overwrite, usuarioId, usuarioEmail, usuarioNome);
       
       return {
         success: true,

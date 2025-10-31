@@ -107,6 +107,7 @@ export class AuthService {
     console.log(`🔍 [AUTH] Validando JWT payload para: ${payload.email} (ID: ${payload.sub})`);
     
     try {
+      console.log(`🔍 [AUTH] Payload SUB: "${payload.sub}" (Length: ${payload.sub.length})`);
       const user = await this.usersService.findOne(payload.sub);
       
       if (!user) {

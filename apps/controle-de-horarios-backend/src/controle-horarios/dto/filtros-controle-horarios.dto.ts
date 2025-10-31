@@ -29,6 +29,11 @@ export class FiltrosControleHorariosDto {
 
   @IsOptional()
   @IsString()
+  @Transform(({ value }) => value?.trim())
+  codServicoCompleto?: string;
+
+  @IsOptional()
+  @IsString()
   @Transform(({ value }) => value?.trim()?.toUpperCase())
   sentidoTexto?: string; // Corresponds to flgSentido
 

@@ -242,7 +242,7 @@ const LoadingState = ({ text }: { text: string }) => (
 // --- MAIN COMPONENT ---
 
 const initialFilters: FiltrosComparacao = {
-    limite: 50,
+    limit: 50,
     page: 1,
 };
 

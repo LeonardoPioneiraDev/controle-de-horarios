@@ -88,7 +88,13 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
                       const newSelected = e.target.checked
                         ? [...(filtros.codigoLinha || []), linha.codigo]
                         : (filtros.codigoLinha || []).filter(code => code !== linha.codigo);
-                      handleFilterChange('codigoLinha', newSelected);
+
+                      if (newSelected.length <= 6) {
+                        handleFilterChange('codigoLinha', newSelected);
+                      } else {
+                        // Optionally, provide user feedback here, e.g., a toast notification
+                        alert('Você pode selecionar no máximo 6 linhas.');
+                      }
                     }}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                   />
@@ -197,8 +203,8 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <label className="block text-sm font-medium text-gray-700 mb-1">Código Cobrador</label>
           <input
             type="text"
-            value={filtros.codCobrador || ''}
-            onChange={(e) => handleFilterChange('codCobrador', e.target.value || undefined)}
+            value={(filtros as any).codCobrador || ''}
+            onChange={(e) => handleFilterChange('codCobrador' as keyof FiltrosControleHorarios, e.target.value || undefined)}
             placeholder="Código do cobrador"
             className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
@@ -291,8 +297,8 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <input
             id="editadoPorUsuario"
             type="checkbox"
-            checked={filtros.editadoPorUsuario === true}
-            onChange={(e) => handleFilterChange('editadoPorUsuario', e.target.checked ? true : undefined)}
+            checked={(filtros as any).editadoPorUsuario === true}
+            onChange={(e) => handleFilterChange('editadoPorUsuario' as keyof FiltrosControleHorarios, e.target.checked ? true : undefined)}
             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
           <label htmlFor="editadoPorUsuario" className="ml-2 block text-sm text-gray-900">

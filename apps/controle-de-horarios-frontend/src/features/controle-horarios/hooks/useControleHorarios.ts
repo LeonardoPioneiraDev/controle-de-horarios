@@ -1,17 +1,24 @@
 // src/features/controle-horarios/hooks/useControleHorarios.ts
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
-import { controleHorariosService } from '../services/controle-horarios.service';
+import { controleHorariosService } from '@/services/controleHorariosService';
 import {
-  ControleHorarioItem,
+  ControleHorarioItemDto,
   FiltrosControleHorarios,
-  OpcoesControleHorarios,
-  UsuarioAtual,
-  SincronizacaoResponse,
+  OpcoesControleHorariosDto,
+  SalvarControleHorariosDto,
   SincronizarControleHorariosDto,
-  StatusControleHorarios,
-  EstatisticasControleHorarios
-} from '../types/controle-horarios.types';
+  StatusControleHorariosDto,
+  EstatisticasControleHorariosDto
+} from '@/types/controle-horarios.types';
+
+
+interface UsuarioAtual {
+  id: string;
+  nome: string;
+  email: string;
+  perfil: string;
+}
 
 export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
   const { user } = useAuth();
@@ -59,21 +66,32 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     return today.toISOString().split('T')[0];
   });
 
-  const [controleHorarios, setControleHorarios] = useState<ControleHorarioItem[]>([]);
-  const [controleHorariosOriginais, setControleHorariosOriginais] = useState<ControleHorarioItem[]>([]);
+  const [controleHorarios, setControleHorarios] = useState<ControleHorarioItemDto[]>([]);
+  const [controleHorariosExibidos, setControleHorariosExibidos] = useState<ControleHorarioItemDto[]>([]);
+  const [controleHorariosOriginais, setControleHorariosOriginais] = useState<ControleHorarioItemDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false);
   
-  // ✅ CORRIGIDO: Estados de filtros sem campos não suportados
+  const [currentPage, setCurrentPage] = useState(0);
+  const [pageSize, setPageSize] = useState(100);
+  const [totalItems, setTotalItems] = useState(0);
+  const [temMaisPaginas, setTemMaisPaginas] = useState(false);
+
   const [filtros, setFiltros] = useState<FiltrosControleHorarios>({
-    limite: 100,
-    pagina: 0,
-    // ✅ REMOVIDO: statusEdicao - não suportado pelo backend
+    limite: pageSize,
+    pagina: currentPage,
+    codAtividade: undefined, // Ajustado para string
+    localOrigem: undefined,
+    crachaMotorista: undefined,
+    crachaCobrador: undefined,
+    servicoIgualMotorista: undefined,
   });
 
-  const [opcoesFiltros, setOpcoesFiltros] = useState<OpcoesControleHorarios>({
+  const [statusEdicaoLocal, setStatusEdicaoLocal] = useState<'todos' | 'editados' | 'nao_editados'>('todos'); // Novo estado local
+
+  const [opcoesFiltros, setOpcoesFiltros] = useState<OpcoesControleHorariosDto>({
     setores: [],
     linhas: [],
     servicos: [],
@@ -83,30 +101,28 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     locaisDestino: [],
   });
 
-  // ✅ Estatísticas com interface completa
-  const [estatisticas, setEstatisticas] = useState<EstatisticasControleHorarios>({
-    dataReferencia: '',
+  const [estatisticas, setEstatisticas] = useState<EstatisticasControleHorariosDto>({
     totalViagens: 0,
     viagensEditadas: 0,
     viagensNaoEditadas: 0,
     percentualEditado: 0,
-    ultimaAtualizacao: null,
+    ultimaAtualizacao: undefined,
     setoresUnicos: [],
     linhasUnicas: [],
     servicosUnicos: [],
   });
 
-  const [statusDados, setStatusDados] = useState<StatusControleHorarios>({
-    existeViagensGlobus: false,
-    totalViagensGlobus: 0,
-    viagensEditadas: 0,
-    percentualEditado: 0,
-    ultimaAtualizacao: null,
-    totalMotoristas: 0,
-    totalCobradores: 0,
-    totalLinhas: 0,
-    totalServicos: 0,
-    totalSetores: 0,
+  const [statusDados, setStatusDados] = useState<StatusControleHorariosDto>({
+    success: false,
+    message: '',
+    data: {
+      existeViagensGlobus: false,
+      totalViagensGlobus: 0,
+      viagensEditadas: 0,
+      percentualEditado: 0,
+      ultimaAtualizacao: undefined,
+    },
+    dataReferencia: '',
   });
 
   // ✅ Função de busca aprimorada
@@ -119,29 +135,36 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     try {
       console.log('🔍 Iniciando busca com filtros:', { dataReferencia, filtros });
       
-      // Todos os campos em FiltrosControleHorarios são agora suportados pelo backend
+      const filtrosComPaginacao = {
+        ...filtros,
+        limite: pageSize === -1 ? undefined : pageSize,
+        pagina: pageSize === -1 ? undefined : currentPage,
+      };
+
       const filtrosLimpos = Object.fromEntries(
-        Object.entries(filtros).filter(([key, value]) => value !== undefined && value !== null && value !== '')
+        Object.entries(filtrosComPaginacao).filter(([key, value]) => value !== undefined && value !== null && value !== '')
       );
       
       console.log('🧹 Filtros limpos para envio:', filtrosLimpos);
       
-      const response = await controleHorariosService.getControleHorarios(dataReferencia, filtrosLimpos);
+      const response = await controleHorariosService.buscarControleHorarios(dataReferencia, filtrosLimpos);
       
       console.log('�� Resposta completa da API:', response);
 
       if (response.success) {
         // Os dados já vêm achatados do backend, sem a necessidade de dadosProcessados
-        setControleHorarios(response.data);
+        setControleHorarios(response.data.filter(item => /^[0-9]/.test(item.codigoLinha || '')));
         console.log('✅ Dados de controle de horários recebidos:', response.data.length, 'itens'); // Added log
         setControleHorariosOriginais(JSON.parse(JSON.stringify(response.data)));
         
         // ✅ Atualizar estatísticas com dados completos
         setEstatisticas({
           ...response.estatisticas,
-          ultimaAtualizacao: response.estatisticas.ultimaAtualizacao ? new Date(response.estatisticas.ultimaAtualizacao) : null,
+          ultimaAtualizacao: response.estatisticas.ultimaAtualizacao ? new Date(response.estatisticas.ultimaAtualizacao) : undefined,
         });
         
+        setTotalItems(response.total);
+        setTemMaisPaginas(response.temMaisPaginas);
         setTemAlteracoesPendentes(false);
         
         console.log('✅ Estado atualizado:', {
@@ -164,19 +187,14 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     if (!dataReferencia) return;
     
     try {
-      const response = await controleHorariosService.getStatusControleHorarios(dataReferencia);
+      const response = await controleHorariosService.verificarStatusDados(dataReferencia);
       if (response.success) {
         setStatusDados({
-          existeViagensGlobus: response.data.existeViagensGlobus || false,
-          totalViagensGlobus: response.data.totalViagensGlobus || 0,
-          viagensEditadas: response.data.viagensEditadas || 0,
-          percentualEditado: response.data.percentualEditado || 0,
-          ultimaAtualizacao: response.data.ultimaAtualizacao ? new Date(response.data.ultimaAtualizacao) : null,
-          totalMotoristas: response.data.totalMotoristas || 0,
-          totalCobradores: response.data.totalCobradores || 0,
-          totalLinhas: response.data.totalLinhas || 0,
-          totalServicos: response.data.totalServicos || 0,
-          totalSetores: response.data.totalSetores || 0,
+          ...response,
+          data: {
+            ...response.data,
+            ultimaAtualizacao: response.data.ultimaAtualizacao ? new Date(response.data.ultimaAtualizacao) : undefined,
+          }
         });
       }
     } catch (err) {
@@ -189,18 +207,16 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     if (!dataReferencia) return;
     
     try {
-      const response = await controleHorariosService.getOpcoesControleHorarios(dataReferencia);
-      if (response.success) {
-        setOpcoesFiltros({
-          setores: response.data.setores || [],
-          linhas: response.data.linhas || [],
-          servicos: response.data.servicos || [],
-          sentidos: response.data.sentidos || [],
-          motoristas: response.data.motoristas || [],
-          locaisOrigem: response.data.locaisOrigem || [],
-          locaisDestino: response.data.locaisDestino || [],
-        });
-      }
+      const response = await controleHorariosService.buscarOpcoesControleHorarios(dataReferencia);
+      setOpcoesFiltros({
+        setores: response.setores || [],
+        linhas: (response.linhas || []).filter(linha => /^[0-9]/.test(linha.codigo)), // Filtrar linhas que começam com número
+        servicos: response.servicos || [],
+        sentidos: response.sentidos || [],
+        motoristas: response.motoristas || [],
+        locaisOrigem: response.locaisOrigem || [],
+        locaisDestino: response.locaisDestino || [],
+      });
     } catch (err) {
       console.error('Erro ao buscar opções de filtros:', err);
     }
@@ -225,8 +241,10 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
         
         return (
           item.numeroCarro !== original.numeroCarro ||
-          item.informacaoRecolhe !== original.informacaoRecolhe ||
+          item.nomeMotoristaEditado !== original.nomeMotoristaEditado ||
           item.crachaMotoristaEditado !== original.crachaMotoristaEditado ||
+          item.nomeCobradorEditado !== original.nomeCobradorEditado ||
+          item.crachaCobradorEditado !== original.crachaCobradorEditado ||
           item.observacoes !== original.observacoes
         );
       });
@@ -241,14 +259,18 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
 
       const dadosParaSalvar = {
         dataReferencia,
-        usuarioEdicao: usuarioAtual.nome,
-        usuarioEmail: usuarioAtual.email,
         controles: itensAlterados.map(item => ({
           viagemGlobusId: item.viagemGlobusId,
           numeroCarro: item.numeroCarro?.trim() || undefined,
-          informacaoRecolhe: item.informacaoRecolhe?.trim() || undefined,
-          crachaFuncionario: item.crachaMotoristaEditado?.trim() || undefined,
+          nomeMotoristaEditado: item.nomeMotoristaEditado?.trim() || undefined,
+          crachaMotoristaEditado: item.crachaMotoristaEditado?.trim() || undefined,
+          nomeCobradorEditado: item.nomeCobradorEditado?.trim() || undefined,
+          crachaCobradorEditado: item.crachaCobradorEditado?.trim() || undefined,
           observacoes: item.observacoes?.trim() || undefined,
+          isAtivo: item.isAtivo,
+          editorId: usuarioAtual.id,
+          editorNome: usuarioAtual.nome,
+          editorEmail: usuarioAtual.email,
         }))
       };
 
@@ -289,11 +311,10 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     setLoading(true);
     setError(null);
     try {
-      const response = await controleHorariosService.sincronizarControleHorarios(dataReferencia, { overwrite });
+      const response = await controleHorariosService.sincronizarViagensGlobus(dataReferencia, overwrite);
       if (response.success) {
         console.log('✅ Sincronização bem-sucedida:', response.message);
         await Promise.all([
-          buscarControleHorarios(),
           verificarStatusDados(),
           buscarOpcoesFiltros()
         ]);
@@ -306,10 +327,10 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     } finally {
       setLoading(false);
     }
-  }, [dataReferencia, buscarControleHorarios, verificarStatusDados]);
+  }, [dataReferencia, buscarControleHorarios, verificarStatusDados, buscarOpcoesFiltros]);
 
   // ✅ Função de edição aprimorada
-  const handleInputChange = useCallback((viagemId: string, field: keyof ControleHorarioItem, value: string) => {
+  const handleInputChange = useCallback((viagemId: string, field: keyof ControleHorarioItemDto, value: string | number | boolean) => {
     setControleHorarios(prev => 
       prev.map(item => 
         item.viagemGlobusId === viagemId
@@ -327,55 +348,48 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
   // ✅ CORRIGIDO: Funções de filtros sem campos não suportados
   const limparFiltros = () => {
     setFiltros({
-      limite: 100,
+      limite: pageSize,
       pagina: 0,
       ordenarPor: "horaSaida",
       ordem: "ASC",
+      codAtividade: undefined,
+      localOrigem: undefined,
+      crachaMotorista: undefined,
+      crachaCobrador: undefined,
+      servicoIgualMotorista: true,
+      buscaTexto: undefined,
+      nomeMotorista: undefined,
+      nomeCobrador: undefined,
+      horarioInicio: undefined,
+      horarioFim: undefined,
+      sentidoTexto: undefined,
+      codigoLinha: undefined,
+      setorPrincipal: undefined,
+      codServicoNumero: undefined,
+      localDestino: undefined,
     });
+    setCurrentPage(0);
+    setStatusEdicaoLocal('todos'); // Limpar também o filtro local
   };
 
   const aplicarFiltroRapido = (tipo: 'editados' | 'nao_editados' | 'todos') => {
-    // ✅ CORRIGIDO: Usar editadoPorUsuario em vez de statusEdicao
-    if (tipo === 'editados') {
-      setFiltros(prev => ({
-        ...prev,
-        editadoPorUsuario: true,
-        pagina: 0,
-      }));
-    } else if (tipo === 'nao_editados') {
-      setFiltros(prev => ({
-        ...prev,
-        editadoPorUsuario: false,
-        pagina: 0,
-      }));
-    } else {
-      setFiltros(prev => {
-        const { editadoPorUsuario, ...resto } = prev;
-        return {
-          ...resto,
-          pagina: 0,
-        };
-      });
-    }
+    setStatusEdicaoLocal(tipo); // Atualiza o estado local
+    setCurrentPage(0);
   };
 
   const contarFiltrosAtivos = () => {
     let count = 0;
-    if (filtros.setorPrincipal) count++;
-    if (filtros.codigoLinha && filtros.codigoLinha.length > 0) count++;
-    if (filtros.codServicoNumero) count++;
-    if (filtros.sentidoTexto) count++;
-    if (filtros.horarioInicio) count++;
-    if (filtros.horarioFim) count++;
-    if (filtros.nomeMotorista) count++;
-    if (filtros.localOrigem) count++;
-    if (filtros.codAtividade) count++;
-    if (filtros.localDestino) count++;
-    if (filtros.crachaMotorista) count++;
-    if (filtros.buscaTexto) count++;
-    if (filtros.editadoPorUsuario === true || filtros.editadoPorUsuario === false) count++;
-    if (filtros.ordenarPor && filtros.ordenarPor !== "horaSaida") count++;
-    if (filtros.ordem && filtros.ordem !== "ASC") count++;
+    const { limite, pagina, ordenarPor, ordem, ...restOfFilters } = filtros;
+
+    for (const key in restOfFilters) {
+      const value = restOfFilters[key as keyof typeof restOfFilters];
+      if (value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0)) {
+        count++;
+      }
+    }
+    if (statusEdicaoLocal !== 'todos') { // Contar o filtro local
+      count++;
+    }
     return count;
   };
 
@@ -386,48 +400,79 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
       
       return (
         item.numeroCarro !== original.numeroCarro ||
-        item.informacaoRecolhe !== original.informacaoRecolhe ||
+        item.nomeMotoristaEditado !== original.nomeMotoristaEditado ||
         item.crachaMotoristaEditado !== original.crachaMotoristaEditado ||
+        item.nomeCobradorEditado !== original.nomeCobradorEditado ||
+        item.crachaCobradorEditado !== original.crachaCobradorEditado ||
         item.observacoes !== original.observacoes
       );
     }).length;
   };
 
-  // ✅ Efeitos
+  // Effect for initial load of status and filter options
   useEffect(() => {
-    // Initial load or dataReferencia change should not trigger automatic data fetch
-    // Data will be fetched via manual sync or filter application
-  }, [dataReferencia]);
+    const loadStatusAndOptions = async () => {
+      if (!dataReferencia) return;
+      setLoading(true);
+      setError(null);
+      try {
+        await Promise.all([
+          verificarStatusDados(),
+          buscarOpcoesFiltros()
+        ]);
+      } catch (err: any) {
+        console.error('❌ Erro ao carregar status e opções iniciais:', err);
+        setError(err.message || 'Erro ao carregar status e opções iniciais.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadStatusAndOptions();
+  }, [dataReferencia, verificarStatusDados, buscarOpcoesFiltros]);
 
-  // ✅ Efeito para recarregar quando filtros mudam - REMOVIDO para sincronização manual
-  // useEffect(() => {
-  //   if (dataReferencia) {
-  //     buscarControleHorarios();
-  //   }
-  // }, [filtros, buscarControleHorarios]);
+    // Effect for fetching main control data based on filters and pagination
+    useEffect(() => {
+      if (!dataReferencia) return;
+      // Only fetch if not already loading to prevent redundant calls
+      // The `loading` state is managed internally by `buscarControleHorarios`
+      buscarControleHorarios();
+    }, [dataReferencia, filtros, currentPage, pageSize]);
 
-  const iniciarSincronizacaoManual = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await Promise.all([
-        buscarControleHorarios(),
-        verificarStatusDados(),
-        buscarOpcoesFiltros()
-      ]);
-    } catch (err: any) {
-      console.error('❌ Erro ao iniciar sincronização manual:', err);
-      setError(err.message || 'Erro ao iniciar sincronização manual.');
-    } finally {
-      setLoading(false);
+  // Effect para filtrar viagens editadas e passadas
+  useEffect(() => {
+    const now = new Date();
+    const filtered = controleHorarios.filter(viagem => {
+      if (viagem.jaFoiEditado) {
+        // Se a viagem foi editada, verificar se o horário de chegada já passou
+        if (viagem.horaChegada) {
+          const [hora, minuto] = viagem.horaChegada.split(':').map(Number);
+          const chegadaDate = new Date(dataReferencia);
+          chegadaDate.setHours(hora, minuto, 0, 0);
+          return chegadaDate > now;
+        }
+      }
+      return true;
+    });
+    setControleHorariosExibidos(filtered);
+  }, [controleHorarios, dataReferencia]);
+  // NOVO: Effect para filtrar por status de edição localmente
+  const [controleHorariosFiltradosPorStatus, setControleHorariosFiltradosPorStatus] = useState<ControleHorarioItemDto[]>([]);
+
+  useEffect(() => {
+    let filtered = controleHorariosExibidos;
+    if (statusEdicaoLocal === 'editados') {
+      filtered = controleHorariosExibidos.filter(viagem => viagem.jaFoiEditado);
+    } else if (statusEdicaoLocal === 'nao_editados') {
+      filtered = controleHorariosExibidos.filter(viagem => !viagem.jaFoiEditado);
     }
-  }, [buscarControleHorarios, verificarStatusDados, buscarOpcoesFiltros]);
+    setControleHorariosFiltradosPorStatus(filtered);
+  }, [controleHorariosExibidos, statusEdicaoLocal]);
 
   return {
     // Estados
     dataReferencia,
     setDataReferencia,
-    controleHorarios,
+    controleHorarios: controleHorariosFiltradosPorStatus, // Retornar os dados filtrados por status
     controleHorariosOriginais,
     loading,
     error,
@@ -438,6 +483,12 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     opcoesFiltros,
     estatisticas,
     statusDados,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    temMaisPaginas,
     
     // Dados do usuário
     usuarioAtual: obterUsuarioAtual(),
@@ -450,12 +501,13 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     descartarAlteracoes,
     sincronizarControleHorarios,
     handleInputChange,
-    iniciarSincronizacaoManual, // Adicionado
+    iniciarSincronizacaoManual: sincronizarControleHorarios, // Agora o botão de sincronização manual chama a função de sincronização principal
     
     // Funções de filtros
     limparFiltros,
     aplicarFiltroRapido,
     contarFiltrosAtivos,
     contarAlteracoesPendentes,
+    statusEdicaoLocal,
   };
 };

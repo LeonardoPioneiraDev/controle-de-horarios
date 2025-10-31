@@ -86,8 +86,9 @@ describe('ControleHorariosController', () => {
       };
       const usuarioId = 'test-user-id';
       const usuarioEmail = 'test@example.com';
-      expect(await controller.salvarControleHorario('2023-01-01', dto, usuarioId, usuarioEmail)).toEqual(result);
-      expect(service.createOrUpdateControleHorario).toHaveBeenCalledWith('2023-01-01', dto, usuarioId, usuarioEmail);
+      const usuarioNome = 'Test User';
+      expect(await controller.salvarControleHorario('2023-01-01', dto, usuarioId, usuarioEmail, usuarioNome)).toEqual(result);
+      expect(service.createOrUpdateControleHorario).toHaveBeenCalledWith('2023-01-01', dto, usuarioId, usuarioEmail, usuarioNome);
     });
 
     it('should throw HttpException on service error', async () => {
@@ -102,7 +103,8 @@ describe('ControleHorariosController', () => {
       };
       const usuarioId = 'test-user-id';
       const usuarioEmail = 'test@example.com';
-      await expect(controller.salvarControleHorario('2023-01-01', dto, usuarioId, usuarioEmail)).rejects.toThrow(
+      const usuarioNome = 'Test User';
+      await expect(controller.salvarControleHorario('2023-01-01', dto, usuarioId, usuarioEmail, usuarioNome)).rejects.toThrow(
         new HttpException(
           {
             success: false,
@@ -133,8 +135,9 @@ describe('ControleHorariosController', () => {
       };
       const usuarioId = 'test-user-id';
       const usuarioEmail = 'test@example.com';
-      expect(await controller.salvarMultiplosControles(dto, usuarioId, usuarioEmail)).toEqual(result);
-      expect(service.salvarMultiplosControles).toHaveBeenCalledWith(dto, usuarioId, usuarioEmail);
+      const usuarioNome = 'Test User';
+      expect(await controller.salvarMultiplosControles(dto, usuarioId, usuarioEmail, usuarioNome)).toEqual(result);
+      expect(service.salvarMultiplosControles).toHaveBeenCalledWith(dto, usuarioId, usuarioEmail, usuarioNome);
     });
 
     it('should throw HttpException on service error', async () => {
@@ -153,7 +156,8 @@ describe('ControleHorariosController', () => {
       };
       const usuarioId = 'test-user-id';
       const usuarioEmail = 'test@example.com';
-      await expect(controller.salvarMultiplosControles(dto, usuarioId, usuarioEmail)).rejects.toThrow(
+      const usuarioNome = 'Test User';
+      await expect(controller.salvarMultiplosControles(dto, usuarioId, usuarioEmail, usuarioNome)).rejects.toThrow(
         new HttpException(
           {
             success: false,

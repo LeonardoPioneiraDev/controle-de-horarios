@@ -61,25 +61,24 @@ export interface FiltrosControleHorarios {
   horarioInicio?: string;
   horarioFim?: string;
   nomeMotorista?: string;
-  nomeCobrador?: string; // Adicionado
-  codCobrador?: string; // Adicionado
+  crachaMotorista?: string;
+  nomeCobrador?: string;
+  crachaCobrador?: string;
   localOrigem?: string;
   codAtividade?: string;
   localDestino?: string;
-  crachaMotorista?: string;
+  servicoIgualMotorista?: boolean; // Novo filtro
+  statusEdicao?: 'todos' | 'editados' | 'nao_editados'; // Usado para mapear editadoPorUsuario
   buscaTexto?: string;
   limite?: number;
   pagina?: number;
-  editadoPorUsuario?: boolean;
-  ordenarPor?: string; // O nome do campo pelo qual os resultados devem ser ordenados.
-  ordem?: "ASC" | "DESC"; // A direção da ordenação.
+  ordenarPor?: string;
+  ordem?: "ASC" | "DESC";
 }
 
-// ✅ NOVA: Interface para filtros locais (frontend only)
+// ✅ NOVA: Interface para filtros locais (frontend only) - Mantida para extensibilidade, mas statusEdicao movido
 export interface FiltrosControleHorariosLocal extends FiltrosControleHorarios {
-  statusEdicao?: 'todos' | 'editados' | 'nao_editados';
-  nomeCobrador?: string;
-  codCobrador?: string;
+  // statusEdicao agora está em FiltrosControleHorarios
   numeroCarro?: string;
   informacaoRecolhe?: string;
 }
