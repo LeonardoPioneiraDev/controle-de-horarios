@@ -13,8 +13,9 @@ interface HeaderProps {
   onDescartarAlteracoes: () => void;
   onSalvarAlteracoes: () => void;
   saving: boolean;
-  onSincronizar: () => void;
+  onSincronizarGlobus: () => void; // Renamed from onSincronizar
   sincronizando: boolean;
+  onManualSync: () => void; // Added
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,8 +29,9 @@ export const Header: React.FC<HeaderProps> = ({
   onDescartarAlteracoes,
   onSalvarAlteracoes,
   saving,
-  onSincronizar,
-  sincronizando
+  onSincronizarGlobus, // Renamed from onSincronizar
+  sincronizando,
+  onManualSync // Added
 }) => {
   return (
     <div className="bg-white shadow rounded-lg p-6">
@@ -95,12 +97,22 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Botão Sincronizar com Globus */}
           <button
-            onClick={onSincronizar}
+            onClick={onSincronizarGlobus} // Changed to onSincronizarGlobus
             disabled={sincronizando}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className={`h-4 w-4 ${sincronizando ? 'animate-spin' : ''}`} />
             {sincronizando ? 'Sincronizando...' : 'Sincronizar Globus'}
+          </button>
+
+          {/* Botão Sincronização Manual */}
+          <button
+            onClick={onManualSync}
+            disabled={sincronizando || saving} // Disable if already syncing or saving
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-4 w-4 ${sincronizando ? 'animate-spin' : ''}`} />
+            Sincronizar Manual
           </button>
         </div>
       </div>

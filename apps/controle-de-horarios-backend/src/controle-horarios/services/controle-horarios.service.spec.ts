@@ -139,10 +139,10 @@ describe('ControleHorariosService', () => {
     crachaMotoristaEditado: 'C1',
     nomeCobradorEditado: 'Cobrador Editado',
     crachaCobradorEditado: 'C2',
-    informacaoRecolhe: 'Info',
     observacoes: 'Obs',
-    usuarioEdicao: 'user-id-123',
-    usuarioEmail: 'user@test.com',
+    editorId: 'user-id-123',
+    editorNome: 'User Test',
+    editorEmail: 'user@test.com',
     createdAt: new Date(),
     updatedAt: new Date(),
     isAtivo: true,
@@ -205,10 +205,9 @@ describe('ControleHorariosService', () => {
         crachaMotoristaEditado: mockControleHorario.crachaMotoristaEditado,
         nomeCobradorEditado: mockControleHorario.nomeCobradorEditado,
         crachaCobradorEditado: mockControleHorario.crachaCobradorEditado,
-        informacaoRecolhe: mockControleHorario.informacaoRecolhe,
         observacoes: mockControleHorario.observacoes,
-        usuarioEdicao: mockControleHorario.usuarioEdicao,
-        usuarioEmail: mockControleHorario.usuarioEmail,
+        editorId: mockControleHorario.editorId,
+        editorEmail: mockControleHorario.editorEmail,
         createdAt: mockControleHorario.createdAt,
         updatedAt: mockControleHorario.updatedAt,
         isAtivo: mockControleHorario.isAtivo,
@@ -274,10 +273,9 @@ describe('ControleHorariosService', () => {
         crachaMotoristaEditado: mockControleHorario.crachaMotoristaEditado,
         nomeCobradorEditado: mockControleHorario.nomeCobradorEditado,
         crachaCobradorEditado: mockControleHorario.crachaCobradorEditado,
-        informacaoRecolhe: mockControleHorario.informacaoRecolhe,
         observacoes: mockControleHorario.observacoes,
-        usuarioEdicao: mockControleHorario.usuarioEdicao,
-        usuarioEmail: mockControleHorario.usuarioEmail,
+        editorId: mockControleHorario.editorId,
+        editorEmail: mockControleHorario.editorEmail,
         createdAt: mockControleHorario.createdAt,
         updatedAt: mockControleHorario.updatedAt,
         isAtivo: mockControleHorario.isAtivo,
@@ -323,10 +321,9 @@ describe('ControleHorariosService', () => {
         crachaMotoristaEditado: null,
         nomeCobradorEditado: null,
         crachaCobradorEditado: null,
-        informacaoRecolhe: null,
         observacoes: null,
-        usuarioEdicao: null,
-        usuarioEmail: null,
+        editorId: null,
+        editorEmail: null,
         createdAt: expect.any(Date), // Default value
         updatedAt: expect.any(Date), // Default value
         isAtivo: true, // Default value
@@ -336,14 +333,13 @@ describe('ControleHorariosService', () => {
     });
   });
 
-  describe('salvarControleHorario', () => {
+  describe('createOrUpdateControleHorario', () => {
     const usuarioId = 'user-id-123';
     const usuarioEmail = 'test@example.com';
 
     const salvarDto: SalvarControleHorariosDto = {
       viagemGlobusId: 'SERV-001',
       numeroCarro: 'A1',
-      informacaoRecolhe: 'Info',
       nomeMotoristaEditado: 'Motorista Editado',
       crachaMotoristaEditado: 'C1',
       observacoes: 'Obs',
@@ -351,7 +347,7 @@ describe('ControleHorariosService', () => {
 
     it('should throw NotFoundException if Globus data not found', async () => {
       mockOracleService.executeQuery.mockResolvedValueOnce([]); // For getGlobusDataFromOracleById
-      await expect(service.salvarControleHorario('2023-01-01', salvarDto, usuarioId, usuarioEmail)).rejects.toThrow(NotFoundException);
+      await expect(service.createOrUpdateControleHorario('2023-01-01', salvarDto, usuarioId, usuarioEmail)).rejects.toThrow(NotFoundException);
     });
 
     it('should create a new controle horario if not exists', async () => {
@@ -361,12 +357,12 @@ describe('ControleHorariosService', () => {
       mockControleHorarioRepository.save.mockResolvedValueOnce(mockControleHorario);
       mockOracleService.executeQuery.mockResolvedValueOnce([]); // For aplicarAtualizacaoEmEscala -> getGlobusDataFromOracle
 
-      const result = await service.salvarControleHorario('2023-01-01', salvarDto, usuarioId, usuarioEmail);
-      expect(result.success).toBe(true);
+      const result = await service.createOrUpdateControleHorario('2023-01-01', salvarDto, usuarioId, usuarioEmail);
+      expect(result).toBe(mockControleHorario);
       expect(controleHorarioRepository.create).toHaveBeenCalled();
       expect(controleHorarioRepository.save).toHaveBeenCalled();
-      expect(result.data.viagemGlobusId).toBe(salvarDto.viagemGlobusId);
-      expect(result.data.usuarioEdicao).toBe(usuarioId);
+      expect(result.viagemGlobusId).toBe(salvarDto.viagemGlobusId);
+      expect(result.editorId).toBe(usuarioId);
     });
 
     it('should update existing controle horario', async () => {
@@ -377,9 +373,9 @@ describe('ControleHorariosService', () => {
       mockOracleService.executeQuery.mockResolvedValueOnce([]); // For aplicarAtualizacaoEmEscala -> getGlobusDataFromOracle
 
       const updatedDto = { ...salvarDto, numeroCarro: 'A2' };
-      const result = await service.salvarControleHorario('2023-01-01', updatedDto, usuarioId, usuarioEmail);
-      expect(result.success).toBe(true);
-      expect(controleHorarioRepository.save).toHaveBeenCalledWith(expect.objectContaining({ numeroCarro: 'A2', usuarioEdicao: usuarioId }));
+      const result = await service.createOrUpdateControleHorario('2023-01-01', updatedDto, usuarioId, usuarioEmail);
+      expect(result).toBeDefined();
+      expect(controleHorarioRepository.save).toHaveBeenCalledWith(expect.objectContaining({ numeroCarro: 'A2', editorId: usuarioId }));
     });
   });
 
@@ -412,18 +408,18 @@ describe('ControleHorariosService', () => {
     });
 
     it('should save multiple controls successfully', async () => {
-      jest.spyOn(service, 'salvarControleHorario').mockResolvedValue({ success: true, message: '', data: mockControleHorario });
+      jest.spyOn(service, 'createOrUpdateControleHorario').mockResolvedValue(mockControleHorario);
 
       const result = await service.salvarMultiplosControles(salvarMultiplosDto, usuarioId, usuarioEmail);
       expect(result.salvos).toBe(2);
       expect(result.erros).toBe(0);
       expect(result.success).toBe(true);
-      expect(service.salvarControleHorario).toHaveBeenCalledTimes(2);
+      expect(service.createOrUpdateControleHorario).toHaveBeenCalledTimes(2);
     });
 
     it('should handle errors during multiple saves', async () => {
-      jest.spyOn(service, 'salvarControleHorario')
-        .mockResolvedValueOnce({ success: true, message: '', data: mockControleHorario })
+      jest.spyOn(service, 'createOrUpdateControleHorario')
+        .mockResolvedValueOnce(mockControleHorario)
         .mockRejectedValueOnce(new Error('Save error'));
 
       const result = await service.salvarMultiplosControles(salvarMultiplosDto, usuarioId, usuarioEmail);
@@ -465,8 +461,7 @@ describe('ControleHorariosService', () => {
       mockControleHorarioQueryBuilder.getRawOne.mockResolvedValueOnce({ ultima: new Date('2023-01-01T10:00:00Z') });
       mockControleHorarioQueryBuilder.getRawMany.mockResolvedValue([]); // For unique values
 
-      const result = await service.obterEstatisticasControleHorarios('2023-01-01');
-      expect(result.totalViagens).toBe(2);
+      const result = await service.obterEstatisticasControleHorarios('2023-01-01', 'user-id-123');
       expect(result.viagensEditadas).toBe(1);
       expect(result.viagensNaoEditadas).toBe(1);
       expect(result.percentualEditado).toBe(50);
@@ -481,7 +476,7 @@ describe('ControleHorariosService', () => {
       mockControleHorarioQueryBuilder.getRawOne.mockResolvedValueOnce({ ultima: null });
       mockControleHorarioQueryBuilder.getRawMany.mockResolvedValue([]); // For unique values
 
-      const result = await service.obterEstatisticasControleHorarios('2023-01-01');
+      const result = await service.obterEstatisticasControleHorarios('2023-01-01', 'user-id-123');
       expect(result.totalViagens).toBe(0);
       expect(result.viagensEditadas).toBe(0);
       expect(result.viagensNaoEditadas).toBe(0);

@@ -38,12 +38,12 @@ export interface ControleHorarioItemDto {
   crachaMotoristaEditado?: string;
   nomeCobradorEditado?: string;
   crachaCobradorEditado?: string;
-  informacaoRecolhe?: string;
   observacoes?: string;
 
-  // Auditoria e Status
-  usuarioEdicao?: string;
-  usuarioEmail?: string;
+  editorId?: string; // Consolidated editor ID
+  editorNome?: string; // Consolidated editor name
+  editorEmail?: string; // Consolidated editor email
+
   createdAt: Date;
   updatedAt: Date;
   isAtivo: boolean;

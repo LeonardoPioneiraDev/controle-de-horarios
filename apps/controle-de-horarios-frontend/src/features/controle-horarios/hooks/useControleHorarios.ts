@@ -133,6 +133,7 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
       if (response.success) {
         // Os dados já vêm achatados do backend, sem a necessidade de dadosProcessados
         setControleHorarios(response.data);
+        console.log('✅ Dados de controle de horários recebidos:', response.data.length, 'itens'); // Added log
         setControleHorariosOriginais(JSON.parse(JSON.stringify(response.data)));
         
         // ✅ Atualizar estatísticas com dados completos
@@ -398,12 +399,29 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     // Data will be fetched via manual sync or filter application
   }, [dataReferencia]);
 
-  // ✅ Efeito para recarregar quando filtros mudam
-  useEffect(() => {
-    if (dataReferencia) {
-      buscarControleHorarios();
+  // ✅ Efeito para recarregar quando filtros mudam - REMOVIDO para sincronização manual
+  // useEffect(() => {
+  //   if (dataReferencia) {
+  //     buscarControleHorarios();
+  //   }
+  // }, [filtros, buscarControleHorarios]);
+
+  const iniciarSincronizacaoManual = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await Promise.all([
+        buscarControleHorarios(),
+        verificarStatusDados(),
+        buscarOpcoesFiltros()
+      ]);
+    } catch (err: any) {
+      console.error('❌ Erro ao iniciar sincronização manual:', err);
+      setError(err.message || 'Erro ao iniciar sincronização manual.');
+    } finally {
+      setLoading(false);
     }
-  }, [filtros, buscarControleHorarios]);
+  }, [buscarControleHorarios, verificarStatusDados, buscarOpcoesFiltros]);
 
   return {
     // Estados
@@ -432,6 +450,7 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     descartarAlteracoes,
     sincronizarControleHorarios,
     handleInputChange,
+    iniciarSincronizacaoManual, // Adicionado
     
     // Funções de filtros
     limparFiltros,

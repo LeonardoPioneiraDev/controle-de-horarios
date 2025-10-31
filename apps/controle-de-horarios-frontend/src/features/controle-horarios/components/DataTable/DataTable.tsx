@@ -425,32 +425,44 @@ export const DataTable: React.FC<DataTableProps> = ({
                             <div className="space-y-4">
                               <h4 className="text-sm font-semibold text-gray-900 flex items-center">
                                 <MapPin className="h-4 w-4 mr-2 text-blue-500" />
-                                Informações da Viagem
+                                Detalhes da Viagem
                               </h4>
                               <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-3">
-                                <div className="grid grid-cols-2 gap-3 text-sm">
-                                  <div>
-                                    <span className="text-gray-500">Origem:</span>
-                                    <div className="font-medium text-gray-900">
-                                      {item.localOrigemViagem || 'N/A'}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                  <div className="flex items-center">
+                                    <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                                    <div>
+                                      <span className="text-gray-500">Origem:</span>
+                                      <div className="font-medium text-gray-900">
+                                        {item.localOrigemViagem || 'N/A'}
+                                      </div>
                                     </div>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-500">Destino:</span>
-                                    <div className="font-medium text-gray-900">
-                                      {item.localDestinoLinha || 'N/A'}
+                                  <div className="flex items-center">
+                                    <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                                    <div>
+                                      <span className="text-gray-500">Destino:</span>
+                                      <div className="font-medium text-gray-900">
+                                        {item.localDestinoLinha || 'N/A'}
+                                      </div>
                                     </div>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-500">Terminal:</span>
-                                    <div className="font-medium text-gray-900">
-                                      {item.codLocalTerminalSec || 'N/A'}
+                                  <div className="flex items-center">
+                                    <MapPin className="h-4 w-4 mr-2 text-gray-400" />
+                                    <div>
+                                      <span className="text-gray-500">Terminal:</span>
+                                      <div className="font-medium text-gray-900">
+                                        {item.codLocalTerminalSec || 'N/A'}
+                                      </div>
                                     </div>
                                   </div>
-                                  <div>
-                                    <span className="text-gray-500">Total Horários:</span>
-                                    <div className="font-medium text-gray-900">
-                                      {item.totalHorarios || 'N/A'}
+                                  <div className="flex items-center">
+                                    <Clock className="h-4 w-4 mr-2 text-gray-400" />
+                                    <div>
+                                      <span className="text-gray-500">Total Horários:</span>
+                                      <div className="font-medium text-gray-900">
+                                        {item.totalHorarios || 'N/A'}
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -461,19 +473,25 @@ export const DataTable: React.FC<DataTableProps> = ({
                             <div className="space-y-4">
                               <h4 className="text-sm font-semibold text-gray-900 flex items-center">
                                 <Users className="h-4 w-4 mr-2 text-green-500" />
-                                Cobrador
+                                Detalhes do Cobrador
                               </h4>
                               <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-3">
-                                <div className="text-sm">
-                                  <span className="text-gray-500">Nome:</span>
-                                  <div className="font-medium text-gray-900">
-                                    {item.nomeCobradorGlobus || 'Não informado'}
+                                <div className="flex items-center">
+                                  <User className="h-4 w-4 mr-2 text-gray-400" />
+                                  <div>
+                                    <span className="text-gray-500">Nome:</span>
+                                    <div className="font-medium text-gray-900">
+                                      {item.nomeCobradorGlobus || 'Não informado'}
+                                    </div>
                                   </div>
                                 </div>
-                                <div className="text-sm">
-                                  <span className="text-gray-500">Código:</span>
-                                  <div className="font-medium text-gray-900">
-                                    {item.codCobrador || 'N/A'}
+                                <div className="flex items-center">
+                                  <FileText className="h-4 w-4 mr-2 text-gray-400" />
+                                  <div>
+                                    <span className="text-gray-500">Código:</span>
+                                    <div className="font-medium text-gray-900">
+                                      {item.codCobrador || 'N/A'}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
@@ -564,32 +582,44 @@ export const DataTable: React.FC<DataTableProps> = ({
                           {/* Informações de Auditoria */}
                           {(item.usuarioEdicao || item.updatedAt || item.createdAt) && (
                             <div className="mt-6 pt-4 border-t border-gray-200">
-                              <div className="flex items-center justify-between text-xs text-gray-500">
-                                <div className="flex items-center space-x-4">
-                                  {item.usuarioEdicao && (
-                                    <div className="flex items-center">
-                                      <User className="h-3 w-3 mr-1" />
-                                      <span>Editado por: <strong>{item.usuarioEdicao}</strong></span>
-                                      {item.usuarioEmail && (
-                                        <span className="ml-1 text-gray-400">({item.usuarioEmail})</span>
-                                      )}
+                              <h4 className="text-sm font-semibold text-gray-900 flex items-center mb-3">
+                                <FileText className="h-4 w-4 mr-2 text-gray-500" />
+                                Auditoria
+                              </h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-gray-600">
+                                {item.usuarioEdicao && (
+                                  <div className="flex items-center">
+                                    <User className="h-4 w-4 mr-2 text-gray-400" />
+                                    <div>
+                                      <span className="text-gray-500">Editado por:</span>
+                                      <div className="font-medium text-gray-900">
+                                        {item.usuarioEdicao} {item.usuarioEmail && `(${item.usuarioEmail})`}
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
-                                <div className="flex items-center space-x-4">
-                                  {item.createdAt && (
-                                    <div className="flex items-center">
-                                      <Calendar className="h-3 w-3 mr-1" />
-                                      <span>Criado: {new Date(item.createdAt).toLocaleString('pt-BR')}</span>
+                                  </div>
+                                )}
+                                {item.createdAt && (
+                                  <div className="flex items-center">
+                                    <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                                    <div>
+                                      <span className="text-gray-500">Criado em:</span>
+                                      <div className="font-medium text-gray-900">
+                                        {new Date(item.createdAt).toLocaleString('pt-BR')}
+                                      </div>
                                     </div>
-                                  )}
-                                  {item.updatedAt && (
-                                    <div className="flex items-center">
-                                      <Clock className="h-3 w-3 mr-1" />
-                                      <span>Atualizado: {new Date(item.updatedAt).toLocaleString('pt-BR')}</span>
+                                  </div>
+                                )}
+                                {item.updatedAt && (
+                                  <div className="flex items-center">
+                                    <Clock className="h-4 w-4 mr-2 text-gray-400" />
+                                    <div>
+                                      <span className="text-gray-500">Última atualização:</span>
+                                      <div className="font-medium text-gray-900">
+                                        {new Date(item.updatedAt).toLocaleString('pt-BR')}
+                                      </div>
                                     </div>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           )}

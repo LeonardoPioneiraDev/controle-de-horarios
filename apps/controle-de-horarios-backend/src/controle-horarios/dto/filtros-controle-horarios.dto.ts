@@ -2,6 +2,7 @@
 
 import { IsOptional, IsString, IsNumber, Min, Max, IsEnum, IsArray } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class FiltrosControleHorariosDto {
   @IsOptional()
@@ -44,6 +45,11 @@ export class FiltrosControleHorariosDto {
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
+  codMotorista?: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim())
   nomeMotorista?: string; // Corresponds to nomeMotoristaGlobus or nomeMotoristaEditado
 
   @IsOptional()
@@ -65,10 +71,25 @@ export class FiltrosControleHorariosDto {
   @Type(() => Boolean)
   editadoPorUsuario?: boolean;
 
+  @ApiProperty({ description: 'Filtrar viagens editadas pelo usuário atual', required: false })
+  @IsOptional()
+  @Type(() => Boolean)
+  meusEditados?: boolean;
+
   @IsOptional()
   @IsString()
   @Transform(({ value }) => value?.trim())
   crachaMotorista?: string; // Corresponds to crachaMotoristaGlobus or crachaMotoristaEditado
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim())
+  nomeCobrador?: string; // Corresponds to nomeCobradorGlobus or nomeCobradorEditado
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => value?.trim())
+  crachaCobrador?: string; // Corresponds to crachaCobradorGlobus or crachaCobradorEditado
 
   @IsOptional()
   @IsString()

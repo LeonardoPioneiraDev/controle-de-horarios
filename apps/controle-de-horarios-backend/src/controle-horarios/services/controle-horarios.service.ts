@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not, IsNull } from 'typeorm';
 import { ControleHorario } from '../entities/controle-horario.entity';
 import { OracleService } from '../../database/oracle/services/oracle.service'; // Importar OracleService
 import {
@@ -64,10 +64,15 @@ export class ControleHorariosService {
       // 3.1. Aplicar filtro de viagens editadas pelo usuário, se solicitado
       if (filtros.editadoPorUsuario === true) {
         itensControle = itensControle.filter(item => 
-          item.jaFoiEditado && item.usuarioEmail === usuarioEmail
+          item.observacoes || item.editorId
         );
       } else if (filtros.editadoPorUsuario === false) {
-        itensControle = itensControle.filter(item => !item.jaFoiEditado);
+        itensControle = itensControle.filter(item => !item.observacoes && !item.editorId);
+      }
+
+      // 3.2. Aplicar filtro para viagens editadas pelo usuário atual
+      if (filtros.meusEditados === true) {
+        itensControle = itensControle.filter(item => item.editorId === usuarioId);
       }
 
       // TODO: Implementar filtro por combinacaoComparacao se ainda for necessário com a nova lógica
@@ -76,7 +81,7 @@ export class ControleHorariosService {
       // }
 
       // 4. Calcular estatísticas
-      const estatisticas = await this.obterEstatisticasControleHorarios(dataReferencia);
+      const estatisticas = await this.obterEstatisticasControleHorarios(dataReferencia, usuarioId);
 
       const limite = filtros.limite || 100;
       const pagina = filtros.pagina || 0;
@@ -106,113 +111,56 @@ export class ControleHorariosService {
     }
   }
 
-  async salvarControleHorario(
-    dataReferencia: string,
-    dados: SalvarControleHorariosDto,
-    usuarioId: string,
-    usuarioEmail: string,
-  ): Promise<{ success: boolean; message: string; data: ControleHorario }> {
-    try {
-      this.logger.log(`💾 Salvando controle para viagem ${dados.viagemGlobusId}`);
+  async update(id: string, salvarControleHorariosDto: SalvarControleHorariosDto, usuarioId: string, usuarioEmail: string): Promise<ControleHorario> {
+    const horario = await this.controleHorarioRepository.findOneBy({ id });
+    if (!horario) {
+      throw new NotFoundException(`ControleHorario com ID ${id} não encontrado.`);
+    }
+    
+    // Capturar valores antigos para comparação
+    const oldNumeroCarro = horario.numeroCarro;
+    const oldNomeMotoristaEditado = horario.nomeMotoristaEditado;
+    const oldCrachaMotoristaEditado = horario.crachaMotoristaEditado;
+    const oldNomeCobradorEditado = horario.nomeCobradorEditado;
+    const oldCrachaCobradorEditado = horario.crachaCobradorEditado;
+    const oldObservacoes = horario.observacoes;
 
-      // 1. Buscar os dados originais da viagem do Globus (usando o SQL original)
-      const globusData = await this.getGlobusDataFromOracleById(dataReferencia, dados.viagemGlobusId);
+    // Atualiza os campos do horário existente com os dados do DTO
+    Object.assign(horario, salvarControleHorariosDto);
 
-      if (!globusData) {
-        throw new NotFoundException('Viagem Globus não encontrada para o ID e data fornecidos.');
-      }
+    // Preencher dados de auditoria
+    horario.editorId = usuarioId;
+    horario.editorNome = null; // TODO: Fetch user name from context if available
+    horario.editorEmail = usuarioEmail;
+    horario.updatedAt = new Date(); // Atualiza a data de atualização
 
-      // 2. Buscar controle existente ou criar novo
-      let controle: ControleHorario;
+    // Gerar hash para o DTO (apenas se campos relevantes para o hash mudarem)
+    // O hash é baseado em campos do Globus, que não devem mudar aqui.
+    // Se o hash for para identificar a versão do controle, precisaria de uma lógica diferente.
+    // Por enquanto, o hash original da viagem Globus permanece.
 
-      const controleExistente = await this.controleHorarioRepository.findOne({
-        where: {
-          viagemGlobusId: dados.viagemGlobusId,
-          dataReferencia,
-        }
-      });
+    const controleSalvo = await this.controleHorarioRepository.save(horario);
 
-      if (controleExistente) {
-        controle = controleExistente;
-      } else {
-        controle = this.controleHorarioRepository.create();
-        controle.viagemGlobusId = dados.viagemGlobusId;
-        controle.dataReferencia = dataReferencia;
-        controle.isAtivo = true;
-      }
+    // Verificar se houve alteração em campos que disparam propagação
+    const changedFields: { [key: string]: any } = {};
+    if (oldNumeroCarro !== salvarControleHorariosDto.numeroCarro) changedFields.numeroCarro = salvarControleHorariosDto.numeroCarro;
+    if (oldNomeMotoristaEditado !== salvarControleHorariosDto.nomeMotoristaEditado) changedFields.nomeMotoristaEditado = salvarControleHorariosDto.nomeMotoristaEditado;
+    if (oldCrachaMotoristaEditado !== salvarControleHorariosDto.crachaMotoristaEditado) changedFields.crachaMotoristaEditado = salvarControleHorariosDto.crachaMotoristaEditado;
+    if (oldNomeCobradorEditado !== salvarControleHorariosDto.nomeCobradorEditado) changedFields.nomeCobradorEditado = salvarControleHorariosDto.nomeCobradorEditado;
+    if (oldCrachaCobradorEditado !== salvarControleHorariosDto.crachaCobradorEditado) changedFields.crachaCobradorEditado = salvarControleHorariosDto.crachaCobradorEditado;
+    if (oldObservacoes !== salvarControleHorariosDto.observacoes) changedFields.observacoes = salvarControleHorariosDto.observacoes;
 
-      // Preencher campos da entidade com dados do Globus
-      controle.setorPrincipalLinha = globusData.SETOR_PRINCIPAL_LINHA;
-      controle.codLocalTerminalSec = globusData.COD_LOCAL_TERMINAL_SEC;
-      controle.codigoLinha = globusData.CODIGOLINHA;
-      controle.nomeLinha = globusData.NOMELINHA;
-      controle.codDestinoLinha = globusData.COD_DESTINO_LINHA;
-      controle.localDestinoLinha = globusData.LOCAL_DESTINO_LINHA;
-      controle.flgSentido = globusData.FLG_SENTIDO;
-      controle.descTipoDia = globusData.DESC_TIPODIA;
-      controle.horaSaida = globusData.HOR_SAIDA;
-      controle.horaChegada = globusData.HOR_CHEGADA;
-      controle.codOrigemViagem = globusData.COD_ORIGEM_VIAGEM;
-      controle.localOrigemViagem = globusData.LOCAL_ORIGEM_VIAGEM;
-      controle.codServicoNumero = globusData.COD_SERVICO_NUMERO;
-      controle.codAtividade = globusData.COD_ATIVIDADE;
-      controle.nomeAtividade = globusData.NOME_ATIVIDADE;
-      controle.flgTipo = globusData.FLG_TIPO;
-      controle.codMotorista = globusData.COD_MOTORISTA;
-      controle.nomeMotoristaGlobus = globusData.NOME_MOTORISTA;
-      controle.crachaMotoristaGlobus = globusData.CRACHA_MOTORISTA;
-      controle.chapaFuncMotoristaGlobus = globusData.CHAPAFUNC_MOTORISTA;
-      controle.codCobrador = globusData.COD_COBRADOR;
-      controle.nomeCobradorGlobus = globusData.NOME_COBRADOR;
-      controle.crachaCobradorGlobus = globusData.CRACHA_COBRADOR;
-      controle.chapaFuncCobradorGlobus = globusData.CHAPAFUNC_COBRADOR;
-      controle.totalHorarios = globusData.TOTAL_HORARIOS;
-
-      // Preencher campos editáveis pelo usuário
-      controle.numeroCarro = dados.numeroCarro;
-      controle.nomeMotoristaEditado = dados.nomeMotoristaEditado;
-      controle.crachaMotoristaEditado = dados.crachaMotoristaEditado;
-      controle.nomeCobradorEditado = dados.nomeCobradorEditado;
-      controle.crachaCobradorEditado = dados.crachaCobradorEditado;
-      controle.informacaoRecolhe = dados.informacaoRecolhe;
-      controle.observacoes = dados.observacoes;
-
-      // Dados de auditoria
-      controle.usuarioEdicao = usuarioId;
-      controle.usuarioEmail = usuarioEmail;
-
-      const controleSalvo = await this.controleHorarioRepository.save(controle);
-        
-      this.logger.log(`✅ Controle salvo/atualizado para viagem ${dados.viagemGlobusId}`);
-
-      // Lógica de atualização automática para viagens relacionadas na escala
-      // Será usada a combinação de campos do Globus para identificar a escala
+    if (Object.keys(changedFields).length > 0) {
       await this.aplicarAtualizacaoEmEscala(
-        controleSalvo, // Usar o controle salvo como base
-        dataReferencia,
-        { 
-          numeroCarro: dados.numeroCarro,
-          nomeMotoristaEditado: dados.nomeMotoristaEditado,
-          crachaMotoristaEditado: dados.crachaMotoristaEditado,
-          nomeCobradorEditado: dados.nomeCobradorEditado,
-          crachaCobradorEditado: dados.crachaCobradorEditado,
-          informacaoRecolhe: dados.informacaoRecolhe,
-          observacoes: dados.observacoes,
-        },
+        controleSalvo,
+        controleSalvo.dataReferencia,
+        changedFields,
         usuarioId,
         usuarioEmail
       );
-      
-      return {
-        success: true,
-        message: controleExistente ? 'Controle de horário atualizado com sucesso' : 'Controle de horário criado com sucesso',
-        data: controleSalvo,
-      };
-
-    } catch (error) {
-      this.logger.error(`❌ Erro ao salvar controle: ${error.message}`);
-      throw error;
     }
+
+    return controleSalvo;
   }
 
   async salvarMultiplosControles(
@@ -241,7 +189,7 @@ export class ControleHorariosService {
           continue;
         }
   
-        await this.salvarControleHorario(dados.dataReferencia, controle, usuarioId, usuarioEmail);
+        await this.createOrUpdateControleHorario(dados.dataReferencia, controle, usuarioId, usuarioEmail);
         salvos++;
         
         this.logger.log(`✅ Controle ${salvos}/${dados.controles.length} salvo: ${controle.viagemGlobusId}`);
@@ -331,11 +279,31 @@ export class ControleHorariosService {
     }
   }
 
-  async obterEstatisticasControleHorarios(dataReferencia: string): Promise<any> {
+  async obterEstatisticasControleHorarios(dataReferencia: string, usuarioId: string): Promise<any> {
     try {
       // Contar viagens existentes no controle de horários que foram salvas (editadas)
       const viagensEditadas = await this.controleHorarioRepository.count({
-          where: { dataReferencia, isAtivo: true }
+          where: [
+            {
+              dataReferencia,
+              isAtivo: true,
+              observacoes: Not(IsNull()),
+            },
+            {
+              dataReferencia,
+              isAtivo: true,
+              editorId: Not(IsNull()),
+            },
+          ],
+      });
+
+      // Contar viagens editadas pelo usuário atual
+      const minhasViagensEditadas = await this.controleHorarioRepository.count({
+        where: {
+          dataReferencia,
+          isAtivo: true,
+          editorId: usuarioId, // Filter by current user's ID
+        },
       });
 
       // Contar o total de viagens Globus para a data
@@ -538,6 +506,14 @@ WHERE
         if (filtros.crachaMotorista) {
             sql += ` AND FM.CODFUNC = :crachaMotorista`;
             binds.crachaMotorista = filtros.crachaMotorista;
+        }
+        if (filtros.nomeCobrador) {
+            sql += ` AND UPPER(FC.NOMECOMPLETOFUNC) LIKE :nomeCobrador`;
+            binds.nomeCobrador = `%${filtros.nomeCobrador.toUpperCase()}%`;
+        }
+        if (filtros.crachaCobrador) {
+            sql += ` AND FC.CODFUNC = :crachaCobrador`;
+            binds.crachaCobrador = filtros.crachaCobrador;
         }
         if (filtros.buscaTexto) {
             const buscaUpper = `%${filtros.buscaTexto.toUpperCase()}%`;
@@ -833,12 +809,12 @@ WHERE
         crachaMotoristaEditado: controle?.crachaMotoristaEditado || null,
         nomeCobradorEditado: controle?.nomeCobradorEditado || null,
         crachaCobradorEditado: controle?.crachaCobradorEditado || null,
-        informacaoRecolhe: controle?.informacaoRecolhe || null,
         observacoes: controle?.observacoes || null,
 
         // Auditoria e Status (from controle if exists, otherwise null/default)
-        usuarioEdicao: controle?.usuarioEdicao || null,
-        usuarioEmail: controle?.usuarioEmail || null,
+        editorId: controle?.editorId || null,
+        editorNome: controle?.editorNome || null,
+        editorEmail: controle?.editorEmail || null,
         createdAt: controle?.createdAt || new Date(), // Provide a default if not found
         updatedAt: controle?.updatedAt || new Date(), // Provide a default if not found
         isAtivo: controle?.isAtivo ?? true, // Provide a default if not found
@@ -973,8 +949,11 @@ WHERE
           crachaCobradorGlobus: globusData.CRACHA_COBRADOR,
           chapaFuncCobradorGlobus: globusData.CHAPAFUNC_COBRADOR,
           totalHorarios: globusData.TOTAL_HORARIOS,
-          usuarioEdicao: usuarioId,
-          usuarioEmail: usuarioEmail,
+          editorId: usuarioId,
+          editorEmail: usuarioEmail,
+          numeroCarro: null, // Initialize new field
+          observacoes: null, // Initialize new field
+          editorNome: null, // Initialize new field
         });
         await this.controleHorarioRepository.save(controle);
         totalSincronizados++;
@@ -994,17 +973,79 @@ WHERE
     };
   }
 
+  async createOrUpdateControleHorario(
+    dataReferencia: string,
+    dadosControle: SalvarControleHorariosDto,
+    usuarioId: string,
+    usuarioEmail: string,
+  ): Promise<ControleHorario> {
+    let controle = await this.controleHorarioRepository.findOne({
+      where: {
+        dataReferencia,
+        viagemGlobusId: dadosControle.viagemGlobusId,
+      },
+    });
+
+    if (controle) {
+      // Atualizar existente
+      Object.assign(controle, dadosControle);
+    } else {
+      // Criar novo
+      controle = this.controleHorarioRepository.create(dadosControle);
+      controle.dataReferencia = dataReferencia;
+      controle.viagemGlobusId = dadosControle.viagemGlobusId;
+      controle.isAtivo = true; // Default para true ao criar
+
+      // Preencher dados do Globus ao criar um novo controle
+      const globusData = await this.getGlobusDataFromOracleById(dataReferencia, dadosControle.viagemGlobusId);
+      if (globusData) {
+        controle.setorPrincipalLinha = globusData.SETOR_PRINCIPAL_LINHA;
+        controle.codLocalTerminalSec = globusData.COD_LOCAL_TERMINAL_SEC;
+        controle.codigoLinha = globusData.CODIGOLINHA;
+        controle.nomeLinha = globusData.NOMELINHA;
+        controle.codDestinoLinha = globusData.COD_DESTINO_LINHA;
+        controle.localDestinoLinha = globusData.LOCAL_DESTINO_LINHA;
+        controle.flgSentido = globusData.FLG_SENTIDO;
+        controle.descTipoDia = globusData.DESC_TIPODIA;
+        controle.horaSaida = globusData.HOR_SAIDA;
+        controle.horaChegada = globusData.HOR_CHEGADA;
+        controle.codOrigemViagem = globusData.COD_ORIGEM_VIAGEM;
+        controle.localOrigemViagem = globusData.LOCAL_ORIGEM_VIAGEM;
+        controle.codServicoNumero = globusData.COD_SERVICO_NUMERO;
+        controle.codAtividade = globusData.COD_ATIVIDADE;
+        controle.nomeAtividade = globusData.NOME_ATIVIDADE;
+        controle.flgTipo = globusData.FLG_TIPO;
+        controle.codMotorista = globusData.COD_MOTORISTA;
+        controle.nomeMotoristaGlobus = globusData.NOME_MOTORISTA;
+        controle.crachaMotoristaGlobus = globusData.CRACHA_MOTORISTA;
+        controle.chapaFuncMotoristaGlobus = globusData.CHAPAFUNC_MOTORISTA;
+        controle.codCobrador = globusData.COD_COBRADOR;
+        controle.nomeCobradorGlobus = globusData.NOME_COBRADOR;
+        controle.crachaCobradorGlobus = globusData.CRACHA_COBRADOR;
+        controle.chapaFuncCobradorGlobus = globusData.CHAPAFUNC_COBRADOR;
+        controle.totalHorarios = globusData.TOTAL_HORARIOS;
+      } else {
+        this.logger.warn(`⚠️ Dados Globus não encontrados para a viagem ${dadosControle.viagemGlobusId}. O controle será criado sem os dados do Globus.`);
+      }
+    }
+
+    controle.editorId = usuarioId;
+    controle.editorNome = null; // TODO: Fetch user name from context if available
+    controle.editorEmail = usuarioEmail;
+
+    return await this.controleHorarioRepository.save(controle);
+  }
+
   private async aplicarAtualizacaoEmEscala(
     controleBase: ControleHorario, // Agora recebe o ControleHorario salvo como base
     dataReferencia: string,
-    updatedFields: { 
-      numeroCarro?: string; 
+    updatedFields: {
+      numeroCarro?: string;
       nomeMotoristaEditado?: string;
       crachaMotoristaEditado?: string;
       nomeCobradorEditado?: string;
       crachaCobradorEditado?: string;
-      informacaoRecolhe?: string; 
-      observacoes?: string 
+      observacoes?: string
     },
     usuarioId: string,
     usuarioEmail: string,
@@ -1025,6 +1066,8 @@ WHERE
         setorPrincipal: globusDataOriginal.SETOR_PRINCIPAL_LINHA,
         codigoLinha: [globusDataOriginal.CODIGOLINHA],
         sentidoTexto: globusDataOriginal.FLG_SENTIDO,
+        codServicoNumero: globusDataOriginal.COD_SERVICO_COMPLETO, // Filter by service
+        codMotorista: globusDataOriginal.COD_MOTORISTA, // Filter by motorista
         // horSaida: globusDataOriginal.HOR_SAIDA, // Horário de saída pode variar na escala
         // Adicionar outros campos de escala se necessário
     });
@@ -1040,7 +1083,24 @@ WHERE
 
     this.logger.log(`📊 Encontradas ${viagensNaEscalaIds.length} viagens na mesma escala para atualização.`);
 
-    for (const viagemEscalaId of viagensNaEscalaIds) {
+    // Sort trips by horaSaida to ensure propagation to 'remaining' trips
+    const sortedViagensNaEscala = viagensNaEscalaRaw.sort((a, b) => {
+      if (a.HOR_SAIDA < b.HOR_SAIDA) return -1;
+      if (a.HOR_SAIDA > b.HOR_SAIDA) return 1;
+      return 0;
+    });
+
+    let propagate = false;
+    for (const viagemEscalaRaw of sortedViagensNaEscala) {
+      const viagemEscalaId = viagemEscalaRaw.COD_SERVICO_COMPLETO;
+
+      // Only propagate to trips that are 'after' the base trip in the scale
+      if (viagemEscalaRaw.HOR_SAIDA >= globusDataOriginal.HOR_SAIDA) {
+        propagate = true;
+      }
+
+      if (!propagate) continue;
+
       let controleEscala = await this.controleHorarioRepository.findOne({
         where: {
           viagemGlobusId: viagemEscalaId,
@@ -1088,6 +1148,13 @@ WHERE
         controleEscala.crachaCobradorGlobus = globusDataEscala.CRACHA_COBRADOR;
         controleEscala.chapaFuncCobradorGlobus = globusDataEscala.CHAPAFUNC_COBRADOR;
         controleEscala.totalHorarios = globusDataEscala.TOTAL_HORARIOS;
+
+        // Initialize new fields as null/undefined
+        controleEscala.numeroCarro = null;
+        controleEscala.observacoes = null;
+        controleEscala.editorId = null;
+        controleEscala.editorNome = null;
+        controleEscala.editorEmail = null;
       }
 
       // Aplicar apenas os campos que foram atualizados na viagem original
@@ -1096,11 +1163,11 @@ WHERE
       if (updatedFields.crachaMotoristaEditado !== undefined) { controleEscala.crachaMotoristaEditado = updatedFields.crachaMotoristaEditado; }
       if (updatedFields.nomeCobradorEditado !== undefined) { controleEscala.nomeCobradorEditado = updatedFields.nomeCobradorEditado; }
       if (updatedFields.crachaCobradorEditado !== undefined) { controleEscala.crachaCobradorEditado = updatedFields.crachaCobradorEditado; }
-      if (updatedFields.informacaoRecolhe !== undefined) { controleEscala.informacaoRecolhe = updatedFields.informacaoRecolhe; }
       if (updatedFields.observacoes !== undefined) { controleEscala.observacoes = updatedFields.observacoes; }
 
-      controleEscala.usuarioEdicao = usuarioId;
-      controleEscala.usuarioEmail = usuarioEmail;
+      controleEscala.editorId = usuarioId;
+      controleEscala.editorNome = null; // TODO: Fetch user name from context if available
+      controleEscala.editorEmail = usuarioEmail;
 
       await this.controleHorarioRepository.save(controleEscala);
       this.logger.log(`✅ Controle atualizado para viagem em escala: ${viagemEscalaId}`);

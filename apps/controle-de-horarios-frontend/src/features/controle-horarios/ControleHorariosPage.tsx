@@ -1,5 +1,5 @@
 // src/features/controle-horarios/ControleHorariosPage.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useControleHorarios } from './hooks/useControleHorarios';
 import {
   Header,
@@ -40,7 +40,13 @@ export const ControleHorariosPage: React.FC = () => {
     contarFiltrosAtivos,
     contarAlteracoesPendentes,
     sincronizarControleHorarios,
+    iniciarSincronizacaoManual,
   } = useControleHorarios();
+
+  useEffect(() => {
+    console.log('Página de Controle de Horários montada, iniciando sincronização manual...'); // Added log
+    iniciarSincronizacaoManual();
+  }, [iniciarSincronizacaoManual]);
 
   return (
     <div className="space-y-6">
@@ -57,6 +63,7 @@ export const ControleHorariosPage: React.FC = () => {
         onSalvarAlteracoes={salvarTodasAlteracoes}
         saving={saving}
         sincronizando={sincronizando}
+        onManualSync={iniciarSincronizacaoManual} // Adicionado
       />
 
       {/* Status Cards */}

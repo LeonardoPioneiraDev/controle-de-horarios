@@ -1,6 +1,7 @@
 // src/modules/controle-horarios/dto/salvar-controle-horarios.dto.ts
 
-import { IsString, IsOptional, IsUUID, MaxLength, IsArray, ValidateNested } from 'class-validator';
+import { IsOptional, IsString, IsBoolean, IsDateString, MaxLength, IsArray, ValidateNested } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 
 export class SalvarControleHorariosDto {
@@ -41,13 +42,27 @@ export class SalvarControleHorariosDto {
   @IsString()
   @MaxLength(300)
   @Transform(({ value }) => value?.trim())
-  informacaoRecolhe?: string;
+  observacoes?: string;
 
+  @ApiProperty({ description: 'Indica se o registro está ativo', required: false, default: true })
+  @IsOptional()
+  @IsBoolean()
+  isAtivo?: boolean = true;
+
+  @ApiProperty({ description: 'ID do usuário que editou o registro', required: false })
   @IsOptional()
   @IsString()
-  @MaxLength(500)
-  @Transform(({ value }) => value?.trim())
-  observacoes?: string;
+  editorId?: string;
+
+  @ApiProperty({ description: 'Nome do usuário que editou o registro', required: false })
+  @IsOptional()
+  @IsString()
+  editorNome?: string;
+
+  @ApiProperty({ description: 'Email do usuário que editou o registro', required: false })
+  @IsOptional()
+  @IsString()
+  editorEmail?: string;
 }
 
 export class SalvarMultiplosControleHorariosDto {

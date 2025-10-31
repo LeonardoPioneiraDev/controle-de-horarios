@@ -115,25 +115,25 @@ export class ControleHorario {
   @Column({ name: 'cracha_cobrador_editado', nullable: true })
   crachaCobradorEditado: string;
 
-  @Column({ name: 'informacao_recolhe', length: 300, nullable: true })
-  informacaoRecolhe: string;
-
-  @Column({ name: 'observacoes', type: 'text', nullable: true })
+  @Column({ name: 'observacoes', type: 'text', nullable: true }) // Consolidated observations field
   observacoes: string;
 
   // Auditoria
-  @Column({ name: 'usuario_edicao', length: 500, nullable: true })
-  usuarioEdicao: string; // ID do usuário
+  @Column({ name: 'editor_id', type: 'varchar', length: 36, nullable: true }) // Consolidated editor ID
+  editorId: string;
 
-  @Column({ name: 'usuario_email', length: 500, nullable: true })
-  usuarioEmail: string;
+  @Column({ name: 'editor_nome', type: 'varchar', length: 100, nullable: true }) // Consolidated editor name
+  editorNome: string;
+
+  @Column({ name: 'editor_email', type: 'varchar', length: 100, nullable: true }) // Consolidated editor email
+  editorEmail: string;
+
+  @Column({ name: 'is_ativo', type: 'boolean', default: true })
+  isAtivo: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
-
-  @Column({ name: 'is_ativo', type: 'boolean', default: true })
-  isAtivo: boolean;
 }

@@ -13,7 +13,7 @@ describe('ControleHorariosController', () => {
 
   const mockControleHorariosService = {
     buscarControleHorarios: jest.fn(),
-    salvarControleHorario: jest.fn(),
+    createOrUpdateControleHorario: jest.fn(),
     salvarMultiplosControles: jest.fn(),
     buscarOpcoesControleHorarios: jest.fn(),
     obterEstatisticasControleHorarios: jest.fn(),
@@ -75,12 +75,11 @@ describe('ControleHorariosController', () => {
   describe('salvarControleHorario', () => {
     it('should save controle horario', async () => {
       const result = { success: true, message: 'Controle de horário criado com sucesso', data: {} };
-      mockControleHorariosService.salvarControleHorario.mockResolvedValue(result);
+      mockControleHorariosService.createOrUpdateControleHorario.mockResolvedValue(result);
 
       const dto: SalvarControleHorariosDto = { 
         viagemGlobusId: '123', 
         numeroCarro: 'A1', 
-        informacaoRecolhe: 'info', 
         nomeMotoristaEditado: 'Motorista Teste',
         crachaMotoristaEditado: 'C1',
         observacoes: 'obs' 
@@ -88,16 +87,15 @@ describe('ControleHorariosController', () => {
       const usuarioId = 'test-user-id';
       const usuarioEmail = 'test@example.com';
       expect(await controller.salvarControleHorario('2023-01-01', dto, usuarioId, usuarioEmail)).toEqual(result);
-      expect(service.salvarControleHorario).toHaveBeenCalledWith('2023-01-01', dto, usuarioId, usuarioEmail);
+      expect(service.createOrUpdateControleHorario).toHaveBeenCalledWith('2023-01-01', dto, usuarioId, usuarioEmail);
     });
 
     it('should throw HttpException on service error', async () => {
-      mockControleHorariosService.salvarControleHorario.mockRejectedValue(new Error('Service error'));
+      mockControleHorariosService.createOrUpdateControleHorario.mockRejectedValue(new Error('Service error'));
 
       const dto: SalvarControleHorariosDto = { 
         viagemGlobusId: '123', 
         numeroCarro: 'A1', 
-        informacaoRecolhe: 'info', 
         nomeMotoristaEditado: 'Motorista Teste',
         crachaMotoristaEditado: 'C1',
         observacoes: 'obs' 
@@ -202,18 +200,18 @@ describe('ControleHorariosController', () => {
       const result = { totalViagens: 10, viagensEditadas: 5, viagensNaoEditadas: 5, percentualEditado: 50, setoresUnicos: [], linhasUnicas: [], servicosUnicos: [], ultimaAtualizacao: new Date() };
       mockControleHorariosService.obterEstatisticasControleHorarios.mockResolvedValue(result);
 
-      expect(await controller.obterEstatisticas('2023-01-01', 'test@example.com')).toEqual({
+      expect(await controller.obterEstatisticas('2023-01-01', 'test-user-id', 'test@example.com')).toEqual({
         success: true,
         message: 'Estatísticas obtidas com sucesso',
         data: result,
       });
-      expect(service.obterEstatisticasControleHorarios).toHaveBeenCalledWith('2023-01-01');
+      expect(service.obterEstatisticasControleHorarios).toHaveBeenCalledWith('2023-01-01', 'test-user-id');
     });
 
     it('should throw HttpException on service error', async () => {
       mockControleHorariosService.obterEstatisticasControleHorarios.mockRejectedValue(new Error('Service error'));
 
-      await expect(controller.obterEstatisticas('2023-01-01', 'test@example.com')).rejects.toThrow(
+      await expect(controller.obterEstatisticas('2023-01-01', 'test-user-id', 'test@example.com')).rejects.toThrow(
         new HttpException(
           {
             success: false,
@@ -243,14 +241,14 @@ describe('ControleHorariosController', () => {
       };
       mockControleHorariosService.obterEstatisticasControleHorarios.mockResolvedValue(serviceResult);
 
-      expect(await controller.verificarStatusDados('2023-01-01', 'test@example.com')).toEqual(expectedResult);
-      expect(service.obterEstatisticasControleHorarios).toHaveBeenCalledWith('2023-01-01');
+      expect(await controller.verificarStatusDados('2023-01-01', 'test-user-id', 'test@example.com')).toEqual(expectedResult);
+      expect(service.obterEstatisticasControleHorarios).toHaveBeenCalledWith('2023-01-01', 'test-user-id');
     });
 
     it('should throw HttpException on service error', async () => {
       mockControleHorariosService.obterEstatisticasControleHorarios.mockRejectedValue(new Error('Service error'));
 
-      await expect(controller.verificarStatusDados('2023-01-01', 'test@example.com')).rejects.toThrow(
+      await expect(controller.verificarStatusDados('2023-01-01', 'test-user-id', 'test@example.com')).rejects.toThrow(
         new HttpException(
           {
             success: false,

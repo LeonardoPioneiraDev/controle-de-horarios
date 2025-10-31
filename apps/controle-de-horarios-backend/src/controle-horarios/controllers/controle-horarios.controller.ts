@@ -70,7 +70,7 @@ export class ControleHorariosController {
     try {
       this.logger.log(`💾 [${usuarioEmail}] Salvando controle para viagem ${dados.viagemGlobusId}`);
       
-      return await this.controleHorariosService.salvarControleHorario(data, dados, usuarioId, usuarioEmail);
+      return await this.controleHorariosService.createOrUpdateControleHorario(data, dados, usuarioId, usuarioEmail);
     } catch (error) {
       this.logger.error(`❌ Erro ao salvar controle: ${error.message}`);
       throw new HttpException(
@@ -142,12 +142,13 @@ export class ControleHorariosController {
   @Roles(UserRole.OPERADOR)
   async obterEstatisticas(
     @Param('data') data: string,
+    @CurrentUser('id') usuarioId: string,
     @CurrentUser('email') usuarioEmail: string,
   ) {
     try {
       this.logger.log(`📊 [${usuarioEmail}] Obtendo estatísticas para ${data}`);
       
-      const estatisticas = await this.controleHorariosService.obterEstatisticasControleHorarios(data);
+      const estatisticas = await this.controleHorariosService.obterEstatisticasControleHorarios(data, usuarioId);
       
       return {
         success: true,
@@ -171,12 +172,13 @@ export class ControleHorariosController {
   @Roles(UserRole.OPERADOR)
   async verificarStatusDados(
     @Param('data') data: string,
+    @CurrentUser('id') usuarioId: string,
     @CurrentUser('email') usuarioEmail: string,
   ) {
     try {
       this.logger.log(`🔍 [${usuarioEmail}] Verificando status dos dados para ${data}`);
       
-      const estatisticas = await this.controleHorariosService.obterEstatisticasControleHorarios(data);
+      const estatisticas = await this.controleHorariosService.obterEstatisticasControleHorarios(data, usuarioId);
       
       return {
         success: true,
