@@ -96,7 +96,6 @@ export interface FiltrosControleHorarios {
   pagina?: number;
   ordenarPor?: string;
   ordem?: 'ASC' | 'DESC';
-  servicoIgualMotorista?: boolean;
 }
 
 export interface OpcoesControleHorariosDto {

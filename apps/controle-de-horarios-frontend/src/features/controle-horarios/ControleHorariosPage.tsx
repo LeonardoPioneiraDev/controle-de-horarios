@@ -32,6 +32,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { controleHorariosService } from '@/services/controleHorariosService';
 import { EditDriverCobradorModal } from './components/EditDriverCobradorModal';
+import { FiltersPanel } from './components/FiltersPanel/FiltersPanel';
 
 // Componente para o cabeçalho da página
 const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, temDadosNaBase, onToggleFullScreen, isFullScreen }: {
@@ -162,261 +163,7 @@ const DateAndStatus = ({ date, onDateChange, status, onSincronizarManual }: {
   </div>
 );
 
-interface FilterSectionProps {
-  filters: FiltrosControleHorarios;
-  onFilterChange: (key: keyof FiltrosControleHorarios, value: any) => void;
-  onClearFilters: () => void;
-  opcoesFiltro: OpcoesControleHorariosDto;
-  onPageSizeChange: (size: number) => void;
-  aplicarFiltroRapido: (tipo: 'todos' | 'editados' | 'nao_editados') => void;
-  statusEdicaoLocal: 'todos' | 'editados' | 'nao_editados';
-}
 
-// Componente de Filtros
-const FilterSection = ({ filters, onFilterChange, onClearFilters, opcoesFiltro, onPageSizeChange, aplicarFiltroRapido, statusEdicaoLocal }: FilterSectionProps) => {
-  const handleLineSelectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedOptions = Array.from(e.target.selectedOptions).map(option => option.value);
-    if (selectedOptions.length <= 6) {
-      onFilterChange('codigoLinha', selectedOptions.length > 0 ? selectedOptions : undefined);
-    } else {
-      toast.warn('Você pode selecionar no máximo 6 linhas.', { position: "bottom-right" });
-    }
-  };
-
-  return (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-        {/* Filtro por Setor Principal */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Setor Principal</label>
-          <select
-            value={filters.setorPrincipal || ''}
-            onChange={(e) => onFilterChange('setorPrincipal', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Todos os Setores</option>
-            {opcoesFiltro.setores.map((setor) => (
-              <option key={setor} value={setor}>{setor}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Filtro por Código da Linha (Múltipla Seleção) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Linha</label>
-          <select
-            multiple
-            value={filters.codigoLinha || []}
-            onChange={handleLineSelectionChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 h-28" 
-          >
-            {opcoesFiltro.linhas.map((linha) => (
-              <option key={linha.codigo} value={linha.codigo}>{`${linha.codigo} - ${linha.nome}`}</option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-gray-500">Selecione até 6 linhas.</p>
-        </div>
-
-        {/* Filtro por Serviço Numérico */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Serviço Numérico</label>
-          <select
-            value={filters.codServicoNumero || ''}
-            onChange={(e) => onFilterChange('codServicoNumero', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Todos os Serviços</option>
-            {opcoesFiltro.servicos.map((servico) => (
-              <option key={servico} value={servico}>{servico}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Filtro por Sentido */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Sentido</label>
-          <select
-            value={filters.sentidoTexto || ''}
-            onChange={(e) => onFilterChange('sentidoTexto', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Todos os Sentidos</option>
-            {opcoesFiltro.sentidos.map((sentido) => (
-              <option key={sentido} value={sentido}>{sentido === 'I' ? 'Ida' : 'Volta'}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Filtro por Atividade */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Atividade</label>
-          <select
-            value={filters.codAtividade || ''}
-            onChange={(e) => onFilterChange('codAtividade', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Todas as Atividades</option>
-            <option value="especial">Especial</option>
-            <option value="regular">Regular</option>
-            <option value="recolhimento">Recolhimento</option>
-            <option value="rendicao">Rendicão</option>
-          </select>
-        </div>
-
-        {/* Filtro por Local de Origem */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Local de Origem</label>
-          <select
-            value={filters.localOrigem || ''}
-            onChange={(e) => onFilterChange('localOrigem', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Todos os Locais de Origem</option>
-            {opcoesFiltro.locaisOrigem.map((local) => (
-              <option key={local} value={local}>{local}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Filtro por Horário Início */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Horário Início (a partir de)</label>
-          <input
-            type="time"
-            value={filters.horarioInicio || ''}
-            onChange={(e) => onFilterChange('horarioInicio', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Filtro por Horário Fim */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Horário Fim (até)</label>
-          <input
-            type="time"
-            value={filters.horarioFim || ''}
-            onChange={(e) => onFilterChange('horarioFim', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Filtro por Nome Motorista */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nome Motorista</label>
-          <input
-            type="text"
-            value={filters.nomeMotorista || ''}
-            onChange={(e) => onFilterChange('nomeMotorista', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Nome Motorista"
-          />
-        </div>
-
-        {/* Filtro por Crachá Motorista */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Crachá Motorista</label>
-          <input
-            type="text"
-            value={filters.crachaMotorista || ''}
-            onChange={(e) => onFilterChange('crachaMotorista', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Crachá Motorista"
-          />
-        </div>
-
-        {/* Filtro por Nome Cobrador */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nome Cobrador</label>
-          <input
-            type="text"
-            value={filters.nomeCobrador || ''}
-            onChange={(e) => onFilterChange('nomeCobrador', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Nome Cobrador"
-          />
-        </div>
-
-        {/* Filtro por Crachá Cobrador */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Crachá Cobrador</label>
-          <input
-            type="text"
-            value={filters.crachaCobrador || ''}
-            onChange={(e) => onFilterChange('crachaCobrador', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Crachá Cobrador"
-          />
-        </div>
-
-        {/* Filtro por Serviço = Motorista */}
-        <div className="flex items-center">
-          <input
-            id="servico-igual-motorista"
-            type="checkbox"
-            checked={filters.servicoIgualMotorista || false}
-            onChange={(e) => onFilterChange('servicoIgualMotorista', e.target.checked)}
-            className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-          />
-          <label htmlFor="servico-igual-motorista" className="ml-2 block text-sm font-medium text-gray-700">
-            Serviço = Crachá
-          </label>
-        </div>
-
-        {/* Filtro por Status Edição */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Status Edição</label>
-          <select
-            value={statusEdicaoLocal || 'todos'}
-            onChange={(e) => aplicarFiltroRapido(e.target.value as 'todos' | 'editados' | 'nao_editados')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="todos">Todos</option>
-            <option value="editados">Editados</option>
-            <option value="nao_editados">Não Editados</option>
-          </select>
-        </div>
-
-        {/* Filtro de Busca de Texto Geral */}
-        <div className="lg:col-span-2 xl:col-span-1">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Busca Geral</label>
-          <input
-            type="text"
-            value={filters.buscaTexto || ''}
-            onChange={(e) => onFilterChange('buscaTexto', e.target.value || undefined)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Buscar por linha, motorista, carro..."
-          />
-        </div>
-
-        {/* Limite de Registros */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Limite de Registros</label>
-          <select
-            value={filters.limite || 100} // Default to 100 if not set
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value={50}>50</option>
-            <option value={100}>100</option>
-            <option value={200}>200</option>
-            <option value={500}>500</option>
-            <option value={1000}>1000</option>
-            <option value={-1}>Todos</option> {/* Special value for "All" */}
-          </select>
-        </div>
-
-      </div>
-      <div className="mt-4 flex justify-end">
-        <button
-          onClick={onClearFilters}
-          className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          Limpar Filtros
-        </button>
-      </div>
-    </div>
-  );
-};
 
 // Componente da Tabela de Controle de Horários
 const ControleHorariosTable = ({
@@ -730,37 +477,26 @@ export const ControleHorariosPage: React.FC = () => {
   const [editModalData, setEditModalData] = useState<ControleHorarioItemDto | null>(null);
   const [editModalField, setEditModalField] = useState<'motorista' | 'cobrador' | null>(null);
   const [isTableFullScreen, setIsTableFullScreen] = useState(false);
+  const [showLinhaMultiSelect, setShowLinhaMultiSelect] = useState(false);
 
   const {
     dataReferencia,
     setDataReferencia,
     controleHorarios,
-    controleHorariosOriginais,
     loading,
     error,
-    saving,
-    temAlteracoesPendentes,
     filtros,
     setFiltros,
     opcoesFiltros,
-    estatisticas,
     statusDados,
     currentPage,
     setCurrentPage,
     pageSize,
-    setPageSize,
     totalItems,
     temMaisPaginas,
-    buscarControleHorarios,
-    salvarTodasAlteracoes,
-    descartarAlteracoes,
     sincronizarControleHorarios,
-    handleInputChange,
     limparFiltros,
-    contarFiltrosAtivos,
-    contarAlteracoesPendentes,
-    aplicarFiltroRapido,
-    statusEdicaoLocal,
+    aplicarFiltros,
   } = useControleHorarios();
 
   const temDadosNaBase = useMemo(() => {
@@ -808,14 +544,14 @@ export const ControleHorariosPage: React.FC = () => {
     try {
       await controleHorariosService.salvarControleHorario(dataReferencia, dadosParaSalvar);
       toast.success('Registro salvo com sucesso!', { position: "bottom-right" });
-      buscarControleHorarios();
+      aplicarFiltros(); // Re-fetch data
     } catch (err: any) {
       console.error("Erro ao salvar edição:", err);
       toast.error(err.response?.data?.message || 'Erro ao salvar edição.', { position: "bottom-right" });
     } finally {
       setEditingCell(null);
     }
-  }, [editingCell, controleHorarios, dataReferencia, user, buscarControleHorarios]);
+  }, [editingCell, controleHorarios, dataReferencia, user, aplicarFiltros]);
 
   const handleMotoristaClick = useCallback((viagem: ControleHorarioItemDto) => {
     setEditModalData(viagem);
@@ -854,13 +590,13 @@ export const ControleHorariosPage: React.FC = () => {
     try {
       await controleHorariosService.salvarControleHorario(dataReferencia, dadosParaSalvar);
       toast.success('Alteração salva com sucesso!', { position: "bottom-right" });
-      buscarControleHorarios();
+      aplicarFiltros(); // Re-fetch data
       handleCloseEditModal();
     } catch (err: any) {
       console.error("Erro ao salvar alteração:", err);
       toast.error(err.response?.data?.message || 'Erro ao salvar alteração.', { position: "bottom-right" });
     }
-  }, [user, editModalData, dataReferencia, buscarControleHorarios, handleCloseEditModal]);
+  }, [user, editModalData, dataReferencia, aplicarFiltros, handleCloseEditModal]);
 
   return (
     <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
@@ -884,17 +620,16 @@ export const ControleHorariosPage: React.FC = () => {
       />
 
       {showFilters && (
-        <FilterSection
-          filters={filtros}
-          onFilterChange={(key, value) => {
-            setFiltros(prev => ({ ...prev, [key]: value }));
-            setCurrentPage(0);
-          }}
-          onClearFilters={limparFiltros}
-          opcoesFiltro={opcoesFiltros}
-          onPageSizeChange={setPageSize}
-          aplicarFiltroRapido={aplicarFiltroRapido}
-          statusEdicaoLocal={statusEdicaoLocal}
+        <FiltersPanel
+          showFilters={showFilters}
+          onClose={() => setShowFilters(false)}
+          filtros={filtros}
+          setFiltros={setFiltros}
+          opcoesFiltros={opcoesFiltros}
+          showLinhaMultiSelect={showLinhaMultiSelect}
+          setShowLinhaMultiSelect={setShowLinhaMultiSelect}
+          onLimparFiltros={limparFiltros}
+          onAplicarFiltros={aplicarFiltros}
         />
       )}
 

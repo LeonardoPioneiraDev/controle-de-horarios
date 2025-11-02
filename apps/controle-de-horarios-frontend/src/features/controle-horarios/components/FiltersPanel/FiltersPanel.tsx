@@ -1,14 +1,14 @@
 // src/features/controle-horarios/components/FiltersPanel/FiltersPanel.tsx
 import React from 'react';
 import { Search, X, ChevronDown, CheckCheck } from 'lucide-react';
-import { FiltrosControleHorarios, OpcoesControleHorarios } from '../../types/controle-horarios.types';
+import { FiltrosControleHorarios, OpcoesControleHorariosDto } from '@/types/controle-horarios.types';
 
 interface FiltersPanelProps {
   showFilters: boolean;
   onClose: () => void;
   filtros: FiltrosControleHorarios;
   setFiltros: React.Dispatch<React.SetStateAction<FiltrosControleHorarios>>;
-  opcoesFiltros: OpcoesControleHorarios;
+  opcoesFiltros: OpcoesControleHorariosDto;
   showLinhaMultiSelect: boolean;
   setShowLinhaMultiSelect: React.Dispatch<React.SetStateAction<boolean>>;
   onLimparFiltros: () => void;

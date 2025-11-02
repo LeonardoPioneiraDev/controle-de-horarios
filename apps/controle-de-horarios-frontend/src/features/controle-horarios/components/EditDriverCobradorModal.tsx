@@ -58,9 +58,9 @@ export const EditDriverCobradorModal: React.FC<EditDriverCobradorModalProps> = (
 
   const handleFilterByCracha = () => {
     if (field === 'motorista') {
-      onFilterByCracha({ crachaMotorista: editedValue, servicoIgualMotorista: true });
+      onFilterByCracha({ crachaMotorista: editedValue });
     } else {
-      onFilterByCracha({ crachaCobrador: editedValue, servicoIgualMotorista: true });
+      onFilterByCracha({ crachaCobrador: editedValue });
     }
     onClose();
   };

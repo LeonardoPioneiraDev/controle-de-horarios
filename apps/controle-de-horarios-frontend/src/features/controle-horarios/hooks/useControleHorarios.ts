@@ -79,15 +79,49 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
   const [totalItems, setTotalItems] = useState(0);
   const [temMaisPaginas, setTemMaisPaginas] = useState(false);
 
-  const [filtros, setFiltros] = useState<FiltrosControleHorarios>({
+  // Filtros que estão sendo aplicados na busca (estado "aplicado")
+  const [appliedFiltros, setAppliedFiltros] = useState<FiltrosControleHorarios>(() => ({
     limite: pageSize,
     pagina: currentPage,
-    codAtividade: undefined, // Ajustado para string
+    ordenarPor: "horaSaida",
+    ordem: "ASC",
+    codAtividade: undefined,
     localOrigem: undefined,
     crachaMotorista: undefined,
     crachaCobrador: undefined,
-    servicoIgualMotorista: undefined,
-  });
+    buscaTexto: undefined,
+    nomeMotorista: undefined,
+    nomeCobrador: undefined,
+    horarioInicio: undefined,
+    horarioFim: undefined,
+    sentidoTexto: undefined,
+    codigoLinha: undefined,
+    setorPrincipal: undefined,
+    codServicoNumero: undefined,
+    localDestino: undefined,
+  }));
+
+  // Filtros que estão sendo editados na UI (estado "pendente")
+  const [pendingFiltros, setPendingFiltros] = useState<FiltrosControleHorarios>(() => ({
+    limite: pageSize,
+    pagina: currentPage,
+    ordenarPor: "horaSaida",
+    ordem: "ASC",
+    codAtividade: undefined,
+    localOrigem: undefined,
+    crachaMotorista: undefined,
+    crachaCobrador: undefined,
+    buscaTexto: undefined,
+    nomeMotorista: undefined,
+    nomeCobrador: undefined,
+    horarioInicio: undefined,
+    horarioFim: undefined,
+    sentidoTexto: undefined,
+    codigoLinha: undefined,
+    setorPrincipal: undefined,
+    codServicoNumero: undefined,
+    localDestino: undefined,
+  }));
 
   const [statusEdicaoLocal, setStatusEdicaoLocal] = useState<'todos' | 'editados' | 'nao_editados'>('todos'); // Novo estado local
 
@@ -133,23 +167,28 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     setError(null);
     
     try {
-      console.log('🔍 Iniciando busca com filtros:', { dataReferencia, filtros });
+      console.log('🔍 Iniciando busca com filtros:', { dataReferencia, appliedFiltros });
       
       const filtrosComPaginacao = {
-        ...filtros,
+        ...appliedFiltros,
         limite: pageSize === -1 ? undefined : pageSize,
         pagina: pageSize === -1 ? undefined : currentPage,
       };
 
       const filtrosLimpos = Object.fromEntries(
-        Object.entries(filtrosComPaginacao).filter(([key, value]) => value !== undefined && value !== null && value !== '')
+        Object.entries(filtrosComPaginacao).filter(([key, value]) => {
+          if (key === 'codigoLinha') {
+            return Array.isArray(value) && value.length > 0;
+          }
+          return value !== undefined && value !== null && value !== '';
+        })
       );
       
       console.log('🧹 Filtros limpos para envio:', filtrosLimpos);
       
       const response = await controleHorariosService.buscarControleHorarios(dataReferencia, filtrosLimpos);
       
-      console.log('�� Resposta completa da API:', response);
+      console.log('✅ Resposta completa da API:', response);
 
       if (response.success) {
         // Os dados já vêm achatados do backend, sem a necessidade de dadosProcessados
@@ -180,7 +219,7 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     } finally {
       setLoading(false);
     }
-  }, [dataReferencia, filtros]);
+  }, [dataReferencia, appliedFiltros, currentPage, pageSize]);
 
   // ✅ Função para verificar status dos dados
   const verificarStatusDados = useCallback(async () => {
@@ -345,9 +384,13 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     setError(null);
   }, []);
 
-  // ✅ CORRIGIDO: Funções de filtros sem campos não suportados
-  const limparFiltros = () => {
-    setFiltros({
+  const aplicarFiltros = useCallback(() => {
+    setAppliedFiltros(pendingFiltros);
+    setCurrentPage(0);
+  }, [pendingFiltros]);
+
+  const limparFiltros = useCallback(() => {
+    const defaultFiltros: FiltrosControleHorarios = {
       limite: pageSize,
       pagina: 0,
       ordenarPor: "horaSaida",
@@ -356,7 +399,6 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
       localOrigem: undefined,
       crachaMotorista: undefined,
       crachaCobrador: undefined,
-      servicoIgualMotorista: true,
       buscaTexto: undefined,
       nomeMotorista: undefined,
       nomeCobrador: undefined,
@@ -367,10 +409,12 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
       setorPrincipal: undefined,
       codServicoNumero: undefined,
       localDestino: undefined,
-    });
+    };
+    setPendingFiltros(defaultFiltros);
+    setAppliedFiltros(defaultFiltros);
     setCurrentPage(0);
-    setStatusEdicaoLocal('todos'); // Limpar também o filtro local
-  };
+    setStatusEdicaoLocal('todos');
+  }, [pageSize]);
 
   const aplicarFiltroRapido = (tipo: 'editados' | 'nao_editados' | 'todos') => {
     setStatusEdicaoLocal(tipo); // Atualiza o estado local
@@ -379,7 +423,7 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
 
   const contarFiltrosAtivos = () => {
     let count = 0;
-    const { limite, pagina, ordenarPor, ordem, ...restOfFilters } = filtros;
+    const { limite, pagina, ordenarPor, ordem, ...restOfFilters } = appliedFiltros;
 
     for (const key in restOfFilters) {
       const value = restOfFilters[key as keyof typeof restOfFilters];
@@ -436,7 +480,7 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
       // Only fetch if not already loading to prevent redundant calls
       // The `loading` state is managed internally by `buscarControleHorarios`
       buscarControleHorarios();
-    }, [dataReferencia, filtros, currentPage, pageSize]);
+    }, [dataReferencia, appliedFiltros, currentPage, pageSize]);
 
   // Effect para filtrar viagens editadas e passadas
   useEffect(() => {
@@ -478,8 +522,8 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     error,
     saving,
     temAlteracoesPendentes,
-    filtros,
-    setFiltros,
+    filtros: pendingFiltros,
+    setFiltros: setPendingFiltros,
     opcoesFiltros,
     estatisticas,
     statusDados,
@@ -509,5 +553,6 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     contarFiltrosAtivos,
     contarAlteracoesPendentes,
     statusEdicaoLocal,
+    aplicarFiltros,
   };
 };

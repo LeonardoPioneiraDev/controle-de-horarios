@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { nowInSaoPaulo } from './common/utils/date.util';
 
 @ApiTags('Health')
 @Controller()
@@ -17,7 +18,7 @@ export class HealthController {
   async health() {
     return {
       status: 'ok',
-      timestamp: new Date().toISOString(),
+      timestamp: nowInSaoPaulo().toISOString(),
       service: 'controle-de-horarios-backend',
       version: '1.0.0',
     };
@@ -34,14 +35,14 @@ export class HealthController {
       return {
         status: 'ok',
         database: 'connected',
-        timestamp: new Date().toISOString(),
+        timestamp: nowInSaoPaulo().toISOString(),
       };
     } catch (error) {
       return {
         status: 'error',
         database: 'disconnected',
         error: error.message,
-        timestamp: new Date().toISOString(),
+        timestamp: nowInSaoPaulo().toISOString(),
       };
     }
   }
@@ -56,7 +57,7 @@ export class HealthController {
       
       return {
         status: 'ok',
-        timestamp: new Date().toISOString(),
+        timestamp: nowInSaoPaulo().toISOString(),
         service: 'controle-de-horarios-backend',
         version: '1.0.0',
         environment: process.env.NODE_ENV || 'development',
@@ -73,7 +74,7 @@ export class HealthController {
     } catch (error) {
       return {
         status: 'error',
-        timestamp: new Date().toISOString(),
+        timestamp: nowInSaoPaulo().toISOString(),
         service: 'controle-de-horarios-backend',
         version: '1.0.0',
         environment: process.env.NODE_ENV || 'development',

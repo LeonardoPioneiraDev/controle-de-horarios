@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
+import { nowInSaoPaulo } from '../common/utils/date.util';
 
 @ApiTags('Health')
 @Controller()
@@ -24,7 +25,7 @@ export class HealthController {
       
       return {
         status: 'ok',
-        timestamp: new Date().toISOString(),
+        timestamp: nowInSaoPaulo().toISOString(),
         database: 'connected'
       };
     } catch (error) {
@@ -32,7 +33,7 @@ export class HealthController {
       
       return {
         status: 'error',
-        timestamp: new Date().toISOString(),
+        timestamp: nowInSaoPaulo().toISOString(),
         database: 'disconnected',
         error: error.message
       };
@@ -52,7 +53,7 @@ export class HealthController {
       return {
         status: 'ok',
         database: 'connected',
-        timestamp: new Date().toISOString()
+        timestamp: nowInSaoPaulo().toISOString()
       };
     } catch (error) {
       console.log(`❌ [HEALTH_CONTROLLER] Database check falhou: ${error.message}`);
@@ -61,7 +62,7 @@ export class HealthController {
         status: 'error',
         database: 'disconnected',
         error: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: nowInSaoPaulo().toISOString()
       };
     }
   }
@@ -75,7 +76,7 @@ export class HealthController {
       application: 'Controle de Horários',
       version: '1.0.0',
       environment: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString()
+      timestamp: nowInSaoPaulo().toISOString()
     };
   }
 }

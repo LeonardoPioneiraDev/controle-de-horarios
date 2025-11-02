@@ -14,7 +14,7 @@ import {
   OpcoesControleHorariosDto,
 } from '../dto';
 import { IGlobusHorario } from '../interfaces/globus-horario.interface';
-import { format } from 'date-fns';
+import { formatDateForOracle, nowInSaoPaulo } from '../../common/utils/date.util';
 
 @Injectable()
 export class ControleHorariosService {
@@ -36,7 +36,7 @@ export class ControleHorariosService {
     },
     usuarioId: string,
   ): Promise<ControleHorarioResponseDto> {
-    const startTime = Date.now();
+    const startTime = nowInSaoPaulo().getTime();
     this.logger.log(`[LOCAL] Buscando controle de horários para ${dataReferencia} com filtros: ${JSON.stringify(filtros)}`);
 
     if (!this.isValidDate(dataReferencia)) {
@@ -115,7 +115,7 @@ export class ControleHorariosService {
     const estatisticas = await this.obterEstatisticasControleHorarios(dataReferencia, usuarioId);
 
     const temMaisPaginas = (pagina + 1) * limite < totalViagens;
-    const executionTime = `${Date.now() - startTime}ms`;
+    const executionTime = `${nowInSaoPaulo().getTime() - startTime}ms`;
 
     this.logger.log(`[LOCAL] Encontrados ${itensControle.length} horários (total: ${totalViagens}) para ${dataReferencia} em ${executionTime}`);
 
@@ -347,7 +347,7 @@ export class ControleHorariosService {
       return [];
     }
 
-    const dataFormatada = format(new Date(dataPesquisa), 'yyyy-MM-dd');
+    const dataFormatada = formatDateForOracle(dataPesquisa);
 
     let sql = `
 WITH LINHAS_FILTRADAS AS (
@@ -545,7 +545,7 @@ ORDER BY
       return null;
     }
 
-    const dataFormatada = format(new Date(dataPesquisa), 'yyyy-MM-dd');
+    const dataFormatada = formatDateForOracle(dataPesquisa);
     let sql = `
 SELECT 
     -- Informaões da Linha e Setor Principal    
@@ -650,7 +650,7 @@ WHERE
     if (!this.oracleService.isEnabled()) {
         return 0;
     }
-    const dataFormatada = format(new Date(dataPesquisa), 'yyyy-MM-dd');
+    const dataFormatada = formatDateForOracle(dataPesquisa);
 
     let sql = `
 WITH LINHAS_FILTRADAS AS (
@@ -813,8 +813,8 @@ WHERE
         editorId: controle?.editorId || null,
         editorNome: controle?.editorNome || null,
         editorEmail: controle?.editorEmail || null,
-        createdAt: controle?.createdAt || new Date(), // Provide a default if not found
-        updatedAt: controle?.updatedAt || new Date(), // Provide a default if not found
+        createdAt: controle?.createdAt || nowInSaoPaulo(), // Provide a default if not found
+        updatedAt: controle?.updatedAt || nowInSaoPaulo(), // Provide a default if not found
         isAtivo: controle?.isAtivo ?? true, // Provide a default if not found
         jaFoiEditado: !!controle, // If 'controle' exists, it means it was edited
       };
@@ -851,7 +851,7 @@ WHERE
         linhasUnicas: [],
         servicosUnicos: [],
       },
-      executionTime: `${Date.now() - startTime}ms`,
+      executionTime: `${nowInSaoPaulo().getTime() - startTime}ms`,
       dataReferencia,
     };
   }
@@ -860,7 +860,7 @@ WHERE
     const regex = /^\d{4}-\d{2}-\d{2}$/;
     if (!regex.test(dateString)) return false;
     
-    const date = new Date(dateString);
+    const date = new Date(`${dateString}T00:00:00`);
     return date instanceof Date && !isNaN(date.getTime());
   }
 

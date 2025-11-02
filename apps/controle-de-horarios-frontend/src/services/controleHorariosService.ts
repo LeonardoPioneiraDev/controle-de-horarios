@@ -20,7 +20,7 @@ export const controleHorariosService = {
     Object.entries(filtros).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (Array.isArray(value)) {
-          value.forEach(item => queryParams.append(key, item.toString()));
+          queryParams.append(key, value.join(','));
         } else {
           queryParams.append(key, value.toString());
         }
