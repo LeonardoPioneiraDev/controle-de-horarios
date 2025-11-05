@@ -280,22 +280,6 @@ export const ComparacaoViagens: React.FC = () => {
         carregarEstatisticas();
     }, [carregarEstatisticas]);
 
-    const carregarHistorico = useCallback(async () => {
-        setHistoricoLoading(true);
-        try {
-            const { items } = await comparacaoViagensService.listarHistorico({ limit: 5, page: 1 });
-            setHistorico(items);
-        } catch (err) {
-            // silencioso
-        } finally {
-            setHistoricoLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        carregarHistorico();
-    }, [carregarHistorico]);
-
     const executarComparacao = async () => {
         setExecutando(true);
         setError(null);
@@ -306,16 +290,6 @@ export const ComparacaoViagens: React.FC = () => {
             setSuccess(`Comparação executada! ${result.totalComparacoes} registros processados.`);
             // Auto-fetch results after execution
             buscarComparacoes();
-            try {
-                const ultimo = await comparacaoViagensService.obterUltimoHistorico(dataReferencia);
-                if (ultimo) {
-                    setHistorico((prev) => [ultimo, ...prev.filter((i) => i.id !== ultimo.id)].slice(0, 5));
-                } else {
-                    carregarHistorico();
-                }
-            } catch {
-                carregarHistorico();
-            }
         } catch (err: any) {
             setError(err.message || 'Falha ao executar a comparação.');
         } finally {
@@ -378,48 +352,6 @@ export const ComparacaoViagens: React.FC = () => {
             ) : estatisticas ? (
                 <div className="space-y-6">
                     <Statistics stats={estatisticas} />
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <TrendingUp className="h-5 w-5 text-purple-600" />
-                            <h3 className="text-lg font-semibold text-gray-800">Histórico Recente</h3>
-                        </div>
-                        {historicoLoading ? (
-                            <div className="text-sm text-gray-500">Carregando histórico...</div>
-                        ) : historico.length === 0 ? (
-                            <div className="text-sm text-gray-500">Sem execuções recentes.</div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full text-sm">
-                                    <thead>
-                                        <tr className="text-left text-gray-600 border-b">
-                                            <th className="py-2 pr-4">Data Ref.</th>
-                                            <th className="py-2 pr-4">Executado em</th>
-                                            <th className="py-2 pr-4">Executor</th>
-                                            <th className="py-2 pr-4">Total</th>
-                                            <th className="py-2 pr-4">Compatíveis</th>
-                                            <th className="py-2 pr-4">Divergentes</th>
-                                            <th className="py-2 pr-4">% Compat.</th>
-                                            <th className="py-2 pr-4">Duração</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {historico.map((h) => (
-                                            <tr key={h.id} className="border-b last:border-0">
-                                                <td className="py-2 pr-4">{h.dataReferencia}</td>
-                                                <td className="py-2 pr-4">{h.createdAt ? new Date(h.createdAt).toLocaleString() : '-'}</td>
-                                                <td className="py-2 pr-4">{h.executedByEmail || '-'}</td>
-                                                <td className="py-2 pr-4">{h.totalComparacoes}</td>
-                                                <td className="py-2 pr-4 text-green-700">{h.compativeis}</td>
-                                                <td className="py-2 pr-4 text-red-700">{h.divergentes}</td>
-                                                <td className="py-2 pr-4">{h.percentualCompatibilidade}%</td>
-                                                <td className="py-2 pr-4">{h.tempoProcessamento}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
                     {loading ? (
                         <LoadingState text="Carregando comparações..." />
                     ) : comparacoes.length > 0 ? (
@@ -437,11 +369,4 @@ export const ComparacaoViagens: React.FC = () => {
         </div>
     );
 };
-
-
-
-export default ComparacaoViagens;
-
-
-
 

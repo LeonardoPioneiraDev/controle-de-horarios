@@ -9,18 +9,18 @@ export class ViagensGlobusService extends BaseApiService {
 
   async getViagens(data: string, filtros: FiltrosViagemGlobus = {}): Promise<ResponsePaginada<ViagemGlobus>> {
     const params = new URLSearchParams();
-    if (filtros.setorPrincipal) params.append('setorPrincipal', filtros.setorPrincipal);
-    if (filtros.codigoLinha) params.append('codigoLinha', filtros.codigoLinha);
-    if (filtros.nomeLinha) params.append('nomeLinha', filtros.nomeLinha);
+    if (filtros.setor_principal_linha) params.append('setor_principal_linha', filtros.setor_principal_linha);
+    if (filtros.codigo_linha) params.append('codigo_linha', filtros.codigo_linha.join(','));
+    if (filtros.nome_linha) params.append('nome_linha', filtros.nome_linha);
     if (filtros.sentido) params.append('sentido', filtros.sentido);
-    if (filtros.localOrigemViagem) params.append('localOrigemViagem', filtros.localOrigemViagem);
-    if (filtros.codServicoNumero) params.append('codServicoNumero', filtros.codServicoNumero);
-    if (filtros.nomeMotorista) params.append('nomeMotorista', filtros.nomeMotorista);
-    if (filtros.nomeCobrador) params.append('nomeCobrador', filtros.nomeCobrador);
+    if (filtros.local_origem_viagem) params.append('local_origem_viagem', filtros.local_origem_viagem);
+    if (filtros.cod_servico_numero) params.append('cod_servico_numero', filtros.cod_servico_numero);
+    if (filtros.nome_motorista) params.append('nome_motorista', filtros.nome_motorista);
+    if (filtros.nome_cobrador) params.append('nome_cobrador', filtros.nome_cobrador);
     if (filtros.limite) params.append('limite', filtros.limite.toString());
-    if (filtros.page) params.append('page', filtros.page.toString());
-    if (filtros.incluirEstatisticas !== undefined) params.append('incluirEstatisticas', filtros.incluirEstatisticas.toString());
-    if (filtros.salvarLocal !== undefined) params.append('salvarLocal', filtros.salvarLocal.toString());
+    if (filtros.pagina) params.append('pagina', filtros.pagina.toString());
+    if (filtros.incluir_estatisticas !== undefined) params.append('incluir_estatisticas', filtros.incluir_estatisticas.toString());
+    if (filtros.salvar_local !== undefined) params.append('salvar_local', filtros.salvar_local.toString());
 
     const queryString = params.toString();
     const url = `/viagens-globus/${data}${queryString ? `?${queryString}` : ''}`;

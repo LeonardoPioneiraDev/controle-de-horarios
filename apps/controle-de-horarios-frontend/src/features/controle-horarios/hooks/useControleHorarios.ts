@@ -1,447 +1,313 @@
-// src/features/controle-horarios/hooks/useControleHorarios.ts
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../../contexts/AuthContext';
-import { controleHorariosService } from '@/services/controleHorariosService';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { controleHorariosService } from '../../../services/controleHorariosService';
 import {
-  ControleHorarioItemDto,
+  ControleHorarioItem,
   FiltrosControleHorarios,
   OpcoesControleHorariosDto,
-  SalvarControleHorariosDto,
-  SincronizarControleHorariosDto,
   StatusControleHorariosDto,
-  EstatisticasControleHorariosDto
-} from '@/types/controle-horarios.types';
+  EstatisticasControleHorariosDto,
+  UpdateMultipleControleHorariosDto,
+} from '../../../types/controle-horarios.types';
 
+interface UsuarioAtual { id: string; nome: string; email: string; perfil: string }
 
-interface UsuarioAtual {
-  id: string;
-  nome: string;
-  email: string;
-  perfil: string;
-}
-
-export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
-  const { user } = useAuth();
-
-  // ✅ Função para obter dados do usuário atual
-  const obterUsuarioAtual = (): UsuarioAtual | null => {
-    if (user) {
-      return {
-        id: user.id,
-        nome: `${user.firstName} ${user.lastName}`.trim() || user.email,
-        email: user.email,
-        perfil: user.role || 'OPERADOR'
-      };
-    }
-    
-    // Fallback para dados do localStorage se o contexto não estiver disponível
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
+export const useControleHorarios = () => {
+  const obterUsuarioAtual = (): UsuarioAtual => {
+    const raw = localStorage.getItem('user');
+    try {
+      if (raw) {
+        const u = JSON.parse(raw);
         return {
-          id: parsedUser.id || '1',
-          nome: parsedUser.firstName && parsedUser.lastName 
-            ? `${parsedUser.firstName} ${parsedUser.lastName}`.trim()
-            : parsedUser.name || parsedUser.nome || parsedUser.email || 'Usuário',
-          email: parsedUser.email || 'usuario@exemplo.com',
-          perfil: parsedUser.role || parsedUser.perfil || 'OPERADOR'
+          id: u.id || '1',
+          nome: (u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : (u.name || u.nome || u.email)) || 'Usuário',
+          email: u.email || 'usuario@exemplo.com',
+          perfil: u.role || u.perfil || 'OPERADOR',
         };
-      } catch {
-        // Se falhar, usar dados padrão
       }
-    }
-    
-    return {
-      id: '1',
-      nome: 'Usuário Padrão',
-      email: 'usuario@exemplo.com',
-      perfil: 'OPERADOR'
-    };
+    } catch {}
+    return { id: '1', nome: 'Usuário', email: 'usuario@exemplo.com', perfil: 'OPERADOR' };
   };
 
-  // Estados principais
-  const [dataReferencia, setDataReferencia] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split('T')[0];
-  });
-
-  const [controleHorarios, setControleHorarios] = useState<ControleHorarioItemDto[]>([]);
-  const [controleHorariosExibidos, setControleHorariosExibidos] = useState<ControleHorarioItemDto[]>([]);
-  const [controleHorariosOriginais, setControleHorariosOriginais] = useState<ControleHorarioItemDto[]>([]);
+  const [dataReferencia, setDataReferencia] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [controleHorarios, setControleHorarios] = useState<ControleHorarioItem[]>([]);
+  const [controleHorariosOriginais, setControleHorariosOriginais] = useState<ControleHorarioItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false);
-  
-  const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(100);
-  const [totalItems, setTotalItems] = useState(0);
-  const [temMaisPaginas, setTemMaisPaginas] = useState(false);
 
-  // Filtros que estão sendo aplicados na busca (estado "aplicado")
-  const [appliedFiltros, setAppliedFiltros] = useState<FiltrosControleHorarios>(() => ({
-    limite: pageSize,
-    pagina: currentPage,
-    ordenarPor: "horaSaida",
-    ordem: "ASC",
-    codAtividade: undefined,
-    localOrigem: undefined,
-    crachaMotorista: undefined,
-    crachaCobrador: undefined,
-    buscaTexto: undefined,
-    nomeMotorista: undefined,
-    nomeCobrador: undefined,
-    horarioInicio: undefined,
-    horarioFim: undefined,
-    sentidoTexto: undefined,
-    codigoLinha: undefined,
-    setorPrincipal: undefined,
-    codServicoNumero: undefined,
-    localDestino: undefined,
-  }));
+  const [filtros, setFiltros] = useState<FiltrosControleHorarios>({
+    limite: 100,
+    pagina: 1,
+  });
 
-  // Filtros que estão sendo editados na UI (estado "pendente")
-  const [pendingFiltros, setPendingFiltros] = useState<FiltrosControleHorarios>(() => ({
-    limite: pageSize,
-    pagina: currentPage,
-    ordenarPor: "horaSaida",
-    ordem: "ASC",
-    codAtividade: undefined,
-    localOrigem: undefined,
-    crachaMotorista: undefined,
-    crachaCobrador: undefined,
-    buscaTexto: undefined,
-    nomeMotorista: undefined,
-    nomeCobrador: undefined,
-    horarioInicio: undefined,
-    horarioFim: undefined,
-    sentidoTexto: undefined,
-    codigoLinha: undefined,
-    setorPrincipal: undefined,
-    codServicoNumero: undefined,
-    localDestino: undefined,
-  }));
-
-  const [statusEdicaoLocal, setStatusEdicaoLocal] = useState<'todos' | 'editados' | 'nao_editados'>('todos'); // Novo estado local
+  // Filtros locais (não enviados ao backend)
+  const [tipoLocal, setTipoLocal] = useState<'R' | 'S' | undefined>(undefined);
+  const [statusEdicaoLocal, setStatusEdicaoLocal] = useState<'todos' | 'editados' | 'nao_editados'>('todos');
 
   const [opcoesFiltros, setOpcoesFiltros] = useState<OpcoesControleHorariosDto>({
-    setores: [],
-    linhas: [],
-    servicos: [],
-    sentidos: [],
-    motoristas: [],
-    locaisOrigem: [],
-    locaisDestino: [],
+    setores: [], linhas: [], servicos: [], atividades: [], tiposDia: [], sentidos: [], motoristas: [], locaisOrigem: [], locaisDestino: [],
   });
 
   const [estatisticas, setEstatisticas] = useState<EstatisticasControleHorariosDto>({
-    totalViagens: 0,
-    viagensEditadas: 0,
-    viagensNaoEditadas: 0,
-    percentualEditado: 0,
-    ultimaAtualizacao: undefined,
-    setoresUnicos: [],
-    linhasUnicas: [],
-    servicosUnicos: [],
+    TOTAL_REGISTROS_HOJE: 0, TOTAL_LINHAS: 0, TOTAL_SETORES: 0, TOTAL_MOTORISTAS: 0, PRIMEIRO_HORARIO: '', ULTIMO_HORARIO: '',
   });
 
   const [statusDados, setStatusDados] = useState<StatusControleHorariosDto>({
     success: false,
     message: '',
     data: {
-      existeViagensGlobus: false,
-      totalViagensGlobus: 0,
-      viagensEditadas: 0,
-      percentualEditado: 0,
-      ultimaAtualizacao: undefined,
-    },
-    dataReferencia: '',
+      existeNoBanco: false, totalRegistros: 0, ultimaAtualizacao: null,
+      setoresDisponiveis: [], linhasDisponiveis: 0, atividadesDisponiveis: [], tiposDiaDisponiveis: [],
+    }
   });
 
-  // ✅ Função de busca aprimorada
+  const toTime = (d?: string | Date | null) => {
+    if (!d) return '';
+    const dt = new Date(d);
+    const hh = String(dt.getHours()).padStart(2, '0');
+    const mm = String(dt.getMinutes()).padStart(2, '0');
+    const ss = String(dt.getSeconds()).padStart(2, '0');
+    return `${hh}:${mm}:${ss}`;
+  };
+
+  const mapRecordToItem = (r: any): ControleHorarioItem => {
+    const duracaoMinutos = r.hor_saida && r.hor_chegada
+      ? Math.max(0, Math.round((new Date(r.hor_chegada).getTime() - new Date(r.hor_saida).getTime()) / 60000))
+      : 0;
+    const jaFoiEditado = Boolean(
+      r.prefixo_veiculo || r.motorista_substituto_nome || r.motorista_substituto_cracha ||
+      r.cobrador_substituto_nome || r.cobrador_substituto_cracha || r.observacoes_edicao
+    );
+    return {
+      ...r,
+      setorPrincipalLinha: r.setor_principal_linha,
+      codigoLinha: r.codigo_linha,
+      nomeLinha: r.nome_linha,
+      localOrigemViagem: r.local_origem_viagem,
+      localDestinoLinha: r.local_destino_linha,
+      descTipoDia: r.desc_tipodia,
+      horaSaida: toTime(r.hor_saida),
+      horaChegada: toTime(r.hor_chegada),
+      nomeMotoristaGlobus: r.motorista_substituto_nome || r.nome_motorista,
+      crachaMotoristaGlobus: r.cracha_motorista,
+      nomeCobradorGlobus: r.cobrador_substituto_nome || r.nome_cobrador,
+      crachaCobradorGlobus: r.cracha_cobrador,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+      numeroCarro: r.prefixo_veiculo || '',
+      nomeMotoristaEditado: r.motorista_substituto_nome || '',
+      crachaMotoristaEditado: r.motorista_substituto_cracha || '',
+      nomeCobradorEditado: r.cobrador_substituto_nome || '',
+      crachaCobradorEditado: r.cobrador_substituto_cracha || '',
+      observacoes: r.observacoes_edicao || '',
+      informacaoRecolhe: '',
+      viagemGlobusId: r.id,
+      duracaoMinutos,
+      usuarioEdicao: r.editado_por_nome || '',
+      usuarioEmail: r.editado_por_email || '',
+      jaFoiEditado,
+    } as ControleHorarioItem;
+  };
+
   const buscarControleHorarios = useCallback(async () => {
     if (!dataReferencia) return;
-    
     setLoading(true);
     setError(null);
-    
     try {
-      console.log('🔍 Iniciando busca com filtros:', { dataReferencia, appliedFiltros });
-      
-      const filtrosComPaginacao = {
-        ...appliedFiltros,
-        limite: pageSize === -1 ? undefined : pageSize,
-        pagina: pageSize === -1 ? undefined : currentPage,
-      };
-
-      const filtrosLimpos = Object.fromEntries(
-        Object.entries(filtrosComPaginacao).filter(([key, value]) => {
-          if (key === 'codigoLinha') {
-            return Array.isArray(value) && value.length > 0;
-          }
-          return value !== undefined && value !== null && value !== '';
-        })
-      );
-      
-      console.log('🧹 Filtros limpos para envio:', filtrosLimpos);
-      
-      const response = await controleHorariosService.buscarControleHorarios(dataReferencia, filtrosLimpos);
-      
-      console.log('✅ Resposta completa da API:', response);
-
-      if (response.success) {
-        // Os dados já vêm achatados do backend, sem a necessidade de dadosProcessados
-        setControleHorarios(response.data.filter(item => /^[0-9]/.test(item.codigoLinha || '')));
-        console.log('✅ Dados de controle de horários recebidos:', response.data.length, 'itens'); // Added log
-        setControleHorariosOriginais(JSON.parse(JSON.stringify(response.data)));
-        
-        // ✅ Atualizar estatísticas com dados completos
-        setEstatisticas({
-          ...response.estatisticas,
-          ultimaAtualizacao: response.estatisticas.ultimaAtualizacao ? new Date(response.estatisticas.ultimaAtualizacao) : undefined,
-        });
-        
-        setTotalItems(response.total);
-        setTemMaisPaginas(response.temMaisPaginas);
-        setTemAlteracoesPendentes(false);
-        
-        console.log('✅ Estado atualizado:', {
-          totalItens: response.data.length,
-          estatisticas: response.estatisticas
-        });
-      } else {
-        setError(response.message || 'Erro ao buscar controle de horários');
+      // Preparar filtros para request (injeta cracha_funcionario quando aplicável)
+      const reqFilters: FiltrosControleHorarios = { ...filtros };
+      if (!reqFilters.editado_por_usuario_email && statusEdicaoLocal === 'editados') {
+        const u = obterUsuarioAtual();
+        if (u?.email) {
+          (reqFilters as any).editado_por_usuario_email = u.email;
+          (reqFilters as any).apenas_editadas = true;
+        }
       }
+      if (!reqFilters.cracha_funcionario) {
+        if (reqFilters.cracha_motorista && !reqFilters.cracha_cobrador) {
+          (reqFilters as any).cracha_funcionario = reqFilters.cracha_motorista;
+        } else if (reqFilters.cracha_cobrador && !reqFilters.cracha_motorista) {
+          (reqFilters as any).cracha_funcionario = reqFilters.cracha_cobrador;
+        }
+      }
+
+      // Garantir que não enviamos propriedades não suportadas pelo backend
+      delete (reqFilters as any).cracha_motorista;
+      delete (reqFilters as any).cracha_cobrador;
+
+      const response = await controleHorariosService.buscarControleHorarios(dataReferencia, reqFilters);
+      let mapped = (response.data || []).map(mapRecordToItem);
+      // Pós-filtros locais para casos sem suporte no backend
+      mapped = mapped.filter((it) => {
+        // tipo (R/S)
+        if (tipoLocal && String((it as any).flg_tipo || '').toUpperCase() !== tipoLocal) return false;
+        // não editados
+        if (statusEdicaoLocal === 'nao_editados' && !!(it as any).editado_por_nome) return false;
+        // local destino (caso backend não filtre)
+        if ((filtros as any).local_destino_linha) {
+          const v = ((it as any).local_destino_linha || '').toString().toLowerCase();
+          if (!v.includes(String((filtros as any).local_destino_linha).toLowerCase())) return false;
+        }
+        // crachá específicos (refina resultados do OR do backend)
+        if ((filtros as any).cracha_motorista) {
+          const cm = ((it as any).cracha_motorista || '').toString();
+          if (cm !== (filtros as any).cracha_motorista) return false;
+        }
+        if ((filtros as any).cracha_cobrador) {
+          const cc = ((it as any).cracha_cobrador || '').toString();
+          if (cc !== (filtros as any).cracha_cobrador) return false;
+        }
+        return true;
+      });
+      // Ordenação com ajuste de virada de dia (itens com saída de 00:00 até cutoff vão para o final)
+      const MIDNIGHT_CUTOFF_HOUR = 4; // 04:00
+      const normMinutes = (d: any) => {
+        const dt = d ? new Date(d) : null;
+        if (!dt || isNaN(dt.getTime())) return Number.MAX_SAFE_INTEGER;
+        const m = dt.getHours() * 60 + dt.getMinutes();
+        return dt.getHours() < MIDNIGHT_CUTOFF_HOUR ? m + 24 * 60 : m;
+      };
+      mapped.sort((a: any, b: any) => {
+        const sa = (a.setor_principal_linha || a.setorPrincipalLinha || '').localeCompare(b.setor_principal_linha || b.setorPrincipalLinha || '');
+        if (sa !== 0) return sa;
+        const la = (a.codigo_linha || a.codigoLinha || '').localeCompare(b.codigo_linha || b.codigoLinha || '');
+        if (la !== 0) return la;
+        const sva = (a.cod_servico_numero || '').localeCompare(b.cod_servico_numero || '');
+        if (sva !== 0) return sva;
+        const ta = normMinutes(a.hor_saida || a.horaSaida || a.hora_saida);
+        const tb = normMinutes(b.hor_saida || b.horaSaida || b.hora_saida);
+        return ta - tb;
+      });
+      setControleHorarios(mapped);
+      setControleHorariosOriginais(JSON.parse(JSON.stringify(mapped)));
+      setTemAlteracoesPendentes(false);
+      if (response.estatisticas) setEstatisticas(response.estatisticas);
     } catch (err: any) {
-      console.error('❌ Erro na requisição:', err);
-      setError(err.response?.data?.message || err.message || 'Erro na requisição');
+      setError(err.message || 'Erro ao buscar controle de horários');
     } finally {
       setLoading(false);
     }
-  }, [dataReferencia, appliedFiltros, currentPage, pageSize]);
+  }, [dataReferencia, JSON.stringify(filtros), tipoLocal, statusEdicaoLocal]);
 
-  // ✅ Função para verificar status dos dados
   const verificarStatusDados = useCallback(async () => {
-    if (!dataReferencia) return;
-    
     try {
       const response = await controleHorariosService.verificarStatusDados(dataReferencia);
-      if (response.success) {
+      if (response && response.success) {
         setStatusDados({
           ...response,
-          data: {
-            ...response.data,
-            ultimaAtualizacao: response.data.ultimaAtualizacao ? new Date(response.data.ultimaAtualizacao) : undefined,
-          }
+          data: { ...response.data, ultimaAtualizacao: response.data.ultimaAtualizacao ? new Date(response.data.ultimaAtualizacao) : null }
         });
       }
-    } catch (err) {
-      console.error('Erro ao verificar status dos dados:', err);
-    }
+    } catch {}
   }, [dataReferencia]);
 
-  // ✅ Função para buscar opções de filtros
   const buscarOpcoesFiltros = useCallback(async () => {
-    if (!dataReferencia) return;
-    
     try {
       const response = await controleHorariosService.buscarOpcoesControleHorarios(dataReferencia);
-      setOpcoesFiltros({
-        setores: response.setores || [],
-        linhas: (response.linhas || []).filter(linha => /^[0-9]/.test(linha.codigo)), // Filtrar linhas que começam com número
-        servicos: response.servicos || [],
-        sentidos: response.sentidos || [],
-        motoristas: response.motoristas || [],
-        locaisOrigem: response.locaisOrigem || [],
-        locaisDestino: response.locaisDestino || [],
+      // Derivar locais a partir do conjunto completo (9 mil) para opções abrangentes
+      const full = await controleHorariosService.buscarControleHorarios(dataReferencia, { limite: 10000, pagina: 1 } as any);
+      const origemSet = new Set<string>();
+      const destinoSet = new Set<string>();
+      (full.data || []).forEach((r: any) => {
+        if (r.local_origem_viagem) origemSet.add(r.local_origem_viagem);
+        if (r.local_destino_linha) destinoSet.add(r.local_destino_linha);
       });
-    } catch (err) {
-      console.error('Erro ao buscar opções de filtros:', err);
-    }
+      setOpcoesFiltros({
+        ...response,
+        locaisOrigem: Array.from(origemSet.values()).sort(),
+        locaisDestino: Array.from(destinoSet.values()).sort(),
+      });
+    } catch {}
   }, [dataReferencia]);
 
-  // ✅ Função de salvamento aprimorada
-  const salvarTodasAlteracoes = async () => {
+  const salvarTodasAlteracoes = useCallback(async () => {
     const usuarioAtual = obterUsuarioAtual();
-    
-    if (!usuarioAtual) {
-      setError('Usuário não autenticado. Faça login novamente.');
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-    
+    const origById = new Map(controleHorariosOriginais.map((o) => [o.id, o]));
+    const itensAlterados = controleHorarios.filter((item) => {
+      const original = origById.get(item.id);
+      if (!original) return true;
+      return (
+        item.numeroCarro !== original.numeroCarro ||
+        item.nomeMotoristaEditado !== original.nomeMotoristaEditado ||
+        item.crachaMotoristaEditado !== original.crachaMotoristaEditado ||
+        item.nomeCobradorEditado !== original.nomeCobradorEditado ||
+        item.crachaCobradorEditado !== original.crachaCobradorEditado ||
+        item.observacoes !== original.observacoes
+      );
+    });
+    if (itensAlterados.length === 0) return;
     try {
-      const itensAlterados = controleHorarios.filter((item, index) => {
-        const original = controleHorariosOriginais[index];
-        if (!original) return true;
-        
-        return (
-          item.numeroCarro !== original.numeroCarro ||
-          item.nomeMotoristaEditado !== original.nomeMotoristaEditado ||
-          item.crachaMotoristaEditado !== original.crachaMotoristaEditado ||
-          item.nomeCobradorEditado !== original.nomeCobradorEditado ||
-          item.crachaCobradorEditado !== original.crachaCobradorEditado ||
-          item.observacoes !== original.observacoes
-        );
-      });
-
-      if (itensAlterados.length === 0) {
-        setError('Nenhuma alteração encontrada para salvar.');
-        setSaving(false);
-        return;
-      }
-
-      console.log(`💾 Salvando ${itensAlterados.length} alterações...`);
-
-      const dadosParaSalvar = {
-        dataReferencia,
-        controles: itensAlterados.map(item => ({
-          viagemGlobusId: item.viagemGlobusId,
-          numeroCarro: item.numeroCarro?.trim() || undefined,
-          nomeMotoristaEditado: item.nomeMotoristaEditado?.trim() || undefined,
-          crachaMotoristaEditado: item.crachaMotoristaEditado?.trim() || undefined,
-          nomeCobradorEditado: item.nomeCobradorEditado?.trim() || undefined,
-          crachaCobradorEditado: item.crachaCobradorEditado?.trim() || undefined,
-          observacoes: item.observacoes?.trim() || undefined,
-          isAtivo: item.isAtivo,
-          editorId: usuarioAtual.id,
-          editorNome: usuarioAtual.nome,
-          editorEmail: usuarioAtual.email,
-        }))
+      setLoading(true);
+      const payload: UpdateMultipleControleHorariosDto = {
+        updates: itensAlterados.map((i) => ({
+          id: i.id,
+          prefixo_veiculo: i.numeroCarro?.trim() || undefined,
+          motorista_substituto_nome: i.nomeMotoristaEditado?.trim() || undefined,
+          motorista_substituto_cracha: i.crachaMotoristaEditado?.trim() || undefined,
+          cobrador_substituto_nome: i.nomeCobradorEditado?.trim() || undefined,
+          cobrador_substituto_cracha: i.crachaCobradorEditado?.trim() || undefined,
+          observacoes_edicao: i.observacoes?.trim() || undefined,
+        })),
+        editorNome: usuarioAtual.nome,
+        editorEmail: usuarioAtual.email,
       };
-
-      const response = await controleHorariosService.salvarMultiplosControles(dadosParaSalvar);
-
-      if (response.success) {
-        console.log(`✅ Salvamento concluído: ${response.salvos} sucessos, ${response.erros || 0} erros`);
-        
-        setControleHorariosOriginais(JSON.parse(JSON.stringify(controleHorarios)));
-        setTemAlteracoesPendentes(false);
-        
-        await Promise.all([
-          buscarControleHorarios(),
-          verificarStatusDados()
-        ]);
-        
-        setError(null);
-      } else {
-        setError(response.message || 'Erro ao salvar alterações');
-      }
+      await controleHorariosService.salvarMultiplosControles(payload);
+      setControleHorariosOriginais(JSON.parse(JSON.stringify(controleHorarios)));
+      setTemAlteracoesPendentes(false);
+      await Promise.all([buscarControleHorarios(), verificarStatusDados()]);
     } catch (err: any) {
-      console.error('❌ Erro ao salvar alterações:', err);
-      setError(err.response?.data?.message || 'Erro ao salvar alterações. Tente novamente.');
+      setError(err.message || 'Erro ao salvar alterações');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
-  };
+  }, [controleHorarios, controleHorariosOriginais, dataReferencia]);
 
-  // ✅ Função para descartar alterações
-  const descartarAlteracoes = () => {
+  const descartarAlteracoes = useCallback(() => {
     setControleHorarios(JSON.parse(JSON.stringify(controleHorariosOriginais)));
     setTemAlteracoesPendentes(false);
     setError(null);
-  };
+  }, [controleHorariosOriginais]);
 
-  // ✅ Função para sincronizar dados com o Globus
-  const sincronizarControleHorarios = useCallback(async (overwrite: boolean = false) => {
-    setLoading(true);
-    setError(null);
+  const sincronizarControleHorarios = useCallback(async () => {
     try {
-      const response = await controleHorariosService.sincronizarViagensGlobus(dataReferencia, overwrite);
-      if (response.success) {
-        console.log('✅ Sincronização bem-sucedida:', response.message);
-        await Promise.all([
-          verificarStatusDados(),
-          buscarOpcoesFiltros()
-        ]);
-      } else {
-        setError(response.message || 'Erro ao sincronizar com o Globus');
-      }
+      setLoading(true);
+      await controleHorariosService.sincronizarViagensGlobus(dataReferencia);
+      await Promise.all([verificarStatusDados(), buscarOpcoesFiltros(), buscarControleHorarios()]);
     } catch (err: any) {
-      console.error('❌ Erro ao sincronizar:', err);
-      setError(err.response?.data?.message || err.message || 'Erro ao sincronizar com o Globus');
+      setError(err.message || 'Erro ao sincronizar');
     } finally {
       setLoading(false);
     }
-  }, [dataReferencia, buscarControleHorarios, verificarStatusDados, buscarOpcoesFiltros]);
+  }, [dataReferencia]);
 
-  // ✅ Função de edição aprimorada
-  const handleInputChange = useCallback((viagemId: string, field: keyof ControleHorarioItemDto, value: string | number | boolean) => {
-    setControleHorarios(prev => 
-      prev.map(item => 
-        item.viagemGlobusId === viagemId
-          ? {
-              ...item,
-              [field]: value,
-            }
-          : item
-      )
-    );
+  const handleInputChange = useCallback((viagemId: string, field: keyof ControleHorarioItem, value: string | number | boolean) => {
+    setControleHorarios((prev) => prev.map((it) => (it.id === viagemId ? { ...it, [field]: value } as any : it)));
     setTemAlteracoesPendentes(true);
     setError(null);
   }, []);
 
-  const aplicarFiltros = useCallback(() => {
-    setAppliedFiltros(pendingFiltros);
-    setCurrentPage(0);
-  }, [pendingFiltros]);
-
   const limparFiltros = useCallback(() => {
-    const defaultFiltros: FiltrosControleHorarios = {
-      limite: pageSize,
-      pagina: 0,
-      ordenarPor: "horaSaida",
-      ordem: "ASC",
-      codAtividade: undefined,
-      localOrigem: undefined,
-      crachaMotorista: undefined,
-      crachaCobrador: undefined,
-      buscaTexto: undefined,
-      nomeMotorista: undefined,
-      nomeCobrador: undefined,
-      horarioInicio: undefined,
-      horarioFim: undefined,
-      sentidoTexto: undefined,
-      codigoLinha: undefined,
-      setorPrincipal: undefined,
-      codServicoNumero: undefined,
-      localDestino: undefined,
-    };
-    setPendingFiltros(defaultFiltros);
-    setAppliedFiltros(defaultFiltros);
-    setCurrentPage(0);
-    setStatusEdicaoLocal('todos');
-  }, [pageSize]);
+    setFiltros({ limite: 100, pagina: 1, ordenar_por: 'hor_saida', ordem: 'ASC' });
+  }, []);
 
-  const aplicarFiltroRapido = (tipo: 'editados' | 'nao_editados' | 'todos') => {
-    setStatusEdicaoLocal(tipo); // Atualiza o estado local
-    setCurrentPage(0);
-  };
+  const aplicarFiltros = useCallback(() => {
+    buscarControleHorarios();
+  }, [buscarControleHorarios]);
 
-  const contarFiltrosAtivos = () => {
-    let count = 0;
-    const { limite, pagina, ordenarPor, ordem, ...restOfFilters } = appliedFiltros;
-
-    for (const key in restOfFilters) {
-      const value = restOfFilters[key as keyof typeof restOfFilters];
-      if (value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0)) {
-        count++;
-      }
+  const aplicarFiltroRapido = useCallback((tipo: 'editados' | 'nao_editados' | 'todos') => {
+    const user = obterUsuarioAtual();
+    if (tipo === 'editados' && user.email) {
+      setFiltros((prev) => ({ ...prev, editado_por_usuario_email: user.email, apenas_editadas: true }));
+    } else {
+      setFiltros((prev) => ({ ...prev, editado_por_usuario_email: undefined, apenas_editadas: undefined }));
     }
-    if (statusEdicaoLocal !== 'todos') { // Contar o filtro local
-      count++;
-    }
-    return count;
-  };
+  }, []);
 
-  const contarAlteracoesPendentes = () => {
-    return controleHorarios.filter((item, index) => {
-      const original = controleHorariosOriginais[index];
+  const contarAlteracoesPendentes = useCallback(() => {
+    const origById = new Map(controleHorariosOriginais.map((o) => [o.id, o]));
+    return controleHorarios.filter((item) => {
+      const original = origById.get(item.id);
       if (!original) return true;
-      
       return (
         item.numeroCarro !== original.numeroCarro ||
         item.nomeMotoristaEditado !== original.nomeMotoristaEditado ||
@@ -451,93 +317,64 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
         item.observacoes !== original.observacoes
       );
     }).length;
-  };
+  }, [controleHorarios, controleHorariosOriginais]);
 
-  // Effect for initial load of status and filter options
   useEffect(() => {
-    const loadStatusAndOptions = async () => {
-      if (!dataReferencia) return;
-      setLoading(true);
-      setError(null);
-      try {
-        await Promise.all([
-          verificarStatusDados(),
-          buscarOpcoesFiltros()
-        ]);
-      } catch (err: any) {
-        console.error('❌ Erro ao carregar status e opções iniciais:', err);
-        setError(err.message || 'Erro ao carregar status e opções iniciais.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadStatusAndOptions();
-  }, [dataReferencia, verificarStatusDados, buscarOpcoesFiltros]);
+    (async () => {
+      await Promise.all([verificarStatusDados(), buscarOpcoesFiltros()]);
+      await buscarControleHorarios();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataReferencia]);
 
-    // Effect for fetching main control data based on filters and pagination
-    useEffect(() => {
-      if (!dataReferencia) return;
-      // Only fetch if not already loading to prevent redundant calls
-      // The `loading` state is managed internally by `buscarControleHorarios`
-      buscarControleHorarios();
-    }, [dataReferencia, appliedFiltros, currentPage, pageSize]);
-
-  // Effect para filtrar viagens editadas e passadas
+  // Atualiza filtros de "editados por mim" no backend quando statusEdicaoLocal muda
   useEffect(() => {
-    const now = new Date();
-    const filtered = controleHorarios.filter(viagem => {
-      if (viagem.jaFoiEditado) {
-        // Se a viagem foi editada, verificar se o horário de chegada já passou
-        if (viagem.horaChegada) {
-          const [hora, minuto] = viagem.horaChegada.split(':').map(Number);
-          const chegadaDate = new Date(dataReferencia);
-          chegadaDate.setHours(hora, minuto, 0, 0);
-          return chegadaDate > now;
-        }
-      }
+    const u = obterUsuarioAtual();
+    if (statusEdicaoLocal === 'editados' && u?.email) {
+      setFiltros((prev) => ({ ...prev, editado_por_usuario_email: u.email, apenas_editadas: true }));
+    } else {
+      setFiltros((prev) => {
+        const { editado_por_usuario_email, apenas_editadas, ...rest } = prev as any;
+        return { ...rest } as any;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusEdicaoLocal]);
+
+  // Deriva listas complementares (locais, sentidos) a partir dos dados carregados
+  useEffect(() => {
+    // Apenas garantir sentidos default sem sobrescrever locais já derivados do dataset completo
+    setOpcoesFiltros((prev) => ({
+      ...prev,
+      sentidos: prev.sentidos && prev.sentidos.length > 0 ? prev.sentidos : ['IDA', 'VOLTA', 'CIRCULAR'],
+    }));
+  }, [controleHorarios]);
+
+  const controleHorariosFiltrados = useMemo(() => {
+    return controleHorarios.filter((it) => {
+      const code = (it as any).codigoLinha ?? (it as any).codigo_linha ?? '';
+      const isNumericLine = /^\d+$/.test(String(code));
+      if (!isNumericLine) return false;
+      const servStr = (it as any).cod_servico_numero;
+      const servNum = servStr ? parseInt(servStr, 10) : NaN;
+      if (Number.isFinite(servNum) && servNum > 100) return false;
+      if (tipoLocal && String((it as any).flg_tipo || '').toUpperCase() !== tipoLocal) return false;
+      if (statusEdicaoLocal === 'nao_editados' && !!(it as any).editado_por_nome) return false;
       return true;
     });
-    setControleHorariosExibidos(filtered);
-  }, [controleHorarios, dataReferencia]);
-  // NOVO: Effect para filtrar por status de edição localmente
-  const [controleHorariosFiltradosPorStatus, setControleHorariosFiltradosPorStatus] = useState<ControleHorarioItemDto[]>([]);
-
-  useEffect(() => {
-    let filtered = controleHorariosExibidos;
-    if (statusEdicaoLocal === 'editados') {
-      filtered = controleHorariosExibidos.filter(viagem => viagem.jaFoiEditado);
-    } else if (statusEdicaoLocal === 'nao_editados') {
-      filtered = controleHorariosExibidos.filter(viagem => !viagem.jaFoiEditado);
-    }
-    setControleHorariosFiltradosPorStatus(filtered);
-  }, [controleHorariosExibidos, statusEdicaoLocal]);
+  }, [controleHorarios]);
 
   return {
     // Estados
-    dataReferencia,
-    setDataReferencia,
-    controleHorarios: controleHorariosFiltradosPorStatus, // Retornar os dados filtrados por status
+    dataReferencia, setDataReferencia,
+    controleHorarios: controleHorariosFiltrados,
     controleHorariosOriginais,
-    loading,
-    error,
-    saving,
+    loading, error,
     temAlteracoesPendentes,
-    filtros: pendingFiltros,
-    setFiltros: setPendingFiltros,
-    opcoesFiltros,
-    estatisticas,
-    statusDados,
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
-    totalItems,
-    temMaisPaginas,
-    
-    // Dados do usuário
-    usuarioAtual: obterUsuarioAtual(),
-    
-    // Funções principais
+    filtros, setFiltros,
+    opcoesFiltros, estatisticas, statusDados,
+
+    // Ações
     buscarControleHorarios,
     verificarStatusDados,
     buscarOpcoesFiltros,
@@ -545,14 +382,11 @@ export const useControleHorarios = () => {  // ✅ Usar o hook useAuth
     descartarAlteracoes,
     sincronizarControleHorarios,
     handleInputChange,
-    iniciarSincronizacaoManual: sincronizarControleHorarios, // Agora o botão de sincronização manual chama a função de sincronização principal
-    
-    // Funções de filtros
     limparFiltros,
-    aplicarFiltroRapido,
-    contarFiltrosAtivos,
-    contarAlteracoesPendentes,
-    statusEdicaoLocal,
     aplicarFiltros,
-  };
+    aplicarFiltroRapido,
+    contarAlteracoesPendentes,
+    tipoLocal, setTipoLocal,
+    statusEdicaoLocal, setStatusEdicaoLocal,
+  } as const;
 };

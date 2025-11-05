@@ -13,8 +13,7 @@ interface FiltersPanelProps {
   setShowLinhaMultiSelect: React.Dispatch<React.SetStateAction<boolean>>;
   onLimparFiltros: () => void;
   onAplicarFiltros: () => void;
-  onAplicarFiltroRapido: (tipo: 'editados' | 'nao_editados' | 'todos') => void;
-  // Filtros locais
+  onAplicarFiltroRapido: (tipo: 'editados' | 'nao_editados' | 'todos') => void; // Added
   tipoLocal?: 'R' | 'S';
   setTipoLocal?: (v: 'R' | 'S' | undefined) => void;
   statusEdicaoLocal?: 'todos' | 'editados' | 'nao_editados';
@@ -43,8 +42,6 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
     setFiltros(prev => ({ ...prev, [key]: value }));
   };
 
-  const servicosPadrao = Array.from({ length: 100 }, (_, i) => String(i).padStart(2, '0'));
-
   return (
     <div className="bg-white shadow rounded-lg p-6">
       <div className="flex items-center justify-between mb-4">
@@ -52,11 +49,14 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <Search className="h-5 w-5" />
           Filtros Avançados
         </h3>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-gray-600"
+        >
           <X className="h-5 w-5" />
         </button>
       </div>
-
+      
       <div className="flex flex-wrap items-end gap-4 mb-6">
         {/* Setor */}
         <div>
@@ -67,7 +67,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
             className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Todos</option>
-            {(opcoesFiltros.setores || []).map(setor => (
+            {opcoesFiltros.setores.map(setor => (
               <option key={setor} value={setor}>{setor}</option>
             ))}
           </select>
@@ -86,9 +86,10 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
               : 'Todas as linhas'}
             <ChevronDown className={`h-4 w-4 transition-transform ${showLinhaMultiSelect ? 'rotate-180' : ''}`} />
           </button>
+          {/* Multi-select Dropdown */}
           {showLinhaMultiSelect && (
             <div className="absolute z-10 mt-1 w-full bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-y-auto">
-              {(opcoesFiltros.linhas || []).map(linha => (
+              {opcoesFiltros.linhas.map(linha => (
                 <label key={linha.codigo} className="flex items-center px-3 py-2 hover:bg-gray-100">
                   <input
                     type="checkbox"
@@ -97,9 +98,11 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
                       const newSelected = e.target.checked
                         ? [...(filtros.codigo_linha || []), linha.codigo]
                         : (filtros.codigo_linha || []).filter(code => code !== linha.codigo);
+
                       if (newSelected.length <= 6) {
                         handleFilterChange('codigo_linha', newSelected);
                       } else {
+                        // Optionally, provide user feedback here, e.g., a toast notification
                         alert('Você pode selecionar no máximo 6 linhas.');
                       }
                     }}
@@ -114,7 +117,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           )}
         </div>
 
-        {/* Serviço (00-99) */}
+        {/* Serviço */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Serviço</label>
           <select
@@ -123,10 +126,20 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
             className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Todos</option>
-            {servicosPadrao.map(servico => (
-              <option key={servico} value={servico}>{servico}</option>
-            ))}
+            {opcoesFiltros.servicos.filter(s => { const n = parseInt(String(s), 10); return !Number.isFinite(n) || n <= 99; }).map(servico => (<option key={servico} value={servico}>{servico}</option>))}
           </select>
+        </div>
+
+        {/* Cracha (Motorista/Cobrador) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Cracha (Motorista/Cobrador)</label>
+          <input
+            type="text"
+            value={filtros.cracha_funcionario || ''}
+            onChange={(e) => handleFilterChange('cracha_funcionario', e.target.value || undefined)}
+            placeholder="Informe o cracha do motorista ou cobrador"
+            className="w-full min-w-[180px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
         </div>
 
         {/* Sentido */}
@@ -138,7 +151,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
             className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Todos</option>
-            {(opcoesFiltros.sentidos || []).map(sentido => (
+            {opcoesFiltros.sentidos.map(sentido => (
               <option key={sentido} value={sentido}>{sentido}</option>
             ))}
           </select>
@@ -166,32 +179,34 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           />
         </div>
 
-        {/* Motorista (livre) */}
+        {/* Motorista */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Motorista</label>
-          <input
-            type="text"
+          <select
             value={filtros.nome_motorista || ''}
             onChange={(e) => handleFilterChange('nome_motorista', e.target.value || undefined)}
-            placeholder="Nome do motorista"
-            className="w-full min-w-[180px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
+            className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="">Todos</option>
+            {opcoesFiltros.motoristas.map(motorista => (
+              <option key={motorista.cracha} value={motorista.nome}>{motorista.nome} ({motorista.cracha})</option>
+            ))}
+          </select>
         </div>
 
-        {/* Crachá (Motorista/Cobrador) */}
+        {/* Crachá Motorista */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Crachá (Motorista/Cobrador)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Crachá Motorista</label>
           <input
             type="text"
-            value={(filtros as any).cracha_funcionario || ''}
-            onChange={(e) => handleFilterChange('cracha_funcionario', e.target.value || undefined)}
-            placeholder="Informe o crachá"
-            className="w-full min-w-[180px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            value={filtros.cracha_motorista || ''}
+            onChange={(e) => handleFilterChange('cracha_motorista', e.target.value || undefined)}
+            placeholder="Crachá do motorista"
+            className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
 
-
-        {/* Cobrador (livre) */}
+        {/* Cobrador */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Cobrador</label>
           <input
@@ -203,37 +218,28 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           />
         </div>
 
-        {/* Removidos campos de crachá específicos para evitar envio de propriedades não suportadas pelo backend */}
+        {/* Código Cobrador */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Código Cobrador</label>
+          <input
+            type="number" // Changed to number
+            value={filtros.cod_cobrador || ''} // Changed to filtros.cod_cobrador
+            onChange={(e) => handleFilterChange('cod_cobrador', e.target.value ? parseInt(e.target.value) : undefined)} // Changed key and parsing
+            placeholder="Código do cobrador"
+            className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+        </div>
 
         {/* Código Atividade */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Código Atividade</label>
-          <select
-            value={filtros.cod_atividade ?? ''}
-            onChange={(e) => handleFilterChange('cod_atividade', e.target.value ? parseInt(e.target.value) : undefined)}
-            className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">Todas</option>
-            <option value={2}>2 - REGULAR</option>
-            <option value={5}>5 - RECOLHIMENTO</option>
-            <option value={3}>3 - ESPECIAL</option>
-            <option value={4}>4 - RENDIÇÃO</option>
-            <option value={10}>10 - RESERVA</option>
-          </select>
-        </div>
-
-        {/* Tipo (local: R/S) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-          <select
-            value={tipoLocal || ''}
-            onChange={(e) => setTipoLocal && setTipoLocal((e.target.value as 'R' | 'S') || undefined)}
-            className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">Todos</option>
-            <option value="R">Regular (R)</option>
-            <option value="S">Especial (S)</option>
-          </select>
+          <input
+            type="text"
+            value={filtros.cod_atividade || ''}
+            onChange={(e) => handleFilterChange('cod_atividade', e.target.value || undefined)}
+            placeholder="Código da atividade"
+            className="w-full min-w-[120px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
         </div>
 
         {/* Local Origem Direta */}
@@ -245,7 +251,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
             className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Todos</option>
-            {(opcoesFiltros.locaisOrigem || []).map(local => (
+            {opcoesFiltros.locaisOrigem.map(local => (
               <option key={local} value={local}>{local}</option>
             ))}
           </select>
@@ -260,7 +266,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
             className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="">Todos</option>
-            {(opcoesFiltros.locaisDestino || []).map(local => (
+            {opcoesFiltros.locaisDestino.map(local => (
               <option key={local} value={local}>{local}</option>
             ))}
           </select>
@@ -278,18 +284,54 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           />
         </div>
 
-        {/* Edições (local) */}
+        {/* Ordenar Por */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Edições</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Ordenar Por</label>
           <select
-            value={statusEdicaoLocal || 'todos'}
-            onChange={(e) => setStatusEdicaoLocal && setStatusEdicaoLocal(e.target.value as any)}
+            value={filtros.ordenar_por || 'horaSaida'}
+            onChange={(e) => handleFilterChange('ordenar_por', e.target.value)}
             className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="todos">Todos</option>
-            <option value="editados">Editados por mim</option>
-            <option value="nao_editados">Não editados</option>
+            <option value="hor_saida">Hora de Saída</option>
+            <option value="setor_principal_linha">Setor</option>
+            <option value="codigo_linha">Linha</option>
+            <option value="nome_motorista">Motorista</option>
           </select>
+        </div>
+
+        {/* Ordem */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
+          <select
+            value={filtros.ordem || 'ASC'}
+            onChange={(e) => handleFilterChange('ordem', e.target.value as "ASC" | "DESC")}
+            className="w-full min-w-[150px] border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option value="ASC">Ascendente</option>
+            <option value="DESC">Descendente</option>
+          </select>
+        </div>
+        
+        {/* Mostrar apenas editadas por mim */}
+        <div className="flex items-center pt-5">
+          <input
+            id="editadoPorUsuario"
+            type="checkbox"
+            checked={!!filtros.editado_por_usuario_email}
+            onChange={(e) => {
+              if (e.target.checked) {
+                // When checked, apply 'editados' filter
+                onAplicarFiltroRapido('editados');
+              } else {
+                // When unchecked, apply 'todos' filter
+                onAplicarFiltroRapido('todos');
+              }
+            }}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <label htmlFor="editadoPorUsuario" className="ml-2 block text-sm text-gray-900">
+            Editado por mim
+          </label>
         </div>
       </div>
 
@@ -298,10 +340,12 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Limite de Registros</label>
             <select
-              value={filtros.limite || 100}
+              value={filtros.limite || 50}
               onChange={(e) => handleFilterChange('limite', parseInt(e.target.value))}
               className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
+              <option value={25}>25 registros</option>
+              <option value={50}>50 registros</option>
               <option value={100}>100 registros</option>
               <option value={200}>200 registros</option>
               <option value={500}>500 registros</option>
@@ -310,22 +354,25 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={onLimparFiltros}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 flex items-center gap-2 rounded-md border border-gray-300"
-          >
-            <X className="h-4 w-4" />
-            Limpar Filtros
-          </button>
-          <button
-            onClick={onAplicarFiltros}
-            className="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 rounded-md"
-          >
-            <CheckCheck className="h-4 w-4" />
-            Aplicar Filtros
-          </button>
+            <button
+                onClick={onLimparFiltros}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 flex items-center gap-2 rounded-md border border-gray-300"
+            >
+                <X className="h-4 w-4" />
+                Limpar Filtros
+            </button>
+            <button
+                onClick={onAplicarFiltros}
+                className="px-4 py-2 text-sm bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-2 rounded-md"
+            >
+                <CheckCheck className="h-4 w-4" />
+                Aplicar Filtros
+            </button>
         </div>
       </div>
     </div>
   );
 };
+
+
+

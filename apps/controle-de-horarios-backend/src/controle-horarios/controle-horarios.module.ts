@@ -1,19 +1,17 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ControleHorario } from './entities/controle-horario.entity';
-import { ControleHorariosController } from './controllers/controle-horarios.controller';
 import { ControleHorariosService } from './services/controle-horarios.service';
-import { OracleModule } from '@/database/oracle/oracle.module'; // Importar OracleModule
+import { ControleHorariosController } from './controllers/controle-horarios.controller';
+import { OracleModule } from '../database/oracle/oracle.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      ControleHorario,
-    ]),
-    OracleModule, // Adicionar OracleModule
+    TypeOrmModule.forFeature([ControleHorario]),
+    OracleModule,
   ],
   controllers: [ControleHorariosController],
   providers: [ControleHorariosService],
-  exports: [ControleHorariosService], // Exportar para uso em outros módulos
+  exports: [ControleHorariosService],
 })
 export class ControleHorariosModule {}

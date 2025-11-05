@@ -10,7 +10,8 @@ import Dashboard from './pages/Dashboard';
 import { Users } from './pages/Users';
 import { Viagens } from './pages/Viagens';
 import { ViagensGlobus } from './pages/ViagensGlobus';
-import { ComparacaoViagens } from './pages/ComparacaoViagens';
+import ComparacaoViagens from './pages/ComparacaoViagens';
+import HistoricoComparacoes from './pages/HistoricoComparacoes';
 import { ControleHorariosPage } from './features/controle-horarios/ControleHorariosPage'; // ✅ IMPORTAÇÃO CORRIGIDA
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
             <Route path="viagens" element={<Viagens />} />
             <Route path="viagens-globus" element={<ViagensGlobus />} />
             <Route path="comparacao-viagens" element={<ComparacaoViagens />} />
+            <Route path="historico-comparacoes" element={<HistoricoComparacoes />} />
             <Route path="controle-horarios" element={<ControleHorariosPage />} /> {/* ✅ COMPONENTE CORRIGIDO */}
           </Route>
           
@@ -51,3 +53,4 @@ function App() {
 }
 
 export default App;
+

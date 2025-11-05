@@ -1,4 +1,4 @@
-import { ControleHorarioItemDto } from '../../controle-horarios/dto/response-controle-horarios.dto';
+import { ControleHorario } from '../../controle-horarios/entities/controle-horario.entity';
 import { CombinacaoComparacao } from '../entities/comparacao-viagem.entity'; // ✅ Importar CombinacaoComparacao da entidade
 import { Logger } from '@nestjs/common';
 import { ViagemGlobus } from '../../viagens-globus/entities/viagem-globus.entity'; // Import ViagemGlobus entity
@@ -74,7 +74,7 @@ export function normalizeTransDataTrip(transDataTrip: any): NormalizedTransDataT
 }
 
 // ✅ Função para normalizar os dados da Globus (aceita tanto DTO quanto dados Oracle e a entidade ViagemGlobus)
-export function normalizeGlobusTrip(globusTrip: ControleHorarioItemDto | OracleGlobusData | ViagemGlobus): NormalizedGlobusTrip {
+export function normalizeGlobusTrip(globusTrip: ControleHorario | OracleGlobusData | ViagemGlobus): NormalizedGlobusTrip {
   // ✅ Detectar se é dados Oracle (campos em maiúsculo) ou DTO (camelCase)
   const isOracleData = 'CODIGOLINHA' in globusTrip;
   

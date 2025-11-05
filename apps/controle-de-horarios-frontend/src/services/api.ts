@@ -22,3 +22,5 @@ export { makeAuthenticatedRequest } from './shared/api.service';
 // Initialize base API service for initial connectivity test
 const apiService = new BaseApiService();
 healthService.testConnectivity();
+
+export const api = apiService.apiInstance;

@@ -37,6 +37,8 @@ services:
     restart: unless-stopped
     ports:
       - "3335:3335"
+    env_file:
+      - ./apps/controle-de-horarios-backend/.env
     environment:
       - NODE_ENV=development
       - DATABASE_HOST=postgres
@@ -56,6 +58,22 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  # ==========================================
+  # 🌐 FRONTEND REACT
+  # ==========================================
+  frontend:
+    build:
+      context: ./apps/controle-de-horarios-frontend
+      dockerfile: Dockerfile
+    container_name: controle-horarios-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - controle-network
+    depends_on:
+      - backend
 
   # ==========================================
   # �� ADMINER (DATABASE ADMIN)

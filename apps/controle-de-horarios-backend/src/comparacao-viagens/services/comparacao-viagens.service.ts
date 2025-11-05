@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ComparacaoViagem, StatusComparacao, CombinacaoComparacao } from '../entities/comparacao-viagem.entity'; // ✅ Importar CombinacaoComparacao da entidade
 import { ViagemTransdata } from '../../viagens-transdata/entities/viagem-transdata.entity';
 import { ViagemGlobus } from '../../viagens-globus/entities/viagem-globus.entity';
+import { HistoricoComparacaoViagens } from '../entities/historico-comparacao.entity';
 import { FiltrosComparacaoDto, ResultadoComparacaoDto } from '../dto';
 import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, NormalizedTransDataTrip, NormalizedGlobusTrip } from '../utils/trip-comparator.util'; // ✅ Remover CombinacaoComparacao daqui
 
@@ -37,6 +38,8 @@ export class ComparacaoViagensService {
     private readonly transdataRepository: Repository<ViagemTransdata>,
     @InjectRepository(ViagemGlobus)
     private readonly globusRepository: Repository<ViagemGlobus>,
+    @InjectRepository(HistoricoComparacaoViagens)
+    private readonly historicoRepository: Repository<HistoricoComparacaoViagens>,
   ) {}
 
   async executarComparacao(dataReferencia: string): Promise<ResultadoComparacaoDto> {
@@ -385,6 +388,17 @@ export class ComparacaoViagensService {
       });
     }
 
+    // Aplicar filtros booleanos quando definidos (true/false explicitamente)
+    if (typeof filtros.sentidoCompativel === 'boolean') {
+      queryBuilder.andWhere('comp.sentidoCompativel = :sentido', { sentido: filtros.sentidoCompativel });
+    }
+    if (typeof filtros.horarioCompativel === 'boolean') {
+      queryBuilder.andWhere('comp.horarioCompativel = :horario', { horario: filtros.horarioCompativel });
+    }
+    if (typeof filtros.servicoCompativel === 'boolean') {
+      queryBuilder.andWhere('comp.servicoCompativel = :servico', { servico: filtros.servicoCompativel });
+    }
+
     const total = await queryBuilder.getCount();
     const limit = filtros.limit || 50;
     const page = filtros.page || 1;
@@ -463,5 +477,115 @@ export class ComparacaoViagensService {
       .getRawMany();
 
     return result.map(item => item.setor).filter(Boolean);
+  }
+
+  // =====================
+  // Histórico de comparação
+  // =====================
+
+  async contarPorCombinacao(dataReferencia: string): Promise<Record<string, number>> {
+    const rows = await this.comparacaoRepository
+      .createQueryBuilder('comp')
+      .select('comp.tipoCombinacao', 'tipo')
+      .addSelect('COUNT(*)', 'qtd')
+      .where('comp.dataReferencia = :dataReferencia', { dataReferencia })
+      .groupBy('comp.tipoCombinacao')
+      .getRawMany();
+
+    const map: Record<string, number> = {};
+    for (const r of rows) {
+      const key = String(r.tipo || 'DESCONHECIDO');
+      map[key] = parseInt(r.qtd, 10) || 0;
+    }
+    return map;
+  }
+
+  async contarTotaisOrigem(dataReferencia: string): Promise<{ totalTransdata: number; totalGlobus: number }> {
+    const [totalTransdata, totalGlobus] = await Promise.all([
+      this.transdataRepository.count({ where: { dataReferencia, isAtivo: true } as any }),
+      this.globusRepository.count({ where: { dataReferencia } as any }),
+    ]);
+    return { totalTransdata, totalGlobus };
+  }
+
+  async salvarHistoricoComparacao(params: {
+    dataReferencia: string;
+    resultado: import('../dto/resultado-comparacao.dto').ResultadoComparacaoDto;
+    durationMs: number;
+    executedByUserId?: string;
+    executedByEmail?: string;
+    countsPorCombinacao?: Record<string, number>;
+    totalTransdata?: number;
+    totalGlobus?: number;
+  }): Promise<string> {
+    const h = new HistoricoComparacaoViagens();
+    h.dataReferencia = params.dataReferencia;
+    h.totalComparacoes = params.resultado.totalComparacoes || 0;
+    h.compativeis = params.resultado.compativeis || 0;
+    h.divergentes = params.resultado.divergentes || 0;
+    h.apenasTransdata = params.resultado.apenasTransdata || 0;
+    h.apenasGlobus = params.resultado.apenasGlobus || 0;
+    h.horarioDivergente = params.resultado.horarioDivergente || 0;
+    h.percentualCompatibilidade = String(params.resultado.percentualCompatibilidade ?? 0);
+    h.linhasAnalisadas = params.resultado.linhasAnalisadas || 0;
+    h.tempoProcessamento = params.resultado.tempoProcessamento || `${Math.round(params.durationMs)}ms`;
+    h.durationMs = Math.max(0, Math.round(params.durationMs || 0));
+    h.executedByUserId = params.executedByUserId || null;
+    h.executedByEmail = params.executedByEmail || null;
+    h.countsPorCombinacao = params.countsPorCombinacao || null;
+    h.totalTransdata = typeof params.totalTransdata === 'number' ? params.totalTransdata : null;
+    h.totalGlobus = typeof params.totalGlobus === 'number' ? params.totalGlobus : null;
+
+    const saved = await this.historicoRepository.save(h);
+    return saved.id;
+  }
+
+  async listarHistorico(query: {
+    data?: string;
+    dataInicial?: string;
+    dataFinal?: string;
+    page?: number;
+    limit?: number;
+    executedByEmail?: string;
+  }): Promise<{ items: HistoricoComparacaoViagens[]; total: number }> {
+    const qb = this.historicoRepository.createQueryBuilder('h');
+
+    if (query.data) {
+      qb.andWhere('h.dataReferencia = :data', { data: query.data });
+    }
+    if (query.dataInicial) {
+      qb.andWhere('h.createdAt >= :di', { di: new Date(`${query.dataInicial}T00:00:00`) });
+    }
+    if (query.dataFinal) {
+      qb.andWhere('h.createdAt <= :df', { df: new Date(`${query.dataFinal}T23:59:59`) });
+    }
+    if (query.executedByEmail) {
+      qb.andWhere('h.executedByEmail ILIKE :email', { email: `%${query.executedByEmail}%` });
+    }
+
+    const page = Math.max(1, query.page || 1);
+    const limit = Math.min(100, Math.max(1, query.limit || 20));
+
+    const total = await qb.getCount();
+    const items = await qb
+      .orderBy('h.createdAt', 'DESC')
+      .limit(limit)
+      .offset((page - 1) * limit)
+      .getMany();
+
+    return { items, total };
+  }
+
+  async obterHistoricoPorId(id: string): Promise<HistoricoComparacaoViagens | null> {
+    return this.historicoRepository.findOne({ where: { id } });
+  }
+
+  async obterUltimoHistoricoPorData(dataReferencia: string): Promise<HistoricoComparacaoViagens | null> {
+    return this.historicoRepository
+      .createQueryBuilder('h')
+      .where('h.dataReferencia = :dataReferencia', { dataReferencia })
+      .orderBy('h.createdAt', 'DESC')
+      .limit(1)
+      .getOne();
   }
 }

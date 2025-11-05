@@ -47,18 +47,18 @@ export interface SincronizacaoGlobus {
 export type SentidoGlobus = 'I' | 'V' | 'C';
 
 export interface FiltrosViagemGlobus {
-  dataViagem?: string; // Adicionado
-  setores?: number[]; // Adicionado
-  codigoLinha?: string;
-  nomeLinha?: string; // Adicionado
+  data_viagem?: string; // Adicionado
+  setores?: string[]; // Adicionado
+  codigo_linha?: string[];
+  nome_linha?: string; // Adicionado
   sentido?: SentidoGlobus; // Atualizado para enum
-  setorPrincipal?: string;
-  localOrigemViagem?: string; // Adicionado
-  codServicoNumero?: string; // Adicionado
-  nomeMotorista?: string;
-  nomeCobrador?: string; // Adicionado
+  setor_principal_linha?: string;
+  local_origem_viagem?: string; // Adicionado
+  cod_servico_numero?: string; // Adicionado
+  nome_motorista?: string;
+  nome_cobrador?: string; // Adicionado
   limite?: number;
-  page?: number;
-  incluirEstatisticas?: boolean; // Adicionado
-  salvarLocal?: boolean; // Adicionado
+  pagina?: number;
+  incluir_estatisticas?: boolean; // Adicionado
+  salvar_local?: boolean; // Adicionado
 }

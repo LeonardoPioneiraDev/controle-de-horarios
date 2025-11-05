@@ -16,7 +16,7 @@ export class OracleGlobusService {
 
   private initializeOracleClient(): void {
     try {
-      const oracleEnabled = this.configService.get<boolean>('ORACLE_ENABLED', false);
+      const oracleEnabled = this.configService.get<boolean>('oracle.enabled', false);
       
       if (!oracleEnabled) {
         this.logger.warn('🔧 Oracle Globus está DESABILITADO');
@@ -31,7 +31,7 @@ export class OracleGlobusService {
       oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT;
 
       // ✅ INICIALIZAR THICK MODE
-      const clientPath = this.configService.get<string>('ORACLE_CLIENT_PATH');
+      const clientPath = this.configService.get<string>('oracle.clientPath');
       
       if (clientPath && !this.isThickModeInitialized) {
         this.logger.log(`📦 Inicializando Oracle Client Globus: ${clientPath}`);
@@ -64,7 +64,7 @@ export class OracleGlobusService {
 
   // ✅ CONECTAR AO ORACLE GLOBUS
   async connect(): Promise<void> {
-    const oracleEnabled = this.configService.get<boolean>('ORACLE_ENABLED', false);
+    const oracleEnabled = this.configService.get<boolean>('oracle.enabled', false);
 
     if (!oracleEnabled) {
       this.logger.warn('⚠️ Oracle Globus está desabilitado');
@@ -85,9 +85,9 @@ export class OracleGlobusService {
       this.logger.log('🔗 Conectando ao Oracle Globus...');
       
       const connectionConfig: oracledb.ConnectionAttributes = {
-        user: this.configService.get<string>('ORACLE_USER'),
-        password: this.configService.get<string>('ORACLE_PASSWORD'),
-        connectString: this.configService.get<string>('ORACLE_CONNECTION_STRING'),
+        user: this.configService.get<string>('oracle.user'),
+        password: this.configService.get<string>('oracle.password'),
+        connectString: this.configService.get<string>('oracle.connectString'),
         connectTimeout: 300, // 5 minutos
         callTimeout: 1800000, // 30 minutos
       };
@@ -263,7 +263,7 @@ export class OracleGlobusService {
   // ✅ TESTAR CONEXÃO
   async testarConexao(): Promise<boolean> {
     try {
-      const oracleEnabled = this.configService.get<boolean>('ORACLE_ENABLED', false);
+      const oracleEnabled = this.configService.get<boolean>('oracle.enabled', false);
 
       if (!oracleEnabled) {
         this.logger.warn('⚠️ Oracle Globus desabilitado');
@@ -322,7 +322,7 @@ export class OracleGlobusService {
 
   // ✅ VERIFICAR SE ESTÁ HABILITADO
   isEnabled(): boolean {
-    return this.configService.get<boolean>('ORACLE_ENABLED', false);
+    return this.configService.get<boolean>('oracle.enabled', false);
   }
 
   // ✅ DESCONECTAR

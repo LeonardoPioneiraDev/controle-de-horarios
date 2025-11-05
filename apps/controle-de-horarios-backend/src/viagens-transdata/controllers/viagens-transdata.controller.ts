@@ -43,7 +43,7 @@ export class ViagensTransdataController {
    * ✅ ROTA 1: BUSCAR TODAS AS VIAGENS DE UMA DATA
    */
   @Get(':data')
-  @Roles(UserRole.OPERADOR) // ✅ Nível mais baixo - qualquer um pode acessar
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR) // ✅ Nível mais baixo - qualquer um pode acessar
   @ApiOperation({ 
     summary: 'Buscar todas as viagens de uma data',
     description: 'Retorna todas as viagens programadas para a data especificada. Acesso: OPERADOR ou superior.'
@@ -89,7 +89,7 @@ export class ViagensTransdataController {
    * ✅ ROTA 2: BUSCAR VIAGENS COM FILTROS
    */
   @Get(':data/filtrados')
-  @Roles(UserRole.OPERADOR) // ✅ Nível mais baixo
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR) // ✅ Nível mais baixo
   @ApiOperation({ 
     summary: 'Buscar viagens com filtros',
     description: 'Retorna viagens filtradas por diversos critérios. Acesso: OPERADOR ou superior.'
@@ -192,7 +192,7 @@ export class ViagensTransdataController {
    * ✅ ROTA 4: OBTER CÓDIGOS DE LINHA ÚNICOS
    */
   @Get(':data/linhas')
-  @Roles(UserRole.OPERADOR) // ✅ Nível mais baixo
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR) // ✅ Nível mais baixo
   @ApiOperation({ 
     summary: 'Obter códigos de linha únicos',
     description: 'Retorna lista de códigos de linha únicos. Acesso: OPERADOR ou superior.'
@@ -242,7 +242,7 @@ export class ViagensTransdataController {
    * ✅ ROTA 5: OBTER SERVIÇOS ÚNICOS
    */
   @Get(':data/servicos')
-  @Roles(UserRole.OPERADOR) // ✅ Nível mais baixo
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR) // ✅ Nível mais baixo
   @ApiOperation({ 
     summary: 'Obter serviços únicos',
     description: 'Retorna lista de números de serviço únicos. Acesso: OPERADOR ou superior.'
@@ -292,7 +292,7 @@ export class ViagensTransdataController {
    * ✅ ROTA 6: VERIFICAR STATUS DOS DADOS
    */
   @Get(':data/status')
-  @Roles(UserRole.OPERADOR) // ✅ Nível mais baixo
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR) // ✅ Nível mais baixo
   @ApiOperation({ 
     summary: 'Verificar status dos dados',
     description: 'Verifica se existem dados locais para a data. Acesso: OPERADOR ou superior.'

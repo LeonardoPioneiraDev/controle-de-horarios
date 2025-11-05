@@ -64,7 +64,7 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(UserRole.GERENTE) // ✅ ADICIONAR ROLE PARA LISTAR USUÁRIOS
+  @Roles(UserRole.ADMINISTRADOR) // ✅ ADICIONAR ROLE PARA LISTAR USUÁRIOS
   @ApiOperation({ summary: 'Listar todos os usuários' })
   @ApiResponse({ status: 200, description: 'Lista de usuários' })
   async findAll(@Request() req) {
@@ -85,7 +85,7 @@ export class UsersController {
   }
 
   @Get('search')
-  @Roles(UserRole.GERENTE) // ✅ ADICIONAR ROLE PARA BUSCAR USUÁRIOS
+  @Roles(UserRole.ADMINISTRADOR) // ✅ ADICIONAR ROLE PARA BUSCAR USUÁRIOS
   @ApiOperation({ summary: 'Buscar usuários' })
   @ApiQuery({ name: 'q', description: 'Termo de busca' })
   @ApiResponse({ status: 200, description: 'Usuários encontrados' })
@@ -107,7 +107,7 @@ export class UsersController {
   }
 
   @Get('stats')
-  @Roles(UserRole.ADMINISTRADOR, UserRole.GERENTE) // ✅ CORRIGIDO
+  @Roles(UserRole.ADMINISTRADOR) // ✅ CORRIGIDO
   @ApiOperation({ summary: 'Estatísticas de usuários' })
   @ApiResponse({ status: 200, description: 'Estatísticas' })
   async getStats(@Request() req) {
@@ -128,7 +128,7 @@ export class UsersController {
   }
 
   @Get(':id')
-  @Roles(UserRole.GERENTE) // ✅ ADICIONAR ROLE
+  @Roles(UserRole.ADMINISTRADOR) // ✅ ADICIONAR ROLE
   @ApiOperation({ summary: 'Buscar usuário por ID' })
   @ApiParam({ name: 'id', description: 'ID do usuário' })
   @ApiResponse({ status: 200, description: 'Usuário encontrado' })
@@ -151,7 +151,7 @@ export class UsersController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ADMINISTRADOR, UserRole.GERENTE) // ✅ CORRIGIDO
+  @Roles(UserRole.ADMINISTRADOR) // ✅ CORRIGIDO
   @ApiOperation({ summary: 'Atualizar usuário' })
   @ApiParam({ name: 'id', description: 'ID do usuário' })
   @ApiBody({ type: UpdateUserDto })

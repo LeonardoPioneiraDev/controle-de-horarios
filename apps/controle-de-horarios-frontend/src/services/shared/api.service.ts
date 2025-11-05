@@ -11,7 +11,10 @@ export class BaseApiService {
   protected readonly debug: boolean;
 
   constructor() {
-    this.baseURL = '/api';
+    // Build a safe base URL
+    const rawOrigin = 'http://localhost:3336';
+    const origin = rawOrigin.endsWith('/') ? rawOrigin : `${rawOrigin}/`;
+    this.baseURL = new URL('api/', origin).toString().replace(/\/$/, ''); // -> http://localhost:3336/api
     this.timeout = 500000;
     this.debug = true; // process.env.NODE_ENV !== 'production';
 
@@ -28,19 +31,41 @@ export class BaseApiService {
     // this.testConnectivity(); // Moved to specific health service
   }
 
-  private logConfiguration(): void {
-    if (this.debug) {
-      console.log('🌐 ==========================================');
-      console.log('🌐 CONFIGURAÇÃO DA API - FRONTEND');
-      console.log('🌐 ==========================================');
-      console.log('🔧 Modo: Desenvolvimento');
-      console.log(`🔗 Base URL: ${this.baseURL}`);
-      console.log('📡 Modo de conexão: proxy');
-      console.log(`⏱️ Timeout: ${this.timeout}ms`);
-      console.log(`🐛 Debug: ${this.debug}`);
-      console.log('🌐 ==========================================');
+    private logConfiguration(): void {
+
+      if (this.debug) {
+
+        console.log('🌐 ==========================================');
+
+        console.log('🌐 CONFIGURAÇÃO DA API - FRONTEND');
+
+        console.log('🌐 ==========================================');
+
+        console.log('🔧 Modo: Desenvolvimento');
+
+        console.log(`🔗 Base URL: ${this.baseURL}`);
+
+        console.log('📡 Modo de conexão: proxy');
+
+        console.log(`⏱️ Timeout: ${this.timeout}ms`);
+
+        console.log(`🐛 Debug: ${this.debug}`);
+
+        console.log('🌐 ==========================================');
+
+      }
+
     }
-  }
+
+  
+
+    public get apiInstance(): AxiosInstance {
+
+      return this.api;
+
+    }
+
+  
 
   private setupInterceptors(): void {
     // Request interceptor
@@ -48,33 +73,42 @@ export class BaseApiService {
       (config) => {
         const token = localStorage.getItem('token');
         const hasToken = !!token;
-        
+
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Build absolute URL safely and avoid malformed base/path concatenation
+        const safeBase = this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
+        const rawUrl = String(config.url || '');
+        const path = rawUrl.startsWith('/') ? rawUrl.substring(1) : rawUrl;
+        const absolute = new URL(path, safeBase).toString();
+        // Force axios to use absolute URL
+        config.baseURL = '' as any;
+        config.url = absolute;
 
         if (this.debug) {
           console.log('🔄 API Request:', {
             method: config.method?.toUpperCase(),
             url: config.url,
-            baseURL: config.baseURL,
-            fullURL: `${config.baseURL}${config.url}`,
+            baseURL: safeBase,
+            fullURL: absolute,
             hasToken,
             tokenLength: token?.length || 0,
             authHeader: config.headers.Authorization ? 'presente' : 'ausente'
           });
         }
 
-        return config;
-      },
-      (error) => {
-        console.error('❌ Request Error:', error);
-        return Promise.reject(error);
-      }
-    );
+          return config;
+        },
+        (error) => {
+          console.error('❌ Request Error:', error);
+          return Promise.reject(error);
+        }
+      );
 
-    // Response interceptor
-    this.api.interceptors.response.use(
+      // Response interceptor
+      this.api.interceptors.response.use(
       (response: AxiosResponse) => {
         if (this.debug) {
           console.log('📥 API Response:', {
@@ -129,8 +163,10 @@ export const makeAuthenticatedRequest = async (
     throw new Error('Token de autenticação não encontrado');
   }
 
-  const baseURL = '/api';
-  const url = endpoint.startsWith('/') ? `${baseURL}${endpoint}` : `${baseURL}/${endpoint}`;
+  const rawBaseURL = 'http://localhost:3336/api';
+  const base = rawBaseURL.endsWith('/') ? rawBaseURL : `${rawBaseURL}/`;
+  const ep = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
+  const url = `${base}${ep}`;
   
   const defaultOptions: RequestInit = {
     headers: {

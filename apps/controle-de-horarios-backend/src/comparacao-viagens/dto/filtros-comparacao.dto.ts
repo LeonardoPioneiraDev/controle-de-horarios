@@ -17,14 +17,17 @@ export class FiltrosComparacaoDto {
   globusSetor?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (value === 'true' || value === true ? true : value === 'false' || value === false ? false : undefined))
   @IsBoolean()
   sentidoCompativel?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) => (value === 'true' || value === true ? true : value === 'false' || value === false ? false : undefined))
   @IsBoolean()
   horarioCompativel?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) => (value === 'true' || value === true ? true : value === 'false' || value === false ? false : undefined))
   @IsBoolean()
   servicoCompativel?: boolean;
 
@@ -37,17 +40,4 @@ export class FiltrosComparacaoDto {
   @Type(() => Number)
   @IsNumber()
   page?: number = 1;
-}
-
-// src/comparacao-viagens/dto/resultado-comparacao.dto.ts
-export class ResultadoComparacaoDto {
-  totalComparacoes: number;
-  compativeis: number;
-  divergentes: number;
-  apenasTransdata: number;
-  apenasGlobus: number;
-  horarioDivergente: number;
-  percentualCompatibilidade: number;
-  linhasAnalisadas: number;
-  tempoProcessamento: string;
 }

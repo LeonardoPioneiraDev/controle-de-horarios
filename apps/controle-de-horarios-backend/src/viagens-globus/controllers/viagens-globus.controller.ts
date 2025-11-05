@@ -31,7 +31,7 @@ export class ViagensGlobusController {
 
   // ✅ BUSCAR VIAGENS POR DATA
   @Get(':data')
-  @Roles(UserRole.OPERADOR)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Buscar viagens Globus por data' })
   @ApiResponse({ status: 200, description: 'Viagens encontradas com sucesso' })
@@ -82,7 +82,7 @@ export class ViagensGlobusController {
 
   // ✅ BUSCAR VIAGENS COM FILTROS
   @Get(':data/filtrados')
-  @Roles(UserRole.OPERADOR)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Buscar viagens Globus com filtros avançados' })
   async buscarViagensComFiltros(
@@ -139,7 +139,7 @@ export class ViagensGlobusController {
 
   // ✅ OBTER STATUS DOS DADOS
   @Get(':data/status')
-  @Roles(UserRole.OPERADOR)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verificar status dos dados para uma data' })
   async obterStatusDados(@Param('data') data: string) {
@@ -155,7 +155,7 @@ export class ViagensGlobusController {
 
   // ✅ OBTER CÓDIGOS DE LINHA
   @Get(':data/linhas')
-  @Roles(UserRole.OPERADOR)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obter códigos de linha únicos para uma data' })
   async obterCodigosLinha(@Param('data') data: string) {
@@ -172,7 +172,7 @@ export class ViagensGlobusController {
 
   // ✅ OBTER SERVIÇOS ÚNICOS
   @Get(':data/servicos')
-  @Roles(UserRole.OPERADOR)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obter serviços únicos para uma data' })
   async obterServicosUnicos(@Param('data') data: string) {
@@ -189,7 +189,7 @@ export class ViagensGlobusController {
 
   // ✅ OBTER SETORES ÚNICOS
   @Get(':data/setores')
-  @Roles(UserRole.OPERADOR)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obter setores únicos para uma data' })
   async obterSetoresUnicos(@Param('data') data: string) {
@@ -272,7 +272,7 @@ export class ViagensGlobusController {
 
   // ✅ HEALTH CHECK COMPLETO
   @Get('health')
-  @Roles(UserRole.OPERADOR)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Health check do sistema Globus' })
   async healthCheck() {

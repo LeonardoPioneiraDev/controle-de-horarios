@@ -1,0 +1,1 @@
+                      <div className="text-xs text-gray-500 leading-tight">{(item as any).nomeMotoristaGlobus || 'Não Informado'}</div>

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { ControleHorarioItemDto, FiltrosControleHorarios } from '@/types/controle-horarios.types';
+import { ControleHorarioItem, FiltrosControleHorarios } from '@/types/controle-horarios.types';
 import { X, Save, Search } from 'lucide-react';
 
 interface EditDriverCobradorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  viagem: ControleHorarioItemDto;
+  viagem: ControleHorarioItem;
   field: 'motorista' | 'cobrador';
-  onSave: (viagemId: string, fieldToUpdate: 'nomeMotoristaEditado' | 'crachaMotoristaEditado' | 'nomeCobradorEditado' | 'crachaCobradorEditado', value: string, observacoes: string) => Promise<void>;
+  onSave: (viagemId: string, nome: string, cracha: string, observacoes: string, field: 'motorista' | 'cobrador') => Promise<void>;
   onFilterByCracha: (filters: FiltrosControleHorarios) => void;
 }
 
@@ -19,17 +19,20 @@ export const EditDriverCobradorModal: React.FC<EditDriverCobradorModalProps> = (
   onSave,
   onFilterByCracha,
 }) => {
-  const [editedValue, setEditedValue] = useState('');
+  const [editedCracha, setEditedCracha] = useState('');
+  const [editedNome, setEditedNome] = useState('');
   const [observacoes, setObservacoes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
       if (field === 'motorista') {
-        setEditedValue(viagem.crachaMotoristaEditado || viagem.crachaMotoristaGlobus || '');
+        setEditedCracha(viagem.crachaMotoristaEditado || viagem.crachaMotoristaGlobus || '');
+        setEditedNome(viagem.nomeMotoristaEditado || viagem.nomeMotoristaGlobus || '');
         setObservacoes(viagem.observacoes || '');
       } else { // cobrador
-        setEditedValue(viagem.crachaCobradorEditado || viagem.crachaCobradorGlobus || '');
+        setEditedCracha(viagem.crachaCobradorEditado || viagem.crachaCobradorGlobus || '');
+        setEditedNome(viagem.nomeCobradorEditado || viagem.nomeCobradorGlobus || '');
         setObservacoes(viagem.observacoes || '');
       }
       setError(null);
@@ -45,22 +48,19 @@ export const EditDriverCobradorModal: React.FC<EditDriverCobradorModalProps> = (
     }
     setError(null);
 
-    let fieldToUpdate: 'nomeMotoristaEditado' | 'crachaMotoristaEditado' | 'nomeCobradorEditado' | 'crachaCobradorEditado';
-    if (field === 'motorista') {
-      fieldToUpdate = 'crachaMotoristaEditado'; // Assumindo que a edição é pelo crachá
-      // Poderíamos adicionar lógica para editar nome também se necessário
-    } else {
-      fieldToUpdate = 'crachaCobradorEditado';
+    const confirmSave = window.confirm(
+      `Deseja realmente salvar a alteração para o ${field === 'motorista' ? 'motorista' : 'cobrador'} ${viagem.viagemGlobusId}?`
+    );
+    if (confirmSave) {
+      await onSave(viagem.viagemGlobusId, editedNome, editedCracha, observacoes, field);
     }
-
-    await onSave(viagem.viagemGlobusId, fieldToUpdate, editedValue, observacoes);
   };
 
   const handleFilterByCracha = () => {
     if (field === 'motorista') {
-      onFilterByCracha({ crachaMotorista: editedValue });
+      onFilterByCracha({ cracha_motorista: editedCracha } as unknown as FiltrosControleHorarios);
     } else {
-      onFilterByCracha({ crachaCobrador: editedValue });
+      onFilterByCracha({ cracha_cobrador: editedCracha } as unknown as FiltrosControleHorarios);
     }
     onClose();
   };
@@ -80,12 +80,24 @@ export const EditDriverCobradorModal: React.FC<EditDriverCobradorModalProps> = (
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
+              Nome {field === 'motorista' ? 'Motorista' : 'Cobrador'}
+            </label>
+            <input
+              type="text"
+              value={editedNome}
+              onChange={(e) => setEditedNome(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              placeholder={`Novo nome do ${field === 'motorista' ? 'motorista' : 'cobrador'}`}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
               Crachá {field === 'motorista' ? 'Motorista' : 'Cobrador'}
             </label>
             <input
               type="text"
-              value={editedValue}
-              onChange={(e) => setEditedValue(e.target.value)}
+              value={editedCracha}
+              onChange={(e) => setEditedCracha(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               placeholder={`Novo crachá do ${field === 'motorista' ? 'motorista' : 'cobrador'}`}
             />

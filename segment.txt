@@ -1,0 +1,2 @@
+value={(filtros as any).codCobrador || ''}
+            onChange={(e) => handleFilterChange('codCobrador' as keyof Filtr

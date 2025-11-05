@@ -1,6 +1,6 @@
 import { FC, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Users, LogOut, Settings, Home, Bus, Server, GitCompare, Clock } from 'lucide-react';
+import { Users, LogOut, Settings, Home, Bus, Server, GitCompare, Clock, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import logo from './logo.png'
 
@@ -88,7 +88,7 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
           {/* Navigation */}
           <nav className="flex flex-1 flex-col px-6 py-4">
             <ul className="flex flex-1 flex-col gap-y-2">
-              {navigation.map((item) => {
+              {([...navigation, { name: 'Histórico Comparações', href: '/historico-comparacoes', icon: TrendingUp }]).map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
                   <li key={item.name}>
@@ -179,3 +179,4 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
 };
 
 export default Sidebar;
+

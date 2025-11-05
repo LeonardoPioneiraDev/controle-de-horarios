@@ -45,3 +45,20 @@ export interface FiltrosComparacao {
   limit?: number;
   page?: number;
 }
+
+export interface HistoricoComparacaoResumo {
+  id: string;
+  dataReferencia: string;
+  totalComparacoes: number;
+  compativeis: number;
+  divergentes: number;
+  apenasTransdata: number;
+  apenasGlobus: number;
+  horarioDivergente: number;
+  percentualCompatibilidade: string; // numeric do PG chega como string
+  linhasAnalisadas: number;
+  tempoProcessamento: string;
+  durationMs: number;
+  executedByEmail?: string | null;
+  createdAt?: string;
+}

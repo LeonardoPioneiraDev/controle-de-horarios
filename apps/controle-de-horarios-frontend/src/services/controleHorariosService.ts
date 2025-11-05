@@ -1,13 +1,13 @@
 // src/services/controleHorariosService.ts
 
 import { makeAuthenticatedRequest } from './api';
+import { api } from './api';
 import {
   ControleHorarioResponseDto,
   FiltrosControleHorarios,
-  SalvarControleHorariosDto,
-  SalvarMultiplosControleHorariosDto,
+  UpdateControleHorarioDto,
+  UpdateMultipleControleHorariosDto,
   OpcoesControleHorariosDto,
-  EstatisticasControleHorariosDto,
   StatusControleHorariosDto,
 } from '../types/controle-horarios.types';
 
@@ -34,7 +34,7 @@ export const controleHorariosService = {
 
   async salvarControleHorario(
     dataReferencia: string,
-    dados: SalvarControleHorariosDto,
+    dados: UpdateControleHorarioDto,
   ): Promise<any> {
     const response = await makeAuthenticatedRequest(
       `/controle-horarios/${dataReferencia}/salvar`,
@@ -50,12 +50,13 @@ export const controleHorariosService = {
   },
 
   async salvarMultiplosControles(
-    dados: SalvarMultiplosControleHorariosDto,
+    dados: UpdateMultipleControleHorariosDto,
   ): Promise<any> {
+    // Bypassa axios para evitar problemas de montagem de URL e usa fetch helper
     const response = await makeAuthenticatedRequest(
-      `/controle-horarios/salvar-multiplos`,
+      '/controle-horarios/multiples',
       {
-        method: 'POST',
+        method: 'PATCH',
         body: JSON.stringify(dados),
         headers: {
           'Content-Type': 'application/json',
@@ -68,22 +69,38 @@ export const controleHorariosService = {
   async buscarOpcoesControleHorarios(
     dataReferencia: string,
   ): Promise<OpcoesControleHorariosDto> {
-    const response = await makeAuthenticatedRequest(
-      `/controle-horarios/${dataReferencia}/opcoes`,
-      { method: 'GET' }
-    );
-    return response.data; // O backend retorna { success, message, data }
+    // Compor opções a partir dos endpoints disponíveis no backend
+    const [setoresResp, linhasResp, servicosResp, atividadesResp] = await Promise.all([
+      makeAuthenticatedRequest(`/controle-horarios/${dataReferencia}/setores`, { method: 'GET' }),
+      makeAuthenticatedRequest(`/controle-horarios/${dataReferencia}/linhas`, { method: 'GET' }),
+      makeAuthenticatedRequest(`/controle-horarios/${dataReferencia}/servicos`, { method: 'GET' }),
+      makeAuthenticatedRequest(`/controle-horarios/${dataReferencia}/atividades`, { method: 'GET' }),
+    ]);
+
+    // Normalizar possíveis formatos: o backend retorna { success, message, data }
+    const setores: string[] = setoresResp?.data ?? setoresResp ?? [];
+    const servicos: string[] = servicosResp?.data ?? servicosResp ?? [];
+    const atividades: string[] = atividadesResp?.data ?? atividadesResp ?? [];
+    const linhasArr: string[] = linhasResp?.data ?? linhasResp ?? [];
+    const linhas = linhasArr
+      .filter((codigo: string) => typeof codigo === 'string')
+      .map((codigo: string) => ({ codigo, nome: codigo }));
+
+    return {
+      setores,
+      linhas,
+      servicos,
+      atividades,
+      tiposDia: [],
+      sentidos: ['IDA', 'VOLTA', 'CIRCULAR'],
+      motoristas: [],
+      locaisOrigem: [],
+      locaisDestino: [],
+    };
   },
 
-  async obterEstatisticas(
-    dataReferencia: string,
-  ): Promise<EstatisticasControleHorariosDto> {
-    const response = await makeAuthenticatedRequest(
-      `/controle-horarios/${dataReferencia}/estatisticas`,
-      { method: 'GET' }
-    );
-    return response.data; // O backend retorna { success, message, data }
-  },
+  // Estatísticas não possuem endpoint dedicado no backend de controle-horários.
+  // O hook calculará estatísticas a partir dos dados carregados.
 
   async verificarStatusDados(
     dataReferencia: string,
@@ -99,15 +116,10 @@ export const controleHorariosService = {
     dataReferencia: string,
     overwrite: boolean = false,
   ): Promise<any> {
+    // Backend usa rota: POST /controle-horarios/sincronizar/:data
     const response = await makeAuthenticatedRequest(
-      `/controle-horarios/${dataReferencia}/sincronizar`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ overwrite }),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+      `/controle-horarios/sincronizar/${dataReferencia}`,
+      { method: 'POST' }
     );
     return response;
   },

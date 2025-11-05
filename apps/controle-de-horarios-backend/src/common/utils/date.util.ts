@@ -1,6 +1,7 @@
 
-import { format as formatTz, utcToZonedTime } from 'date-fns-tz';
-import { format, parseISO } from 'date-fns';
+import { format as formatTz, toZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
+import { parseISO } from 'date-fns/parseISO';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
@@ -10,7 +11,7 @@ const SAO_PAULO_TZ = 'America/Sao_Paulo';
  */
 export function nowInSaoPaulo(): Date {
   const nowUtc = new Date();
-  return utcToZonedTime(nowUtc, SAO_PAULO_TZ);
+  return toZonedTime(nowUtc, SAO_PAULO_TZ);
 }
 
 /**
@@ -21,7 +22,7 @@ export function nowInSaoPaulo(): Date {
  */
 export function formatInSaoPaulo(date: Date | string | number, formatString: string): string {
   const dateObj = typeof date === 'string' ? parseISO(date) : new Date(date);
-  const zonedDate = utcToZonedTime(dateObj, SAO_PAULO_TZ);
+  const zonedDate = toZonedTime(dateObj, SAO_PAULO_TZ);
   return formatTz(zonedDate, formatString, { timeZone: SAO_PAULO_TZ });
 }
 
@@ -32,7 +33,7 @@ export function formatInSaoPaulo(date: Date | string | number, formatString: str
  */
 export function toSaoPaulo(date: Date | string): Date {
     const dateObj = typeof date === 'string' ? parseISO(date) : date;
-    return utcToZonedTime(dateObj, SAO_PAULO_TZ);
+    return toZonedTime(dateObj, SAO_PAULO_TZ);
 }
 
 /**
