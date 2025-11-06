@@ -43,6 +43,12 @@ export class ControleHorariosService {
       // Para Veículo, Motorista e Cobrador, propagar para viagens com a mesma linha e serviço
       queryBuilder.andWhere('controle.codigo_linha = :codigoLinha', { codigoLinha: originalControleHorario.codigo_linha });
       queryBuilder.andWhere('controle.cod_servico_numero = :codServicoNumero', { codServicoNumero: originalControleHorario.cod_servico_numero });
+      if (originalControleHorario.flg_sentido) {
+        queryBuilder.andWhere('controle.flg_sentido = :flgSentido', { flgSentido: originalControleHorario.flg_sentido });
+      }
+      if (originalControleHorario.hor_saida) {
+        queryBuilder.andWhere('controle.hor_saida IS NULL OR controle.hor_saida >= :anchorHora', { anchorHora: originalControleHorario.hor_saida });
+      }
 
       // Se a alteração for de motorista ou cobrador, propagar para viagens com o mesmo motorista/cobrador original
       if (fieldsToUpdate.motorista_substituto_cracha || fieldsToUpdate.motorista_substituto_nome) {
@@ -67,11 +73,14 @@ export class ControleHorariosService {
     }
 
     if (updatedRecords.length > 0) {
-      await this.controleHorarioRepository.save(updatedRecords);
+      const uniqueRecords = Array.from(new Map(updatedRecords.map((r) => [r.id, r] as const)).values());
+      await this.controleHorarioRepository.manager.transaction(async (trx) => {
+        await trx.getRepository(ControleHorario).save(uniqueRecords);
+      });
       this.logger.log(`✅ ${updatedRecords.length} registros atualizados e propagados com sucesso.`);
     }
 
-    return updatedRecords;
+    return Array.from(new Map(updatedRecords.map((r) => [r.id, r] as const)).values());
   }
 
   async buscarControleHorariosPorData(
@@ -752,6 +761,30 @@ export class ControleHorariosService {
     }
 
     // Atualiza apenas os campos permitidos para edição
+    { // forward propagation when applicable
+      const camposPropagaveis = [
+        'prefixo_veiculo',
+        'motorista_substituto_nome',
+        'motorista_substituto_cracha',
+        'cobrador_substituto_nome',
+        'cobrador_substituto_cracha',
+      ] as const;
+      const devePropagar = camposPropagaveis.some((k) => (updateDto as any)[k] !== undefined);
+      if (devePropagar) {
+        const updateForward: any = { id };
+        for (const k of camposPropagaveis) {
+          const v = (updateDto as any)[k];
+          if (v !== undefined) updateForward[k] = v;
+        }
+        const atualizados = await this.updateMultipleControleHorarios([updateForward], editorNome, editorEmail);
+        const registroAtualizado = atualizados.find((r) => r.id === id);
+        if (registroAtualizado) {
+          return registroAtualizado;
+        }
+        // If not found for any reason, fall back to simple update below
+      }
+    }
+
     Object.assign(controleHorario, updateDto);
 
     controleHorario.editado_por_nome = editorNome;

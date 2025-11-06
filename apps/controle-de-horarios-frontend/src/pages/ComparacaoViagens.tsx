@@ -1,6 +1,6 @@
 // src/pages/ComparacaoViagens.tsx
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { comparacaoViagensService } from '../services/comparacao/comparacao.service';
 import { ResultadoComparacao, ComparacaoViagem, FiltrosComparacao, HistoricoComparacaoResumo } from '../types/comparacao.types';
 import { 
@@ -9,168 +9,181 @@ import {
   BarChart3, 
   Filter, 
   RefreshCw, 
-  CheckCircle, 
-  XCircle, 
   Clock, 
-  AlertTriangle,
-  Database,
   GitCompare,
   TrendingUp,
   Loader2,
-  ChevronDown
+  ChevronDown,
+  FileText,
+  X
 } from 'lucide-react';
+import { Card, CardContent } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Alert, AlertDescription, AlertTitle, AlertIcon } from '../components/ui/alert';
+import { toast } from 'react-toastify';
+
+// --- HELPERS ---
+const GlowingCard = ({ children, className }: { children?: React.ReactNode; className?: string }) => (
+    <div className="relative">
+        <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
+        <Card className={`relative border border-yellow-400/20 shadow-[0_0_40px_rgba(251,191,36,0.15)] ${className}`}>
+            {children}
+        </Card>
+    </div>
+);
 
 // --- SUB-COMPONENTS ---
 
 const PageHeader = () => (
-    <div className="border-b border-gray-200 pb-4">
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
-            <GitCompare className="h-8 w-8 text-blue-600" />
+    <div className="border-b border-yellow-400/20 pb-4">
+        <h1 className="text-3xl font-bold text-gray-100 flex items-center gap-3">
+            <GitCompare className="h-8 w-8 text-yellow-400" />
             Comparação de Viagens
         </h1>
-        <p className="mt-2 text-md text-gray-500">
+        <p className="mt-2 text-md text-gray-400">
             Compare dados entre Transdata e Globus para identificar divergências e compatibilidades.
         </p>
     </div>
 );
 
-const Controls = ({ date, onDateChange, onExecute, executing, onToggleFilters, filtersVisible, onFetchComparisons, loading, hasComparisons }: any) => (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-gray-500" />
-                <label className="text-sm font-medium text-gray-700">Data:</label>
-                <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => onDateChange(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+const Controls = ({ date, onDateChange, onExecute, executing, onToggleFilters, filtersVisible, onFetchComparisons, loading, hasComparisons, onOpenReport }: any) => (
+    <GlowingCard>
+        <CardContent className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-gray-400" />
+                    <Label className="text-sm font-medium text-gray-300">Data:</Label>
+                    <Input
+                        type="date"
+                        value={date}
+                        onChange={(e) => onDateChange(e.target.value)}
+                    />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button onClick={onToggleFilters} variant="outline">
+                        <Filter className="h-4 w-4 mr-2" />
+                        Filtros
+                        <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${filtersVisible ? 'rotate-180' : ''}`} />
+                    </Button>
+
+                    {hasComparisons && (
+                        <Button onClick={onFetchComparisons} disabled={loading} variant="outline">
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                            Atualizar
+                        </Button>
+                    )}
+
+                    <Button onClick={onExecute} disabled={executing || !date}>
+                        {executing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                        {executing ? 'Executando...' : 'Executar Comparação'}
+                    </Button>
+
+                    {hasComparisons && (
+                        <Button onClick={onOpenReport}>
+                            <FileText className="h-4 w-4 mr-2" />
+                            Visualizar Relatório
+                        </Button>
+                    )}
+                </div>
             </div>
-
-            <button
-                onClick={onExecute}
-                disabled={executing || !date}
-                className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {executing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-                {executing ? 'Executando...' : 'Executar Comparação'}
-            </button>
-
-            <button
-                onClick={onToggleFilters}
-                className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium border transition-all duration-300 ${
-                    filtersVisible
-                        ? 'bg-blue-50 border-blue-200 text-blue-700'
-                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
-                }`}
-            >
-                <Filter className="h-4 w-4" />
-                Filtros
-                <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${filtersVisible ? 'rotate-180' : ''}`} />
-            </button>
-
-            {hasComparisons && (
-                <button
-                    onClick={onFetchComparisons}
-                    disabled={loading}
-                    className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50"
-                >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-                    Atualizar Resultados
-                </button>
-            )}
-        </div>
-    </div>
+        </CardContent>
+    </GlowingCard>
 );
 
-const Statistics = ({ stats }: { stats: ResultadoComparacao }) => (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center gap-3 mb-4">
-            <BarChart3 className="h-6 w-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-800">Estatísticas da Comparação</h2>
-            <div className="ml-auto flex items-center gap-2 text-sm text-gray-500">
-                <Clock className="h-4 w-4" />
-                <span>Processado em {stats.tempoProcessamento}</span>
+const Statistics = ({ stats, isModal = false }: { stats: ResultadoComparacao, isModal?: boolean }) => (
+    <GlowingCard className={isModal ? 'bg-neutral-900' : ''}>
+        <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+                <BarChart3 className="h-6 w-6 text-yellow-400" />
+                <h2 className="text-xl font-semibold text-gray-100">Estatísticas da Comparação</h2>
+                <div className="ml-auto flex items-center gap-2 text-sm text-gray-400">
+                    <Clock className="h-4 w-4" />
+                    <span>Processado em {stats.tempoProcessamento}</span>
+                </div>
             </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-            <StatCard label="Total" value={stats.totalComparacoes} color="text-gray-900" bgColor="bg-gray-50" />
-            <StatCard label="Compatíveis" value={stats.compativeis} color="text-green-600" bgColor="bg-green-50" />
-            <StatCard label="Divergentes" value={stats.divergentes} color="text-red-600" bgColor="bg-red-50" />
-            <StatCard label="Horário Div." value={stats.horarioDivergente} color="text-yellow-600" bgColor="bg-yellow-50" />
-            <StatCard label="Só Transdata" value={stats.apenasTransdata} color="text-blue-600" bgColor="bg-blue-50" />
-            <StatCard label="Só Globus" value={stats.apenasGlobus} color="text-purple-600" bgColor="bg-purple-50" />
-            <StatCard label="Compatibilidade" value={`${stats.percentualCompatibilidade}%`} color="text-indigo-600" bgColor="bg-indigo-50" />
-            <StatCard label="Linhas" value={stats.linhasAnalisadas} color="text-gray-600" bgColor="bg-gray-50" />
-        </div>
-    </div>
+            <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${isModal ? 'lg:grid-cols-4' : 'lg:grid-cols-8'}`}>
+                <StatCard label="Total" value={stats.totalComparacoes} />
+                <StatCard label="Compatíveis" value={stats.compativeis} color="text-green-400" />
+                <StatCard label="Divergentes" value={stats.divergentes} color="text-red-400" />
+                <StatCard label="Horário Div." value={stats.horarioDivergente} color="text-yellow-400" />
+                <StatCard label="Só Transdata" value={stats.apenasTransdata} color="text-blue-400" />
+                <StatCard label="Só Globus" value={stats.apenasGlobus} color="text-purple-400" />
+                <StatCard label="Compatibilidade" value={`${stats.percentualCompatibilidade}%`} color="text-indigo-400" />
+                <StatCard label="Linhas" value={stats.linhasAnalisadas} />
+            </div>
+        </CardContent>
+    </GlowingCard>
 );
 
-const StatCard = ({ label, value, color, bgColor }: any) => (
-    <div className={`text-center p-3 rounded-lg border ${bgColor}`}>
+const StatCard = ({ label, value, color = 'text-gray-100' }: any) => (
+    <div className="text-center p-3 rounded-lg border border-yellow-400/10 bg-neutral-800/50">
         <div className={`text-2xl font-bold ${color}`}>{value.toLocaleString ? value.toLocaleString() : value}</div>
-        <div className="text-sm text-gray-600 mt-1">{label}</div>
+        <div className="text-sm text-gray-400 mt-1">{label}</div>
     </div>
 );
 
 const FilterPanel = ({ filters, onFilterChange, onClear, onApply }: any) => (
-    <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <FilterInput label="Status" name="statusComparacao" type="select" value={filters.statusComparacao} onChange={onFilterChange}>
-                <option value="">Todos</option>
-                <option value="compativel">Compatível</option>
-                <option value="divergente">Divergente</option>
-                <option value="horario_divergente">Horário Divergente</option>
-                <option value="apenas_transdata">Apenas Transdata</option>
-                <option value="apenas_globus">Apenas Globus</option>
-            </FilterInput>
-            <FilterInput label="Código da Linha" name="codigoLinha" type="text" value={filters.codigoLinha} onChange={onFilterChange} placeholder="Ex: 0.102" />
-            <FilterInput label="Setor Globus" name="globusSetor" type="select" value={filters.globusSetor} onChange={onFilterChange}>
-                <option value="">Todos</option>
-                <option value="GAMA">GAMA</option>
-                <option value="SANTA MARIA">SANTA MARIA</option>
-                <option value="PARANOÁ">PARANOÁ</option>
-                <option value="SÃO SEBASTIÃO">SÃO SEBASTIÃO</option>
-            </FilterInput>
-            <FilterInput label="Limite" name="limite" type="select" value={filters.limite} onChange={onFilterChange}>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-                <option value={200}>200</option>
-                <option value={500}>500</option>
-            </FilterInput>
-        </div>
-        <div className="mt-4 flex justify-end gap-2">
-            <button onClick={onClear} className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors">Limpar</button>
-            <button onClick={onApply} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Aplicar Filtros
-            </button>
-        </div>
-    </div>
+    <GlowingCard>
+        <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <FilterInput label="Status" name="statusComparacao" type="select" value={filters.statusComparacao} onChange={onFilterChange}>
+                    <option value="">Todos</option>
+                    <option value="compativel">Compatível</option>
+                    <option value="divergente">Divergente</option>
+                    <option value="horario_divergente">Horário Divergente</option>
+                    <option value="apenas_transdata">Apenas Transdata</option>
+                    <option value="apenas_globus">Apenas Globus</option>
+                </FilterInput>
+                <FilterInput label="Código da Linha" name="codigoLinha" type="text" value={filters.codigoLinha} onChange={onFilterChange} placeholder="Ex: 0.102" />
+                <FilterInput label="Setor Globus" name="globusSetor" type="select" value={filters.globusSetor} onChange={onFilterChange}>
+                    <option value="">Todos</option>
+                    <option value="GAMA">GAMA</option>
+                    <option value="SANTA MARIA">SANTA MARIA</option>
+                    <option value="PARANOÁ">PARANOÁ</option>
+                    <option value="SÃO SEBASTIÃO">SÃO SEBASTIÃO</option>
+                </FilterInput>
+                <FilterInput label="Limite" name="limite" type="select" value={filters.limite} onChange={onFilterChange}>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={200}>200</option>
+                    <option value={500}>500</option>
+                </FilterInput>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+                <Button onClick={onClear} variant="outline">Limpar</Button>
+                <Button onClick={onApply}>
+                    <Filter className="h-4 w-4 mr-2" />
+                    Aplicar Filtros
+                </Button>
+            </div>
+        </CardContent>
+    </GlowingCard>
 );
 
 const FilterInput = ({ label, name, type, value, onChange, placeholder, children }: any) => (
     <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+        <Label htmlFor={name} className="mb-1">{label}</Label>
         {type === 'select' ? (
-            <select name={name} value={value || ''} onChange={onChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select id={name} name={name} value={value || ''} onChange={onChange} className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
                 {children}
             </select>
         ) : (
-            <input type={type} name={name} value={value || ''} onChange={onChange} placeholder={placeholder} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <Input id={name} type={type} name={name} value={value || ''} onChange={onChange} placeholder={placeholder} />
         )}
     </div>
 );
 
-const ComparisonTable = ({ comparisons }: { comparisons: ComparacaoViagem[] }) => {
+const ComparisonTable = ({ comparisons, isModal = false }: { comparisons: ComparacaoViagem[], isModal?: boolean }) => {
     const getStatusPill = (status: string) => {
         const styles: { [key: string]: string } = {
-            compativel: 'bg-green-100 text-green-800',
-            divergente: 'bg-red-100 text-red-800',
-            horario_divergente: 'bg-yellow-100 text-yellow-800',
-            apenas_transdata: 'bg-blue-100 text-blue-800',
-            apenas_globus: 'bg-purple-100 text-purple-800',
+            compativel: 'bg-green-900/50 text-green-400 border-green-500/30',
+            divergente: 'bg-red-900/50 text-red-400 border-red-500/30',
+            horario_divergente: 'bg-yellow-900/50 text-yellow-400 border-yellow-500/30',
+            apenas_transdata: 'bg-blue-900/50 text-blue-400 border-blue-500/30',
+            apenas_globus: 'bg-purple-900/50 text-purple-400 border-purple-500/30',
         };
         const text: { [key: string]: string } = {
             compativel: 'Compatível',
@@ -179,65 +192,133 @@ const ComparisonTable = ({ comparisons }: { comparisons: ComparacaoViagem[] }) =
             apenas_transdata: 'Só Transdata',
             apenas_globus: 'Só Globus',
         };
-        return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-800'}`}>{text[status] || status}</span>;
+        return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[status] || 'bg-gray-700/50 text-gray-400 border-gray-500/30'}`}>{text[status] || status}</span>;
     };
 
     return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-800">Resultados da Comparação ({comparisons.length})</h3>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Linha</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serviço (T/G)</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sentido (T/G)</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horário (T/G)</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Setor Globus</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {comparisons.map((comp) => (
-                            <tr key={comp.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap">{getStatusPill(comp.statusComparacao)}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{comp.codigoLinha}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{comp.transdataServico || '-'} / {comp.globusServico || '-'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{comp.transdataSentido || '-'} / {comp.globusSentidoTexto || '-'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {comp.transdataHorarioPrevisto || '-'} / {comp.globusHorarioSaida || '-'}
-                                    {comp.diferencaHorarioMinutos != null && <span className="ml-2 text-yellow-600">({comp.diferencaHorarioMinutos}m)</span>}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{comp.globusSetor || '-'}</td>
+        <GlowingCard className={isModal ? 'bg-neutral-900' : ''}>
+            <CardContent className="p-4 md:p-0 md:overflow-hidden">
+                <div className="px-4 pt-4 md:px-6">
+                    <h3 className="text-lg font-semibold text-gray-100">Resultados da Comparação ({comparisons.length})</h3>
+                </div>
+                {/* Mobile View */}
+                <div className="md:hidden mt-4 space-y-4">
+                    {comparisons.map(comp => (
+                        <div key={comp.id} className="bg-neutral-800/50 p-4 rounded-lg border border-yellow-400/20">
+                            <div className="flex justify-between items-start gap-4">
+                                <div className="font-bold text-gray-100">{comp.codigoLinha}</div>
+                                {getStatusPill(comp.statusComparacao)}
+                            </div>
+                            <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                                <div className="text-gray-400">Serviço (T/G):</div>
+                                <div className="text-gray-200 font-medium">{comp.transdataServico || '-'} / {comp.globusServico || '-'}</div>
+                                
+                                <div className="text-gray-400">Sentido (T/G):</div>
+                                <div className="text-gray-200 font-medium">{comp.transdataSentido || '-'} / {comp.globusSentidoTexto || '-'}</div>
+
+                                <div className="text-gray-400">Horário (T/G):</div>
+                                <div className="text-gray-200 font-medium">{comp.transdataHorarioPrevisto || '-'} / {comp.globusHorarioSaida || '-'}</div>
+
+                                {comp.diferencaHorarioMinutos != null && <>
+                                    <div className="text-gray-400">Diferença:</div>
+                                    <div className="text-yellow-400 font-medium">{comp.diferencaHorarioMinutos} min</div>
+                                </>}
+
+                                <div className="text-gray-400">Setor Globus:</div>
+                                <div className="text-gray-200 font-medium">{comp.globusSetor || '-'}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Desktop View */}
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="min-w-full divide-y divide-yellow-400/20">
+                        <thead className="">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Linha</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Serviço (T/G)</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Sentido (T/G)</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Horário (T/G)</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Setor Globus</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-yellow-400/20">
+                            {comparisons.map((comp) => (
+                                <tr key={comp.id} className="hover:bg-white/5">
+                                    <td className="px-6 py-4 whitespace-nowrap">{getStatusPill(comp.statusComparacao)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-200">{comp.codigoLinha}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{comp.transdataServico || '-'} / {comp.globusServico || '-'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{comp.transdataSentido || '-'} / {comp.globusSentidoTexto || '-'}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                                        {comp.transdataHorarioPrevisto || '-'} / {comp.globusHorarioSaida || '-'}
+                                        {comp.diferencaHorarioMinutos != null && <span className="ml-2 text-yellow-400">({comp.diferencaHorarioMinutos}m)</span>}
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{comp.globusSetor || '-'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </CardContent>
+        </GlowingCard>
+    );
+};
+
+const HistoricoTable = ({ historico, loading }: { historico: HistoricoComparacaoResumo[], loading: boolean }) => {
+    if (loading) return <div className="text-sm text-gray-400">Carregando histórico...</div>;
+    if (historico.length === 0) return <div className="text-sm text-gray-500">Sem execuções recentes.</div>;
+
+    return (
+        <GlowingCard>
+           
+        </GlowingCard>
+    );
+};
+
+const EmptyState = ({ onExecute, executing, date }: any) => (
+    <GlowingCard className="text-center">
+        <CardContent className="p-8">
+            <GitCompare className="mx-auto h-12 w-12 text-gray-500" />
+            <h3 className="mt-4 text-xl font-semibold text-gray-200">Nenhuma comparação encontrada</h3>
+            <p className="mt-2 text-md text-gray-400">Execute a comparação para a data <span className="font-semibold text-yellow-400">{date}</span> para ver os resultados.</p>
+            <Button onClick={onExecute} disabled={executing} className="mt-6" size="lg">
+                {executing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Play className="h-5 w-5 mr-2" />}
+                {executing ? 'Executando...' : 'Executar Comparação'}
+            </Button>
+        </CardContent>
+    </GlowingCard>
+);
+
+const LoadingState = ({ text }: { text: string }) => (
+    <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-yellow-400" />
+        <span className="ml-3 text-gray-300">{text}</span>
+    </div>
+);
+
+const ReportModal = ({ isOpen, onClose, stats, comparisons, date }: any) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto p-4 rounded-2xl bg-gradient-to-br from-black via-neutral-900 to-yellow-950 border border-yellow-400/30">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-2xl font-bold text-gray-100">Relatório de Comparação - {date}</h2>
+                    <Button onClick={onClose} variant="ghost" size="icon">
+                        <X className="h-6 w-6" />
+                    </Button>
+                </div>
+                <div className="space-y-6">
+                    {stats && <Statistics stats={stats} isModal={true} />}
+                    {comparisons && <ComparisonTable comparisons={comparisons} isModal={true} />}
+                </div>
             </div>
         </div>
     );
 };
 
-const EmptyState = ({ onExecute, executing, date }: any) => (
-    <div className="text-center py-20 bg-white rounded-lg shadow-sm border border-gray-200">
-        <GitCompare className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-4 text-xl font-semibold text-gray-800">Nenhuma comparação encontrada</h3>
-        <p className="mt-2 text-md text-gray-500">Execute a comparação para a data <span className="font-semibold">{date}</span> para ver os resultados.</p>
-        <button onClick={onExecute} disabled={executing} className="mt-6 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center mx-auto transition-all">
-            {executing ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Play className="h-5 w-5 mr-2" />}
-            {executing ? 'Executando...' : 'Executar Comparação'}
-        </button>
-    </div>
-);
-
-const LoadingState = ({ text }: { text: string }) => (
-    <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        <span className="ml-3 text-gray-600">{text}</span>
-    </div>
-);
 
 // --- MAIN COMPONENT ---
 
@@ -258,27 +339,46 @@ export const ComparacaoViagens: React.FC = () => {
     const [success, setSuccess] = useState<string | null>(null);
     const [historico, setHistorico] = useState<HistoricoComparacaoResumo[]>([]);
     const [historicoLoading, setHistoricoLoading] = useState(false);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
-    const carregarEstatisticas = useCallback(async () => {
+    const buscarComparacoes = useCallback(async (currentFilters: FiltrosComparacao) => {
         setLoading(true);
-        setError(null);
         try {
-            const stats = await comparacaoViagensService.getEstatisticas(dataReferencia);
-            setEstatisticas(stats);
-            if (!stats) {
-                setComparacoes([]); // Limpa resultados se não houver estatísticas
-            }
+            const response = await comparacaoViagensService.getComparacoes(dataReferencia, currentFilters);
+            setComparacoes(response.data);
         } catch (err: any) {
-            setError(err.message || 'Erro ao carregar estatísticas.');
-            setEstatisticas(null);
+            const msg = err.message || 'Erro ao buscar comparações.';
+            setError(msg);
+            toast.error(msg);
         } finally {
             setLoading(false);
         }
     }, [dataReferencia]);
 
+    const carregarDadosIniciais = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        setComparacoes([]);
+        try {
+            const stats = await comparacaoViagensService.getEstatisticas(dataReferencia);
+            setEstatisticas(stats);
+            if (stats && stats.totalComparacoes > 0) {
+                buscarComparacoes(initialFilters);
+            } else {
+                setLoading(false);
+            }
+        } catch (err: any) {
+            const msg = err.message || 'Erro ao carregar estatísticas.';
+            setError(msg);
+            toast.error(msg);
+            setEstatisticas(null);
+            setLoading(false);
+        }
+    }, [dataReferencia, buscarComparacoes]);
+
     useEffect(() => {
-        carregarEstatisticas();
-    }, [carregarEstatisticas]);
+        carregarDadosIniciais();
+    }, [carregarDadosIniciais]);
 
     const carregarHistorico = useCallback(async () => {
         setHistoricoLoading(true);
@@ -304,144 +404,95 @@ export const ComparacaoViagens: React.FC = () => {
             const result = await comparacaoViagensService.executarComparacao(dataReferencia);
             setEstatisticas(result);
             setSuccess(`Comparação executada! ${result.totalComparacoes} registros processados.`);
-            // Auto-fetch results after execution
-            buscarComparacoes();
-            try {
-                const ultimo = await comparacaoViagensService.obterUltimoHistorico(dataReferencia);
-                if (ultimo) {
-                    setHistorico((prev) => [ultimo, ...prev.filter((i) => i.id !== ultimo.id)].slice(0, 5));
-                } else {
-                    carregarHistorico();
-                }
-            } catch {
-                carregarHistorico();
-            }
+            toast.success(`Comparação executada com sucesso!`);
+            await carregarDadosIniciais();
+            await carregarHistorico();
         } catch (err: any) {
-            setError(err.message || 'Falha ao executar a comparação.');
+            const msg = err.message || 'Falha ao executar a comparação.';
+            setError(msg);
+            toast.error(msg);
         } finally {
             setExecutando(false);
         }
     };
-
-    const buscarComparacoes = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await comparacaoViagensService.getComparacoes(dataReferencia, filtros);
-            setComparacoes(response.data);
-        } catch (err: any) {
-            setError(err.message || 'Erro ao buscar comparações.');
-        } finally {
-            setLoading(false);
-        }
-    }, [dataReferencia, filtros]);
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFiltros(prev => ({ ...prev, [name]: value, page: 1 }));
     };
 
+    const handleApplyFilters = () => {
+        buscarComparacoes(filtros);
+    };
+
     const clearFilters = () => {
         setFiltros(initialFilters);
+        buscarComparacoes(initialFilters);
     };
 
     return (
-        <div className="space-y-6 p-4 md:p-6 bg-gray-50 min-h-screen">
-            <PageHeader />
+        <div className="min-h-screen w-full bg-gradient-to-br from-black via-neutral-900 to-yellow-950 text-gray-100 p-4 sm:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto space-y-6">
+                <PageHeader />
 
-            {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg" role="alert">{error}</div>}
-            {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg" role="alert">{success}</div>}
+                {error && <Alert variant="destructive"><AlertIcon /><AlertTitle>Erro!</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
+                {success && <Alert variant="success"><AlertIcon /><AlertTitle>Sucesso!</AlertTitle><AlertDescription>{success}</AlertDescription></Alert>}
 
-            <Controls 
-                date={dataReferencia}
-                onDateChange={setDataReferencia}
-                onExecute={executarComparacao}
-                executing={executando}
-                onToggleFilters={() => setShowFilters(!showFilters)}
-                filtersVisible={showFilters}
-                onFetchComparisons={buscarComparacoes}
-                loading={loading}
-                hasComparisons={(estatisticas?.totalComparacoes || 0) > 0}
-            />
-
-            {showFilters && (
-                <FilterPanel 
-                    filters={filtros}
-                    onFilterChange={handleFilterChange}
-                    onClear={clearFilters}
-                    onApply={buscarComparacoes}
+                <Controls 
+                    date={dataReferencia}
+                    onDateChange={setDataReferencia}
+                    onExecute={executarComparacao}
+                    executing={executando}
+                    onToggleFilters={() => setShowFilters(!showFilters)}
+                    filtersVisible={showFilters}
+                    onFetchComparisons={handleApplyFilters}
+                    loading={loading}
+                    hasComparisons={(estatisticas?.totalComparacoes || 0) > 0}
+                    onOpenReport={() => setIsReportModalOpen(true)}
                 />
-            )}
 
-            {loading && !estatisticas ? (
-                <LoadingState text="Carregando estatísticas..." />
-            ) : estatisticas ? (
-                <div className="space-y-6">
-                    <Statistics stats={estatisticas} />
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                        <div className="flex items-center gap-3 mb-4">
-                            <TrendingUp className="h-5 w-5 text-purple-600" />
-                            <h3 className="text-lg font-semibold text-gray-800">Histórico Recente</h3>
-                        </div>
-                        {historicoLoading ? (
-                            <div className="text-sm text-gray-500">Carregando histórico...</div>
-                        ) : historico.length === 0 ? (
-                            <div className="text-sm text-gray-500">Sem execuções recentes.</div>
+                {showFilters && (
+                    <FilterPanel 
+                        filters={filtros}
+                        onFilterChange={handleFilterChange}
+                        onClear={clearFilters}
+                        onApply={handleApplyFilters}
+                    />
+                )}
+
+                {loading && !estatisticas ? (
+                    <LoadingState text="Carregando estatísticas..." />
+                ) : estatisticas ? (
+                    <div className="space-y-6">
+                        <Statistics stats={estatisticas} />
+                        <HistoricoTable historico={historico} loading={historicoLoading} />
+                        
+                        {loading ? (
+                            <LoadingState text="Carregando comparações..." />
+                        ) : comparacoes.length > 0 ? (
+                            <ComparisonTable comparisons={comparacoes} />
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full text-sm">
-                                    <thead>
-                                        <tr className="text-left text-gray-600 border-b">
-                                            <th className="py-2 pr-4">Data Ref.</th>
-                                            <th className="py-2 pr-4">Executado em</th>
-                                            <th className="py-2 pr-4">Executor</th>
-                                            <th className="py-2 pr-4">Total</th>
-                                            <th className="py-2 pr-4">Compatíveis</th>
-                                            <th className="py-2 pr-4">Divergentes</th>
-                                            <th className="py-2 pr-4">% Compat.</th>
-                                            <th className="py-2 pr-4">Duração</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {historico.map((h) => (
-                                            <tr key={h.id} className="border-b last:border-0">
-                                                <td className="py-2 pr-4">{h.dataReferencia}</td>
-                                                <td className="py-2 pr-4">{h.createdAt ? new Date(h.createdAt).toLocaleString() : '-'}</td>
-                                                <td className="py-2 pr-4">{h.executedByEmail || '-'}</td>
-                                                <td className="py-2 pr-4">{h.totalComparacoes}</td>
-                                                <td className="py-2 pr-4 text-green-700">{h.compativeis}</td>
-                                                <td className="py-2 pr-4 text-red-700">{h.divergentes}</td>
-                                                <td className="py-2 pr-4">{h.percentualCompatibilidade}%</td>
-                                                <td className="py-2 pr-4">{h.tempoProcessamento}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                            <GlowingCard className="text-center">
+                                <CardContent className="p-8">
+                                    <h3 className="text-lg font-medium text-gray-200">Nenhum resultado para os filtros aplicados.</h3>
+                                    <p className="text-sm text-gray-400">Tente limpar os filtros ou buscar novamente.</p>
+                                </CardContent>
+                            </GlowingCard>
                         )}
                     </div>
-                    {loading ? (
-                        <LoadingState text="Carregando comparações..." />
-                    ) : comparacoes.length > 0 ? (
-                        <ComparisonTable comparisons={comparacoes} />
-                    ) : (
-                        <div className="text-center py-10 bg-white rounded-lg shadow-sm border">
-                            <h3 className="text-lg font-medium">Nenhum resultado para os filtros aplicados.</h3>
-                            <p className="text-sm text-gray-500">Tente limpar os filtros ou buscar novamente.</p>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <EmptyState onExecute={executarComparacao} executing={executando} date={dataReferencia} />
-            )}
+                ) : (
+                    <EmptyState onExecute={executarComparacao} executing={executando} date={dataReferencia} />
+                )}
+            </div>
+            <ReportModal 
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                stats={estatisticas}
+                comparisons={comparacoes}
+                date={dataReferencia}
+            />
         </div>
     );
 };
 
-
-
 export default ComparacaoViagens;
-
-
-
-

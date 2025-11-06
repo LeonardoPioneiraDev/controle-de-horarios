@@ -5,6 +5,7 @@ import { viagensTransdataService } from './viagens-transdata/viagens-transdata.s
 import { controleHorariosService } from "../features/controle-horarios/services/controle-horarios.service"; // ✅ CAMINHO 
 import { emailService } from './email/email.service';
 import { healthService } from './health/health.service';
+import { logsService } from './logs/logs.service';
 
 // Export all services
 export {
@@ -14,6 +15,7 @@ export {
   controleHorariosService,
   emailService,
   healthService,
+  logsService,
 };
 
 // Re-export makeAuthenticatedRequest for backward compatibility if needed

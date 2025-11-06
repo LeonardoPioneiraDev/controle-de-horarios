@@ -82,17 +82,31 @@ export class BaseApiService {
         const safeBase = this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
         const rawUrl = String(config.url || '');
         const path = rawUrl.startsWith('/') ? rawUrl.substring(1) : rawUrl;
-        const absolute = new URL(path, safeBase).toString();
+        const urlObj = new URL(path, safeBase);
+
+        // Manually merge query params to ensure proper '?' handling
+        if (config.params && typeof config.params === 'object') {
+          const current = new URLSearchParams(urlObj.search);
+          Object.entries(config.params as Record<string, unknown>).forEach(([key, value]) => {
+            if (value === undefined || value === null) return;
+            current.append(key, String(value));
+          });
+          const query = current.toString();
+          urlObj.search = query ? `?${query}` : '';
+          // Prevent axios from re-appending params
+          (config as any).params = undefined;
+        }
+
         // Force axios to use absolute URL
-        config.baseURL = '' as any;
-        config.url = absolute;
+        (config as any).baseURL = undefined;
+        config.url = urlObj.toString();
 
         if (this.debug) {
           console.log('🔄 API Request:', {
             method: config.method?.toUpperCase(),
             url: config.url,
             baseURL: safeBase,
-            fullURL: absolute,
+            fullURL: config.url,
             hasToken,
             tokenLength: token?.length || 0,
             authHeader: config.headers.Authorization ? 'presente' : 'ausente'
@@ -166,7 +180,7 @@ export const makeAuthenticatedRequest = async (
   const rawBaseURL = 'http://localhost:3336/api';
   const base = rawBaseURL.endsWith('/') ? rawBaseURL : `${rawBaseURL}/`;
   const ep = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  const url = `${base}${ep}`;
+  const url = new URL(ep, base).toString();
   
   const defaultOptions: RequestInit = {
     headers: {

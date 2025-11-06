@@ -1,4 +1,4 @@
-import { FC, useEffect, useRef } from 'react';
+﻿import { FC, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Users, LogOut, Settings, Home, Bus, Server, GitCompare, Clock, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -49,29 +49,29 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-primary-900 bg-opacity-75 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/70 backdrop-blur bg-opacity-75 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         ></div>
       )}
 
       <div
         ref={sidebarRef}
-        className={`fixed top-16 bottom-0 left-0 z-50 bg-primary-900 shadow-2xl transform transition-all duration-300 ease-in-out ${
+        className={`fixed top-16 bottom-0 left-0 z-50 bg-black/70 backdrop-blur shadow-2xl transform transition-all duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'
         } ${isSidebarExpanded ? 'lg:w-64' : 'lg:w-20'} lg:translate-x-0 lg:static lg:inset-y-0`}
       >
         <div className="flex h-full flex-col">
           {/* Logo and Toggle Button */}
-          <div className={`flex h-16 shrink-0 items-center border-b border-accent-500 ${isSidebarExpanded ? 'px-6' : 'justify-center'}`}>
+          <div className={`flex h-16 shrink-0 items-center border-b border-yellow-400/20 ${isSidebarExpanded ? 'px-6' : 'justify-center'}`}>
             {isSidebarExpanded ? (
-              <h1 className="text-xl font-bold text-accent-500">Controle de Horários</h1>
+              <h1 className="text-sm font-bold text-yellow-300">Controle de Horários</h1>
             ) : (
               <img src={logo} alt="Logo" className="h-8 w-8" /> // Compact logo for collapsed state
             )}
             {/* Toggle button for desktop sidebar */}
             <button
               type="button"
-              className={`-m-2.5 p-2.5 text-accent-500 ${isSidebarExpanded ? 'ml-auto' : 'mx-auto'}`}
+              className={`-m-2.5 p-2.5 text-yellow-300 ${isSidebarExpanded ? 'ml-auto' : 'mx-auto'}`}
               onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
             >
               <span className="sr-only">Toggle sidebar</span>
@@ -88,6 +88,7 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
           {/* Navigation */}
           <nav className="flex flex-1 flex-col px-6 py-4">
             <ul className="flex flex-1 flex-col gap-y-2">
+              
               {([...navigation, { name: 'Histórico Comparações', href: '/historico-comparacoes', icon: TrendingUp }]).map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
@@ -96,14 +97,14 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
                       to={item.href}
                       className={`group flex items-center gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors duration-200 ease-in-out ${
                         isActive
-                          ? 'bg-accent-500 text-primary-900'
-                          : 'text-accent-500 hover:text-primary-900 hover:bg-accent-500'
+                          ? 'bg-yellow-400 text-gray-900'
+                          : 'text-yellow-300 hover:text-gray-900 hover:bg-yellow-400'
                       }`}
                       onClick={() => setSidebarOpen(false)} // Close sidebar on navigation
                     >
                       <item.icon
                         className={`h-5 w-5 shrink-0 ${
-                          isActive ? 'text-primary-900' : 'text-accent-500 group-hover:text-primary-900'
+                          isActive ? 'text-gray-900' : 'text-yellow-300 group-hover:text-gray-900'
                         }`}
                       />
                       {isSidebarExpanded && item.name}
@@ -114,24 +115,24 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
             </ul>
 
             {/* ✅ SEÇÃO DE INFORMAÇÕES DO SISTEMA */}
-            {isSidebarExpanded && (
-              <div className="mt-auto pt-4 border-t border-accent-500">
-                <div className="text-xs text-accent-500 space-y-1">
+            {false && (
+              <div className="mt-auto pt-4 border-t border-yellow-400/20">
+                <div className="text-xs text-yellow-300 space-y-1">
                   <div className="flex justify-between">
                     <span>Ambiente:</span>
-                    <span className="font-medium text-accent-500">Development</span>
+                    <span className="font-medium text-yellow-300">Development</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Backend:</span>
-                    <span className="font-medium text-accent-500">:3335</span>
+                    <span className="font-medium text-yellow-300">:3335</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Frontend:</span>
-                    <span className="font-medium text-accent-500">:3000</span>
+                    <span className="font-medium text-yellow-300">:3000</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Versão:</span>
-                    <span className="font-medium text-accent-500">v2.1</span>
+                    <span className="font-medium text-yellow-300">v2.1</span>
                   </div>
                 </div>
               </div>
@@ -139,32 +140,28 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
           </nav>
 
           {/* User menu */}
-          <div className="border-t border-accent-500 p-4">
+          <div className="border-t border-yellow-400/20 p-4">
             <div className="flex items-center gap-x-3 mb-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-500">
-                <span className="text-primary-900 text-sm font-medium">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400">
+                <span className="text-gray-900 text-sm font-medium">
                   {user?.firstName?.charAt(0)?.toUpperCase()}
                 </span>
               </div>
               {isSidebarExpanded && (
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-accent-500">
+                  <p className="text-sm font-medium text-yellow-300">
                     {user?.firstName} {user?.lastName}
                   </p>
-                  <p className="text-xs text-accent-500 capitalize">{user?.role}</p>
+                  <p className="text-xs text-yellow-300 capitalize">{user?.role}</p>
                 </div>
               )}
             </div>
             
             {isSidebarExpanded && (
               <div className="flex flex-col gap-2">
-                <button className="flex items-center justify-center gap-2 rounded-md bg-accent-500 px-3 py-2 text-sm text-primary-900 hover:bg-accent-600 transition-colors w-full">
-                  <Settings className="h-4 w-4" />
-                  Configurações
-                </button>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center justify-center gap-2 rounded-md bg-accent-500 px-3 py-2 text-sm text-primary-900 hover:bg-accent-600 transition-colors w-full"
+                  className="flex items-center justify-center gap-2 rounded-md bg-yellow-400 px-3 py-2 text-sm text-gray-900 hover:bg-yellow-300 transition-colors w-full"
                 >
                   <LogOut className="h-4 w-4" />
                   Sair
@@ -179,4 +176,12 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
 };
 
 export default Sidebar;
+
+
+
+
+
+
+
+
 

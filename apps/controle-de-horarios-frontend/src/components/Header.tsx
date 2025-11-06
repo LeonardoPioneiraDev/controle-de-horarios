@@ -1,8 +1,8 @@
 import { FC } from 'react';
 import { Menu, X, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import logo from './logo.png'
- 
+import logo from './logo.png';
+
 interface HeaderProps {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
@@ -14,63 +14,66 @@ const Header: FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpande
   const { user } = useAuth();
 
   return (
-    <header className="sticky top-0 z-30 bg-primary-900 shadow-md py-4 px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-      {/* Left Section: Logo and Company Name */}
-      <div className="flex items-center gap-2">
-        {/* Placeholder for Logo */}
-        <img src={logo} alt="Logo" className="h-8 w-8" /> {/* Replace with actual logo path */}
-        <span className="text-accent-500 text-lg font-semibold hidden sm:block">Viacao Pioneira Ltda</span>
-      </div>
-
-      {/* Center Section: System Name (Mobile & Desktop) */}
-      <div className="absolute left-1/2 transform -translate-x-1/2">
-        <h1 className="text-xl font-bold text-accent-500 md:text-2xl">Controle de Horários</h1>
-      </div>
-
-      {/* Right Section: Mobile Toggle / User Info & Logout */}
-      <div className="flex items-center gap-4">
-        {/* Mobile Sidebar Toggle/Close */}
-        <div className="lg:hidden">
-          {!sidebarOpen ? (
-            <button
-              type="button"
-              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-accent-500"
-            >
-              <span className="sr-only">Open sidebar</span>
-              <Menu className="h-6 w-6" aria-hidden="true" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-accent-500"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <span className="sr-only">Close sidebar</span>
-              <X className="h-6 w-6" aria-hidden="true" />
-            </button>
-          )}
+    <header className="sticky top-0 z-30 backdrop-blur bg-black/60 border-b border-yellow-400/20 px-4 sm:px-6 lg:px-8 h-16">
+      <div className="h-full flex items-center justify-between">
+        {/* Left: Logo + Empresa */}
+        <div className="flex items-center gap-2">
+          <img src={logo} alt="Viação Pioneira" className="h-8 w-8 rounded-full ring-1 ring-yellow-400/30" />
+          <span className="text-yellow-300 text-sm sm:text-base font-semibold hidden sm:block">Viação Pioneira Ltda</span>
         </div>
 
-        {/* Desktop User Info & Logout (Conditional) */}
-        {(!sidebarOpen && !isSidebarExpanded) && (
-          <div className="hidden lg:flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-500">
-              <span className="text-primary-900 text-sm font-medium">
-                {user?.firstName?.charAt(0)?.toUpperCase()}
-              </span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center justify-center gap-2 rounded-md bg-accent-500 px-3 py-2 text-sm text-primary-900 hover:bg-accent-600 transition-colors"
-            >
-              <LogOut className="h-4 w-4" />
-              Sair
-            </button>
+        {/* Center: Nome do Sistema */}
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <h1 className="text-base sm:text-lg md:text-xl font-bold text-yellow-300">Controle de Horários</h1>
+        </div>
+
+        {/* Right: Toggle + Ações */}
+        <div className="flex items-center gap-3">
+          {/* Toggle Mobile */}
+          <div className="lg:hidden">
+            {!sidebarOpen ? (
+              <button
+                type="button"
+                className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-yellow-300 hover:text-yellow-200"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <span className="sr-only">Abrir menu</span>
+                <Menu className="h-6 w-6" aria-hidden="true" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-yellow-300 hover:text-yellow-200"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <span className="sr-only">Fechar menu</span>
+                <X className="h-6 w-6" aria-hidden="true" />
+              </button>
+            )}
           </div>
-        )}
+
+          {/* Ações quando sidebar colapsada */}
+          {(!sidebarOpen && !isSidebarExpanded) && (
+            <div className="hidden lg:flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400">
+                <span className="text-gray-900 text-sm font-medium">
+                  {user?.firstName?.charAt(0)?.toUpperCase()}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center gap-2 rounded-md bg-yellow-400 px-3 py-2 text-sm text-gray-900 hover:bg-yellow-300 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Sair
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
 };
 
 export default Header;
+

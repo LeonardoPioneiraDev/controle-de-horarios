@@ -45,11 +45,13 @@ export class UpdateMultipleControleHorariosDto {
   @Type(() => SingleControleHorarioUpdateDto)
   updates: SingleControleHorarioUpdateDto[];
 
-  @ApiProperty({ description: 'Nome do editor', required: true })
+  @ApiProperty({ description: 'Nome do editor', required: false })
+  @IsOptional()
   @IsString()
-  editorNome: string;
+  editorNome?: string;
 
-  @ApiProperty({ description: 'Email do editor', required: true })
+  @ApiProperty({ description: 'Email do editor', required: false })
+  @IsOptional()
   @IsString()
-  editorEmail: string;
+  editorEmail?: string;
 }

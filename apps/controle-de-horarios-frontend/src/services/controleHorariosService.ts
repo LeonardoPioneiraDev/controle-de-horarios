@@ -54,7 +54,7 @@ export const controleHorariosService = {
   ): Promise<any> {
     // Bypassa axios para evitar problemas de montagem de URL e usa fetch helper
     const response = await makeAuthenticatedRequest(
-      '/controle-horarios/multiples',
+      '/controle-horarios/multiples-batch',
       {
         method: 'PATCH',
         body: JSON.stringify(dados),

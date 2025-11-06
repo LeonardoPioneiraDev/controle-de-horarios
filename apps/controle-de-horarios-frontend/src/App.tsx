@@ -5,9 +5,13 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
+import Instructions from './pages/Instructions';
 import { ResetPassword } from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import { Users } from './pages/Users';
+import { UserCreate } from './pages/UserCreate';
+import { UserEdit } from './pages/UserEdit';
+import { Logs } from './pages/Logs';
 import { Viagens } from './pages/Viagens';
 import { ViagensGlobus } from './pages/ViagensGlobus';
 import ComparacaoViagens from './pages/ComparacaoViagens';
@@ -27,6 +31,7 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/instrucoes" element={<Instructions />} />
           
           {/* Protected Routes */}
           <Route path="/" element={
@@ -37,6 +42,9 @@ function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="users" element={<Users />} />
+            <Route path="users/new" element={<UserCreate />} />
+            <Route path="users/:id/edit" element={<UserEdit />} />
+            <Route path="logs" element={<Logs />} />
             <Route path="viagens" element={<Viagens />} />
             <Route path="viagens-globus" element={<ViagensGlobus />} />
             <Route path="comparacao-viagens" element={<ComparacaoViagens />} />

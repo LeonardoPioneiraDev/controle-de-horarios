@@ -1,70 +1,124 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { Info, CheckCircle2, Clock, Filter, Edit3, Users } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   return (
-    <div className="space-y-6">
-      {/* Page Title and Description */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="mt-1 text-gray-600 dark:text-gray-400">Visão geral e estatísticas do sistema.</p>
-        </div>
-        {/* Action Buttons (if any) */}
-        <div>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-            Gerar Relatório
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Card 1: Total Viagens */}
-        <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Total de Viagens</h2>
-          <p className="mt-2 text-3xl font-bold text-blue-600">1,234</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Últimos 30 dias</p>
+    <div className="text-gray-100">
+      {/* Container central com espaçamento equilibrado (Layout aplica 10px do header/aside) */}
+      <div className="mx-auto w-full max-w-4xl space-y-4">
+        {/* Título e ações */}
+        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Bem-vindo ao Controle de Horários</h1>
+            <p className="text-sm text-gray-300">Entenda rapidamente como usar a ferramenta de gestão</p>
+          </div>
+          <div className="flex gap-2">
+            <Link to="/controle-horarios" className="inline-flex items-center gap-2 rounded-md bg-yellow-400 px-3 py-2 text-sm text-gray-900 hover:bg-yellow-300 transition-colors">
+              <Clock className="h-4 w-4" /> Abrir Controle de Horários
+            </Link>
+            <Link to="/instrucoes" className="inline-flex items-center gap-2 rounded-md border border-yellow-400/40 px-3 py-2 text-sm text-yellow-300 hover:bg-yellow-400/10 transition-colors">
+              <Info className="h-4 w-4" /> Instruções
+            </Link>
+          </div>
         </div>
 
-        {/* Card 2: Viagens Cumpridas */}
-        <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Viagens Cumpridas</h2>
-          <p className="mt-2 text-3xl font-bold text-green-600">987</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">80% de cumprimento</p>
+        {/* Como usar os filtros */}
+        <div className="rounded-xl border border-yellow-400/20 bg-gray-900/60 p-[10px]">
+          <h2 className="text-base font-semibold text-yellow-300 mb-2">Como usar os filtros</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-300">
+            <div>
+              <p className="font-medium text-gray-200">Data de referência</p>
+              <p>Selecione a data do dia que deseja analisar.</p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-200">Linha e Serviço</p>
+              <p>Use código da linha e do serviço para focar a operação.</p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-200">Sentido</p>
+              <p>IDA, VOLTA ou CIRCULAR, conforme aplicável à linha.</p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-200">Setor</p>
+              <p>Filtre pelo setor/terminal responsável.</p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-200">Origem/Destino</p>
+              <p>Pesquise por texto (ex.: “Terminal”, “Centro”).</p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-200">Equipe</p>
+              <p>Busque por motorista/cobrador (nome) para localizar viagens.</p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-200">Atividade</p>
+              <p>Filtre por código/nome de atividade, se necessário.</p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-200">Tipo de dia</p>
+              <p>Utilize (ex.: “Útil”, “Sábado”, “Domingo”) para contexto.</p>
+            </div>
+          </div>
         </div>
 
-        {/* Card 3: Viagens Não Cumpridas */}
-        <div className="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Viagens Não Cumpridas</h2>
-          <p className="mt-2 text-3xl font-bold text-red-600">247</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">20% de não cumprimento</p>
+        {/* Fluxo recomendado */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-yellow-400/20 bg-gray-900/60 p-[10px]">
+            <div className="flex items-center gap-2 text-yellow-300 mb-1">
+              <Filter className="h-4 w-4" />
+              <h3 className="font-semibold">1. Aplique filtros</h3>
+            </div>
+            <p className="text-sm text-gray-300">Selecione data, linha/serviço e sentido para localizar as viagens.</p>
+          </div>
+          <div className="rounded-xl border border-yellow-400/20 bg-gray-900/60 p-[10px]">
+            <div className="flex items-center gap-2 text-yellow-300 mb-1">
+              <Edit3 className="h-4 w-4" />
+              <h3 className="font-semibold">2. Edite a viagem</h3>
+            </div>
+            <p className="text-sm text-gray-300">Atualize veículo, motorista e cobrador quando necessário.</p>
+          </div>
+          <div className="rounded-xl border border-yellow-400/20 bg-gray-900/60 p-[10px]">
+            <div className="flex items-center gap-2 text-yellow-300 mb-1">
+              <CheckCircle2 className="h-4 w-4" />
+              <h3 className="font-semibold">3. Propagação “para frente”</h3>
+            </div>
+            <p className="text-sm text-gray-300">A edição vale para a âncora e as próximas do mesmo dia/linha/serviço/sentido.</p>
+          </div>
+          <div className="rounded-xl border border-yellow-400/20 bg-gray-900/60 p-[10px]">
+            <div className="flex items-center gap-2 text-yellow-300 mb-1">
+              <Users className="h-4 w-4" />
+              <h3 className="font-semibold">4. Auditoria</h3>
+            </div>
+            <p className="text-sm text-gray-300">Cada alteração registra quem editou e quando (rastreabilidade).</p>
+          </div>
         </div>
 
-        {/* Example Section: Recent Activities Table */}
-        <div className="lg:col-span-3 bg-white dark:bg-gray-700 p-6 rounded-lg shadow-md">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Atividades Recentes</h2>
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-600">
-            <thead>
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Viagem ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Data</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-700 divide-y divide-gray-200 dark:divide-gray-600">
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">#12345</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-green-500">Cumprida</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">2023-10-27</td>
-              </tr>
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">#12346</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-red-500">Não Cumprida</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">2023-10-27</td>
-              </tr>
-              {/* More rows... */}
-            </tbody>
-          </table>
+        {/* Boas práticas e recursos */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-yellow-400/20 bg-gray-900/60 p-[10px]">
+            <h3 className="text-sm font-semibold text-yellow-300 mb-1">Boas práticas</h3>
+            <ul className="list-disc list-inside text-sm text-gray-300 space-y-1">
+              <li>Valide filtros antes de grandes períodos.</li>
+              <li>Use atualização em lote para várias mudanças.</li>
+              <li>Confira mensagens de sucesso/erro.</li>
+            </ul>
+          </div>
+          <div className="rounded-xl border border-yellow-400/20 bg-gray-900/60 p-[10px]">
+            <h3 className="text-sm font-semibold text-yellow-300 mb-1">Dicas</h3>
+            <ul className="list-disc list-inside text-sm text-gray-300 space-y-1">
+              <li>Busca por linha/serviço ajuda no foco.</li>
+              <li>Ancore na viagem correta antes de editar.</li>
+              <li>Verifique o sentido (ida/volta).</li>
+            </ul>
+          </div>
+          <div className="rounded-xl border border-yellow-400/20 bg-gray-900/60 p-[10px]">
+            <h3 className="text-sm font-semibold text-yellow-300 mb-1">Recursos</h3>
+            <ul className="list-disc list-inside text-sm text-gray-300 space-y-1">
+              <li><Link to="/instrucoes" className="text-yellow-300 hover:text-yellow-200">Instruções detalhadas</Link></li>
+              <li>Suporte interno e treinamento</li>
+            </ul>
+          </div>
         </div>
       </div>
     </div>
@@ -72,3 +126,4 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+

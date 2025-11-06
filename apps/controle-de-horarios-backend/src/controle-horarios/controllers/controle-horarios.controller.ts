@@ -106,21 +106,47 @@ export class ControleHorariosController {
     };
   }
 
-  // Garantir que a rota estática 'multiples' seja registrada antes da dinâmica ':id'
-  @Patch('multiples')
-  @Roles(UserRole.ANALISTA, UserRole.GERENTE)
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Atualizar múltiplos registros de controle de horário com propagação' })
-  @ApiResponse({ status: 200, description: 'Registros atualizados com sucesso' })
-  @ApiResponse({ status: 400, description: 'Requisição inválida' })
-  async updateMultipleControleHorarios_pre(
-    @Body() updateMultipleDto: UpdateMultipleControleHorariosDto,
-  ) {
-    return this.updateMultipleControleHorarios(updateMultipleDto);
-  }
-
   // Rota estática antes da dinâmica ':id' para evitar colisão
   // (movido acima de ':id')
+
+  // Alias estático adicional para atualização em lote, garantindo prioridade sobre rota dinâmica ':id'
+  @Patch('multiples-batch')
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Atualizar múltiplos registros de controle de horário (alias estático)' })
+  @ApiResponse({ status: 200, description: 'Registros atualizados com sucesso' })
+  @ApiResponse({ status: 400, description: 'Requisição inválida' })
+  async updateMultipleControleHorariosBatch(
+    @Body() updateMultipleDto: UpdateMultipleControleHorariosDto,
+    @Req() req: any,
+  ) {
+    this.logger.log(`📝 Recebida requisição (alias) para atualizar múltiplos controles de horário`);
+    try {
+      const editorNome = req.user?.nome || 'Desconhecido';
+      const editorEmail = req.user?.email || 'desconhecido@example.com';
+
+      const results = await this.controleHorariosService.updateMultipleControleHorarios(
+        updateMultipleDto.updates,
+        editorNome,
+        editorEmail,
+      );
+      return {
+        success: true,
+        message: 'Múltiplos registros de controle de horário atualizados com sucesso',
+        data: results,
+      };
+    } catch (error: any) {
+      this.logger.error(`❌ Erro ao atualizar múltiplos controles de horário (alias): ${error.message}`);
+      throw new HttpException(
+        {
+          success: false,
+          message: 'Falha ao atualizar múltiplos registros de controle de horário',
+          error: error.message,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
 
   @Patch(':id')
   @Roles(UserRole.ANALISTA, UserRole.GERENTE)
@@ -170,13 +196,17 @@ export class ControleHorariosController {
   @ApiResponse({ status: 400, description: 'Requisição inválida' })
   async updateMultipleControleHorarios(
     @Body() updateMultipleDto: UpdateMultipleControleHorariosDto,
+    @Req() req: any,
   ) {
     this.logger.log(`🔄 Recebida requisição para atualizar múltiplos controles de horário`);
     try {
+      const editorNome = req.user?.nome || 'Desconhecido';
+      const editorEmail = req.user?.email || 'desconhecido@example.com';
+
       const results = await this.controleHorariosService.updateMultipleControleHorarios(
         updateMultipleDto.updates,
-        updateMultipleDto.editorNome,
-        updateMultipleDto.editorEmail,
+        editorNome,
+        editorEmail,
       );
       return {
         success: true,

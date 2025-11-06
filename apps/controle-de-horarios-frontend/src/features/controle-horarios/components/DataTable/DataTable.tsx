@@ -1,5 +1,5 @@
 // src/features/controle-horarios/components/DataTable/DataTable.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList } from 'lucide-react';
 import { ControleHorarioItem, StatusControleHorariosDto, EstatisticasControleHorariosDto } from '@/types/controle-horarios.types';
 
@@ -77,7 +77,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personTyp
               <textarea className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value={tempObservacoes} onChange={(e) => setTempObservacoes(e.target.value)} />
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"><Save className="h-4 w-4 mr-2 inline" /> Salvar</button>
+              <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-red text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"><Save className="h-4 w-4 mr-2 inline" /> Salvar</button>
               <button onClick={onClose} className="px-4 py-2 bg-white text-gray-700 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"><X className="h-4 w-4 mr-2 inline" /> Cancelar</button>
             </div>
           </div>
@@ -106,6 +106,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   const [showDriverOptionsModal, setShowDriverOptionsModal] = useState<ControleHorarioItem | null>(null);
   const [showCobradorOptionsModal, setShowCobradorOptionsModal] = useState<ControleHorarioItem | null>(null);
   const [vehicleDrafts, setVehicleDrafts] = useState<Record<string, string>>({});
+  const visibleItems = controleHorarios;
 
   const formatTime = (timeString?: string): string => {
     if (!timeString) return 'N/A';
@@ -163,23 +164,23 @@ export const DataTable: React.FC<DataTableProps> = ({
         </div>
       )}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-800 text-gray-200">
+          <thead className="bg-gray-800/60">
             <tr>
               <th className="w-10 px-3 py-3 text-left"><span className="sr-only">Expandir</span></th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Horários</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Linha / Serviço</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origem</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Destino</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Atividade / Tipo</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Setor</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Motorista</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cobrador</th>
-              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Veículo</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Horários</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Linha / Serviço</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Origem</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Destino</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Atividade / Tipo</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Setor</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Motorista</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Cobrador</th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Veículo</th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {controleHorarios.map((item) => {
+          <tbody className="bg-transparent divide-y divide-gray-800">
+            {visibleItems.map((item) => {
               const saidaISO = (item as any).hor_saida || (item as any).horaSaida;
               const saidaDate = saidaISO ? new Date(saidaISO) : null;
               const passou = !!(saidaDate && saidaDate.getTime() < Date.now());
@@ -188,53 +189,53 @@ export const DataTable: React.FC<DataTableProps> = ({
               const trocouCobrador = !!(item.nomeCobradorEditado || item.crachaCobradorEditado);
               const nomeAtividade = ((item as any).nome_atividade || '').toString().toUpperCase();
               const isAtividadeAmarela = nomeAtividade === 'RECOLHIMENTO' || nomeAtividade === 'RENDIÇÃO';
-              const rowClass = passou && !temVeiculo
-                ? 'border-l-4 border-red-500 bg-red-50/40'
-                : (isAtividadeAmarela
-                    ? 'border-l-4 border-yellow-400 bg-yellow-50/40'
-                    : (passou && temVeiculo && !trocouMotorista && !trocouCobrador
-                        ? 'border-l-4 border-green-500 bg-green-50/40'
-                        : ((trocouMotorista || trocouCobrador) ? 'border-l-4 border-yellow-400 bg-yellow-50/40' : '')));
+              const rowClass = (passou && !temVeiculo)
+                ? 'border-l-4 border-red-500 bg-red-900/10'
+                : (passou && (trocouMotorista || trocouCobrador))
+                  ? 'border-l-4 border-yellow-400 bg-yellow-900/10'
+                  : (passou && temVeiculo && !trocouMotorista && !trocouCobrador)
+                    ? 'border-l-4 border-green-500 bg-green-900/10'
+                    : '';
               const draft = vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '');
               return (
-                <tr key={item.id} className={`transition-colors hover:bg-gray-50 ${rowClass}`}>
+                <tr key={item.id} className={`transition-colors hover:bg-gray-800/40 ${rowClass}`}>
                   <td className="px-3 py-4" />
-                  <td className="px-2 py-4 text-sm text-gray-800">
+                  <td className="px-2 py-4 text-sm text-gray-400">
                     <div className="flex items-center">
                       <Clock className="h-4 w-4 mr-1 text-gray-400" />
-                      <span className="font-mono">{formatTime((item as any).horaSaida)} – {formatTime((item as any).horaChegada)}</span>
+                      <span className="font-mono">{formatTime((item as any).horaSaida)} até {formatTime((item as any).horaChegada)}</span>
                     </div>
                   </td>
                   <td className="px-2 py-4">
                     <div className="flex flex-col">
-                      <div className="text-sm font-medium text-gray-900">{(item as any).codigoLinha}</div>
-                      <div className="text-xs text-gray-500" title={(item as any).nomeLinha}>{(item as any).nomeLinha}</div>
+                      <div className="text-sm font-medium text-gray-400">{(item as any).codigoLinha}</div>
+                      <div className="text-xs text-gray-400" title={(item as any).nomeLinha}>{(item as any).nomeLinha}</div>
                       <div className="text-base font-semibold text-blue-700 mt-1">Serviço {(item as any).cod_servico_numero || ''}</div>
                     </div>
                   </td>
-                  <td className="px-2 py-4 text-sm text-gray-800">
+                  <td className="px-2 py-4 text-sm text-gray-400">
                     <div className="flex flex-col">
                       <div className="flex items-center">
                         <MapPin className="h-4 w-4 mr-1 text-gray-400" />
                         <span className="font-medium">{(item as any).localOrigemViagem || 'N/A'}</span>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">{(item as any).sentido_texto || ''}</div>
+                      <div className="text-xs text-gray-400 mt-1">{(item as any).sentido_texto || ''}</div>
                     </div>
                   </td>
-                  <td className="px-2 py-4 text-sm text-gray-800">
+                  <td className="px-2 py-4 text-sm text-gray-400">
                     <div className="flex items-center">
                       <MapPin className="h-4 w-4 mr-1 text-gray-400" />
                       <span className="font-medium">{(item as any).localDestinoLinha || 'N/A'}</span>
                     </div>
                   </td>
-                  <td className="px-2 py-4 text-sm text-gray-800">
+                  <td className="px-2 py-4 text-sm text-gray-400">
                     <div className="flex flex-col space-y-1">
-                      <div className="text-sm text-gray-700">{(item as any).nome_atividade || 'N/A'}</div>
-                      <div className="text-xs text-gray-500">{(item as any).flg_tipo || ''}</div>
+                      <div className="text-sm text-gray-400">{(item as any).nome_atividade || 'N/A'}</div>
+                      <div className="text-xs text-gray-400">{(item as any).flg_tipo || ''}</div>
                     </div>
                   </td>
-                  <td className="px-2 py-4 text-sm text-gray-800">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-gray-100 text-gray-700 border-gray-200">{(item as any).setorPrincipalLinha}</span>
+                  <td className="px-2 py-4 text-sm text-gray-400">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-gray-300 text-gray-900 border-gray-200">{(item as any).setorPrincipalLinha}</span>
                   </td>
                   <td className="px-2 py-4">
                     <div className="cursor-pointer" onClick={() => setShowDriverOptionsModal(item)}>
@@ -255,10 +256,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                       {((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') ? (
                         <div className="mt-0.5 leading-tight">
                           <div className="text-xs font-semibold text-yellow-700">Novo: {(item as any).nomeMotoristaEditado}</div>
-                          <div className="text-[11px] text-gray-500">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
+                          <div className="text-[11px] text-gray-400">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
                         </div>
                       ) : (
-                        <div className="text-xs text-gray-500 leading-tight">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
+                        <div className="text-xs text-gray-400 leading-tight">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
                       )}
                       <button
                         type="button"
@@ -295,10 +296,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                       {((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') ? (
                         <div className="mt-0.5 leading-tight">
                           <div className="text-xs font-semibold text-yellow-700">Novo: {(item as any).nomeCobradorEditado}</div>
-                          <div className="text-[11px] text-gray-500">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
+                          <div className="text-[11px] text-gray-400">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
                         </div>
                       ) : (
-                        <div className="text-xs text-gray-500 leading-tight">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
+                        <div className="text-xs text-gray-400 leading-tight">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
                       )}
                       <button
                         type="button"
@@ -316,7 +317,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                       </button>
                     </div>
                   </td>
-                  <td className="px-2 py-4">
+                  <td className="px-2 py-4 text-black">
                     <input
                       type="text"
                       value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
@@ -329,7 +330,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                         if (ok) onInputChange(item.id, 'numeroCarro', val);
                       }}
                       placeholder="Nº Veículo"
-                      className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
+                      className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-500 bg-yellow-50' : 'border-gray-400'}`}
                     />
                   </td>
                 </tr>

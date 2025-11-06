@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { usersService } from '../services/api';
 import { User, CreateUserRequest, UpdateUserRequest, UserRole, UserStatus } from '../types';
 import { UserModal } from '../components/UserModal';
@@ -14,6 +15,7 @@ import {
   Shield,
   AlertTriangle
 } from 'lucide-react';
+import { Logs } from './Logs';
 
 export const Users: React.FC = () => {
   const { user: currentUser } = useAuth();
@@ -34,7 +36,8 @@ export const Users: React.FC = () => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   // Verificar se é administrador
-  const isAdmin = currentUser?.role === UserRole.ADMINISTRADOR;
+  const roleStr = String(currentUser?.role ?? '').toLowerCase();
+  const isAdmin = roleStr === 'admin' || roleStr === 'administrador';
 
   useEffect(() => {
     loadUsers();
@@ -210,15 +213,14 @@ export const Users: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Usuários</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <h1 className="text-2xl font-bold text-gray-400">Usuários</h1>
+          <p className="mt-1 text-sm text-gray-400">
             Gerencie os usuários do sistema
           </p>
         </div>
         <button
           onClick={handleCreateUser}
           className={`btn ${isAdmin ? 'btn-primary' : 'btn-secondary'} flex items-center`}
-          disabled={!isAdmin}
           title={!isAdmin ? 'Apenas administradores podem criar usuários' : ''}
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -385,13 +387,14 @@ export const Users: React.FC = () => {
                         {openDropdown === user.id && (
                           <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                             <div className="py-1">
-                              <button
-                                onClick={() => handleEditUser(user)}
+                              <Link
+                                to={`/users/${user.id}/edit`}
                                 className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                onClick={() => setOpenDropdown(null)}
                               >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Editar
-                              </button>
+                              </Link>
                               <button
                                 onClick={() => handleDeleteUser(user)}
                                 className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
@@ -422,6 +425,12 @@ export const Users: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Logs Section embedded on Users page */}
+      <div className="space-y-3">
+        <h2 className="text-xl font-semibold text-gray-400">Logs do Sistema</h2>
+        <Logs embedded />
       </div>
 
       {/* User Modal */}
