@@ -1,20 +1,23 @@
 import React, { useMemo, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
+import { UserRole } from '../../types/user.types';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { useControleHorarios } from './hooks/useControleHorarios';
 import { FiltersPanel } from './components/FiltersPanel/FiltersPanel';
-import { DataTable } from './components/DataTable/DataTable';
+import { DataTable } from './components/DataTable';
 import { FloatingActionButton } from './components/FloatingActionButton/FloatingActionButton';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Calendar, Maximize2, Minimize2, FileText, Download } from 'lucide-react';
-// Tipos específicos não importados aqui para evitar conflitos entre módulos de tipos
 
 export const ControleHorariosPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [isTableFullScreen, setIsTableFullScreen] = useState(false);
   const [showLinhaMultiSelect, setShowLinhaMultiSelect] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [openConfirmSync, setOpenConfirmSync] = useState(false);
 
   const {
     dataReferencia,
@@ -37,29 +40,87 @@ export const ControleHorariosPage: React.FC = () => {
     limparFiltros,
     aplicarFiltros,
     aplicarFiltroRapido,
-    tipoLocal, setTipoLocal,
-    statusEdicaoLocal, setStatusEdicaoLocal,
+    tipoLocal,
+    setTipoLocal,
+    statusEdicaoLocal,
+    setStatusEdicaoLocal,
   } = useControleHorarios();
+
+  const { user } = useAuth();
+  const isAnalistaOuMais = useMemo(() => {
+    const role = user?.role;
+    return (
+      role === UserRole.ANALISTA ||
+      role === UserRole.GERENTE ||
+      role === UserRole.DIRETOR ||
+      role === UserRole.ADMINISTRADOR
+    );
+  }, [user]);
 
   const dayType = useMemo(() => {
     if (!dataReferencia) return '';
     const d = new Date(dataReferencia);
     if (isNaN(d.getTime())) return '';
     const wd = d.getDay();
-    if (wd === 0) return 'Domingo';
-    if (wd === 6) return 'Sábado';
-    return 'Dia útil';
+    if (wd === 0) return 'DOMINGO';
+    if (wd === 6) return 'SÁBADO';
+    return 'DIAS UTÉIS';
   }, [dataReferencia]);
-  const displayDayType = (controleHorarios?.[0] as any)?.descTipoDia || dayType;
+
+  // Ordenação cronológica considerando virada de dia
+  const sortedControleHorarios = useMemo(() => {
+    const arr = Array.isArray(controleHorarios) ? [...controleHorarios] : [];
+    const parseMinutes = (hhmm?: string) => {
+      if (!hhmm) return Number.MAX_SAFE_INTEGER;
+      const m = hhmm.match(/^(\d{1,2}):(\d{2})/);
+      if (!m) return Number.MAX_SAFE_INTEGER;
+      return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+    };
+    const mins = arr
+      .map((it: any) => parseMinutes(it.horaSaida))
+      .filter((n) => Number.isFinite(n)) as number[];
+    const minM = mins.length ? Math.min(...mins) : 0;
+    const maxM = mins.length ? Math.max(...mins) : 0;
+    const crosses = minM <= 240 && maxM >= 1080; // <=04:00 e >=18:00
+    const threshold = 240;
+    arr.sort((a: any, b: any) => {
+      const am = parseMinutes(a.horaSaida);
+      const bm = parseMinutes(b.horaSaida);
+      const aKey = crosses && am < threshold ? am + 1440 : am;
+      const bKey = crosses && bm < threshold ? bm + 1440 : bm;
+      return aKey - bKey;
+    });
+    return arr;
+  }, [controleHorarios]);
 
   const handleExportHtml = () => {
     const safe = (v: string | number | null | undefined) =>
       String(v ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]!));
+    const items = Array.isArray(sortedControleHorarios) ? sortedControleHorarios : [];
 
-    const items = Array.isArray(controleHorarios) ? controleHorarios : [];
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const rows = items
-      .map((it: any) => `
-        <tr>
+      .map((it: any) => {
+        const hasEdits = Boolean(
+          it.nomeMotoristaEditado ||
+          it.crachaMotoristaEditado ||
+          it.nomeCobradorEditado ||
+          it.crachaCobradorEditado
+        );
+        const hasVehicle = Boolean(it.numeroCarro);
+        const m = String(it.horaSaida || '').match(/^(\d{1,2}):(\d{2})/);
+        const hm = m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+        const isLateNoVehicle = hm !== null && hm < nowMinutes && !hasVehicle;
+        const rowClass = isLateNoVehicle ? 'row-danger' : hasEdits ? 'row-warning' : 'row-ok';
+
+        const cobradorNome = it.nomeCobradorEditado || it.nomeCobradorGlobus || '';
+        const cobradorCell = cobradorNome
+          ? safe(cobradorNome)
+          : '<span class="badge badge-no-cobrador">SEM COBRADOR</span>';
+
+        return `
+        <tr class="${rowClass}">
           <td>${safe(it.setorPrincipalLinha)}</td>
           <td>${safe(it.codigoLinha)} - ${safe(it.nomeLinha)}</td>
           <td>${safe(it.codServicoNumero ?? it.cod_servico_numero ?? '')}</td>
@@ -68,8 +129,9 @@ export const ControleHorariosPage: React.FC = () => {
           <td>${safe(it.nomeMotoristaEditado || it.nomeMotoristaGlobus)}</td>
           <td>${safe(it.crachaMotoristaEditado || it.crachaMotoristaGlobus)}</td>
           <td>${safe(it.numeroCarro)}</td>
-          <td>${safe(it.informacaoRecolhe)}</td>
-        </tr>`)
+          <td>${cobradorCell}</td>
+        </tr>`;
+      })
       .join('');
 
     const filtrosAtivos = Object.entries((filtros as Record<string, unknown>) || {})
@@ -77,9 +139,7 @@ export const ControleHorariosPage: React.FC = () => {
       .map(([k, v]) => `<span class="tag">${safe(k)}: <b>${safe(String(v))}</b></span>`)
       .join('');
 
-    const html = `<!doctype html>
-<html lang="pt-BR">
-<head>
+    const html = `<!doctype html><html lang="pt-BR"><head>
   <meta charset="utf-8" />
   <title>Relatório - Controle de Horários</title>
   <style>
@@ -92,6 +152,10 @@ export const ControleHorariosPage: React.FC = () => {
     th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
     thead th { background: #f9fafb; }
     tfoot td { background: #fafaf9; font-weight: 600; }
+    .row-ok { background:#ecfdf5; }
+    .row-warning { background:#fffbeb; }
+    .row-danger { background:#fef2f2; }
+    .badge-no-cobrador { color:#b45309; background:#fef3c7; padding:2px 6px; border-radius:999px; font-weight:600; border:1px solid #fcd34d; }
     @media print { .no-print { display: none; } body { margin: 0; } }
   </style>
   </head>
@@ -114,7 +178,7 @@ export const ControleHorariosPage: React.FC = () => {
           <th>Motorista</th>
           <th>Crachá</th>
           <th>Carro</th>
-          <th>Recolhe</th>
+          <th>Cobrador</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
@@ -122,8 +186,7 @@ export const ControleHorariosPage: React.FC = () => {
         <tr><td colspan="9">Registros: ${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</td></tr>
       </tfoot>
     </table>
-  </body>
-  </html>`;
+  </body></html>`;
 
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -137,60 +200,61 @@ export const ControleHorariosPage: React.FC = () => {
   return (
     <div className="space-y-6 p-4 md:p-6 min-h-screen bg-gradient-to-br from-black via-neutral-900 to-yellow-950 text-gray-100">
       <div className="max-w-[1400px] mx-auto">
-        <div className="relative mb-2">
-          <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/20 via-amber-500/15 to-yellow-300/20 blur-md" />
-          <Card className="relative border border-yellow-400/20 shadow-[0_0_40px_rgba(251,191,36,0.08)]">
-            <CardHeader className="pb-2">
-              <h1 className="text-2xl sm:text-3xl font-bold">Controle de Horários</h1>
-              <p className="mt-1 text-sm text-gray-400">Gerencie e edite os horários das viagens importadas do Globus.</p>
-            </CardHeader>
-            <CardContent className="pt-4">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <Label htmlFor="date-picker">Data de referência</Label>
-                  <div className="relative w-56">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <Input
-                      id="date-picker"
-                      type="date"
-                      value={dataReferencia}
-                      onChange={(e) => setDataReferencia(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  {controleHorarios.length > 0 && (
-                    <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-xs text-yellow-200">
-                      <span className="h-2 w-2 rounded-full bg-yellow-400" />
-                      Tipo do dia: <b className="text-yellow-300 font-semibold">{displayDayType}</b>
-                    </span>
-                  )}
+        <Card className="relative border border-yellow-400/20">
+          <CardHeader className="pb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold">Controle de Horários</h1>
+            <p className="mt-1 text-sm text-gray-400">Gerencie e edite os horários das viagens   </p>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Label htmlFor="date-picker">Data de referência</Label>
+                <div className="relative w-56">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    id="date-picker"
+                    type="date"
+                    value={dataReferencia}
+                    onChange={(e) => setDataReferencia(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => setShowFilters((v) => !v)}>
-                    Filtros
-                  </Button>
-                  <Button onClick={() => sincronizarControleHorarios()} disabled={loading}>
-                    Sincronizar
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowReport(true)}>
-                    <FileText className="h-4 w-4 mr-2" /> Gerar Relatório
-                  </Button>
-                  <Button variant="outline" onClick={() => setIsTableFullScreen((v) => !v)}>
-                    {isTableFullScreen ? (
-                      <><Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia</>
-                    ) : (
-                      <><Maximize2 className="h-4 w-4 mr-2" /> Tela Cheia</>
-                    )}
-                  </Button>
-                </div>
+                {Array.isArray(controleHorarios) && controleHorarios.length > 0 && (
+                  <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-xs text-yellow-200">
+                    <span className="h-2 w-2 rounded-full bg-yellow-400" />
+                    Tipo do dia: <b className="text-yellow-300 font-semibold">{dayType}</b>
+                  </span>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => setShowFilters((v) => !v)}>
+                  Filtros
+                </Button>
+                 
+                <Button variant="outline" onClick={() => setShowReport(true)}>
+                  <FileText className="h-4 w-4 mr-2" /> Gerar Relatório
+                </Button>
+                <Button variant="outline" onClick={() => setIsTableFullScreen((v) => !v)}>
+                  {isTableFullScreen ? (
+                    <>
+                      <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="h-4 w-4 mr-2" /> Tela Cheia
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg" role="alert">{error}</div>
+          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg mt-4" role="alert">
+            {error}
+          </div>
         )}
 
         {showFilters && (
@@ -204,8 +268,7 @@ export const ControleHorariosPage: React.FC = () => {
             setShowLinhaMultiSelect={setShowLinhaMultiSelect}
             onLimparFiltros={limparFiltros}
             onAplicarFiltros={aplicarFiltros}
-            onAplicarFiltroRapido={() => { /* deprecated */ }}
-            // Novos filtros locais
+            onAplicarFiltroRapido={aplicarFiltroRapido}
             tipoLocal={tipoLocal}
             setTipoLocal={setTipoLocal}
             statusEdicaoLocal={statusEdicaoLocal}
@@ -213,12 +276,12 @@ export const ControleHorariosPage: React.FC = () => {
           />
         )}
 
-        {controleHorarios.length > 0 ? (
-          <div className={`${isTableFullScreen ? 'fixed inset-0 z-50 bg-gray-900 p-0 overflow-auto' : ''}`}>
+        {Array.isArray(controleHorarios) && controleHorarios.length > 0 ? (
+          <div className={isTableFullScreen ? 'fixed inset-0 z-50 bg-gray-900 p-0 overflow-auto' : ''}>
             {isTableFullScreen && (
               <div className="sticky top-0 z-10 bg-gray-900/90 backdrop-blur border-b border-yellow-400/20 px-4 py-3 flex items-center justify-between">
                 <div className="text-sm text-gray-300">
-                  <b>{controleHorarios.length}</b> viagens • Data: <b>{dataReferencia}</b> • <b>{displayDayType}</b>
+                  <b>{controleHorarios.length}</b> viagens • Data: <b>{dataReferencia}</b> • <b>{dayType}</b>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" onClick={handleExportHtml}>
@@ -230,9 +293,10 @@ export const ControleHorariosPage: React.FC = () => {
                 </div>
               </div>
             )}
-            <div className={`${isTableFullScreen ? 'p-4' : ''}`}>
+
+            <div className={isTableFullScreen ? 'p-4' : ''}>
               <DataTable
-                controleHorarios={controleHorarios}
+                controleHorarios={sortedControleHorarios}
                 controleHorariosOriginais={controleHorariosOriginais}
                 onInputChange={handleInputChange}
                 loading={loading}
@@ -253,7 +317,11 @@ export const ControleHorariosPage: React.FC = () => {
                   setTimeout(() => aplicarFiltros(), 0);
                 }}
                 scaleFilterActive={Boolean((filtros as any).cod_servico_numero && (filtros as any).cracha_funcionario)}
-                scaleFilterLabel={(filtros as any).cod_servico_numero && (filtros as any).cracha_funcionario ? `Serviço ${(filtros as any).cod_servico_numero} • Crachá ${(filtros as any).cracha_funcionario}` : undefined}
+                scaleFilterLabel={
+                  (filtros as any).cod_servico_numero && (filtros as any).cracha_funcionario
+                    ? `Serviço ${(filtros as any).cod_servico_numero} • Crachá ${(filtros as any).cracha_funcionario}`
+                    : undefined
+                }
                 onClearScaleFilter={() => {
                   setFiltros((prev: any) => ({
                     ...prev,
@@ -263,6 +331,7 @@ export const ControleHorariosPage: React.FC = () => {
                   setTimeout(() => aplicarFiltros(), 0);
                 }}
               />
+
               <FloatingActionButton
                 temAlteracoesPendentes={temAlteracoesPendentes}
                 alteracoesPendentes={contarAlteracoesPendentes()}
@@ -273,43 +342,28 @@ export const ControleHorariosPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-12 space-y-4">
             <p className="text-gray-400">Nenhuma viagem encontrada</p>
+            {isAnalistaOuMais ? (
+              <Button onClick={() => setOpenConfirmSync(true)} disabled={loading}>
+                Sincronizar
+              </Button>
+            ) : (
+              <Button variant="outline" disabled title="Apenas Analista, Gerente, Diretor ou Administrador pode sincronizar">
+                Sincronizar
+              </Button>
+            )}
           </div>
         )}
 
-        {/* Paginação simples */}
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={() => {
-              setFiltros((prev: any) => ({ ...prev, pagina: Math.max(1, (prev.pagina || 1) - 1) }));
-              setTimeout(() => aplicarFiltros(), 0);
-            }}
-            className="px-3 py-1 border rounded disabled:opacity-50 border-gray-700 text-gray-200"
-            disabled={!filtros.pagina || filtros.pagina <= 1}
-          >
-            Anterior
-          </button>
-          <div className="text-sm text-gray-300">Página {filtros.pagina || 1}</div>
-          <button
-            onClick={() => {
-              setFiltros((prev: any) => ({ ...prev, pagina: (prev.pagina || 1) + 1 }));
-              setTimeout(() => aplicarFiltros(), 0);
-            }}
-            className="px-3 py-1 border rounded border-gray-700 text-gray-200"
-          >
-            Próxima
-          </button>
-        </div>
-
-        {/* Relatório - Preview em overlay */}
+        {/* Relatório - preview simples */}
         {showReport && (
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur flex items-center justify-center p-4">
             <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-xl border border-yellow-400/20 bg-gray-900 shadow-2xl">
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-yellow-400/20 px-4 py-3 bg-gray-900">
                 <div>
                   <div className="text-lg font-semibold">Relatório - Controle de Horários</div>
-                  <div className="text-xs text-gray-400">Data: {dataReferencia} • {dayType} • Registros: {controleHorarios.length}</div>
+                  <div className="text-xs text-gray-400">Data: {dataReferencia} • {dayType} • Registros: {Array.isArray(controleHorarios) ? controleHorarios.length : 0}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" onClick={handleExportHtml}><Download className="h-4 w-4 mr-2" /> Exportar HTML</Button>
@@ -339,11 +393,11 @@ export const ControleHorariosPage: React.FC = () => {
                         <th className="px-3 py-2 text-left font-semibold">Motorista</th>
                         <th className="px-3 py-2 text-left font-semibold">Crachá</th>
                         <th className="px-3 py-2 text-left font-semibold">Carro</th>
-                        <th className="px-3 py-2 text-left font-semibold">Recolhe</th>
+                        <th className="px-3 py-2 text-left font-semibold">Cobrador</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {controleHorarios.map((it: any) => (
+                      {sortedControleHorarios.map((it: any) => (
                         <tr key={it.id} className="border-b border-gray-800">
                           <td className="px-3 py-2">{it.setorPrincipalLinha}</td>
                           <td className="px-3 py-2">{it.codigoLinha} - {it.nomeLinha}</td>
@@ -353,7 +407,7 @@ export const ControleHorariosPage: React.FC = () => {
                           <td className="px-3 py-2">{it.nomeMotoristaEditado || it.nomeMotoristaGlobus}</td>
                           <td className="px-3 py-2">{it.crachaMotoristaEditado || it.crachaMotoristaGlobus}</td>
                           <td className="px-3 py-2">{it.numeroCarro}</td>
-                          <td className="px-3 py-2">{it.informacaoRecolhe}</td>
+                          <td className="px-3 py-2">{it.nomeCobradorEditado || it.nomeCobradorGlobus || 'SEM COBRADOR'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -363,6 +417,21 @@ export const ControleHorariosPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          open={openConfirmSync}
+          onOpenChange={setOpenConfirmSync}
+          variant="warning"
+          title="Sincronizar dados do dia selecionado?"
+          description={
+            <span>
+              Ao sincronizar, os dados <strong>existentes</strong> deste dia serão apagados e recriados para evitar <strong>duplicidades</strong>. Esta ação está disponível apenas para <strong>Analista</strong> ou superior.
+            </span>
+          }
+          confirmText="Sim, sincronizar"
+          cancelText="Cancelar"
+          onConfirm={() => sincronizarControleHorarios()}
+        />
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 // src/features/controle-horarios/components/Header/Header.tsx
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Calendar, Filter, Save, RefreshCw, Clock, X, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { UserRole } from '../../../../types/user.types';
 
 interface HeaderProps {
   dataReferencia: string;
@@ -33,6 +35,17 @@ export const Header: React.FC<HeaderProps> = ({
   sincronizando,
   onManualSync // Added
 }) => {
+  const { user } = useAuth();
+  const canSync = useMemo(() => {
+    const role = user?.role;
+    return (
+      role === UserRole.ANALISTA ||
+      role === UserRole.GERENTE ||
+      role === UserRole.DIRETOR ||
+      role === UserRole.ADMIN ||
+      role === UserRole.ADMINISTRADOR
+    );
+  }, [user]);
   return (
     <div className="bg-white shadow rounded-lg p-6">
       <div className="flex items-center justify-between">
@@ -96,6 +109,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Botão Sincronizar com Globus */}
+          {canSync && (<>
           <button
             onClick={onSincronizarGlobus} // Changed to onSincronizarGlobus
             disabled={sincronizando}
@@ -114,6 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
             <RefreshCw className={`h-4 w-4 ${sincronizando ? 'animate-spin' : ''}`} />
             Sincronizar Manual
           </button>
+          </>)}
         </div>
       </div>
 

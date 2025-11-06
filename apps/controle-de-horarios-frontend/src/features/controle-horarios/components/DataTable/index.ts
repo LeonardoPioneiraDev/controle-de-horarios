@@ -1,2 +1,2 @@
 // src/features/controle-horarios/components/DataTable/index.ts
-export { DataTable } from './DataTable';
+export { default as DataTable } from './DataTable';

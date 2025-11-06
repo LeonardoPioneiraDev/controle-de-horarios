@@ -126,11 +126,15 @@ export const Users: React.FC = () => {
   const handleSaveUser = async (userData: CreateUserRequest | UpdateUserRequest) => {
     try {
       setModalLoading(true);
+      // Backend espera roles em minúsculas pt-BR
+      const normalizeRole = (r?: string) => (r ? r.toLowerCase() : r);
+      const payload: any = { ...userData };
+      if ((payload as any).role) payload.role = normalizeRole((payload as any).role);
       
       if (selectedUser) {
-        await usersService.updateUser(selectedUser.id, userData as UpdateUserRequest);
+        await usersService.updateUser(selectedUser.id, payload as UpdateUserRequest);
       } else {
-        await usersService.createUser(userData as CreateUserRequest);
+        await usersService.createUser(payload as CreateUserRequest);
       }
       
       setIsModalOpen(false);
@@ -427,11 +431,7 @@ export const Users: React.FC = () => {
         </div>
       </div>
 
-      {/* Logs Section embedded on Users page */}
-      <div className="space-y-3">
-        <h2 className="text-xl font-semibold text-gray-400">Logs do Sistema</h2>
-        <Logs embedded />
-      </div>
+    
 
       {/* User Modal */}
       {isAdmin && (

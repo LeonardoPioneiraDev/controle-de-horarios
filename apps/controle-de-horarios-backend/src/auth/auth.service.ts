@@ -7,6 +7,7 @@ import { RegisterDto } from './dto/register.dto';
 import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { JwtPayload } from './interfaces/jwt-payload.interface';
 import * as crypto from 'crypto';
+import { EmailService } from '@/email/email.service';
 
 // Exportar interface para uso em outros arquivos
 export { JwtPayload };
@@ -17,6 +18,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async login(loginDto: LoginDto): Promise<{ access_token: string; refresh_token: string; user: Partial<User> }> {
@@ -166,8 +168,12 @@ export class AuthService {
       passwordResetExpires: resetExpires,
     });
 
-    // TODO: Enviar e-mail com link de reset
-    console.log(`📧 [AUTH] Token de reset gerado para: ${email} - Token: ${resetToken}`);
+    // Enviar e-mail com link de reset
+    try {
+      await this.emailService.sendPasswordResetEmail(user.email, user.firstName || user.email, resetToken);
+    } catch (e: any) {
+      console.log(`⚠️ [AUTH] Falha ao enviar e-mail de reset: ${e?.message}`);
+    }
 
     return { message: 'Se o e-mail existir, você receberá instruções para redefinir sua senha.' };
   }

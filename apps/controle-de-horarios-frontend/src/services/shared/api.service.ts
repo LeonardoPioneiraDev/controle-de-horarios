@@ -78,26 +78,22 @@ export class BaseApiService {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
-        // Build absolute URL safely and avoid malformed base/path concatenation
+        // Build absolute URL safely using WHATWG URL and merge params to avoid malformed paths
         const safeBase = this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
         const rawUrl = String(config.url || '');
-        const path = rawUrl.startsWith('/') ? rawUrl.substring(1) : rawUrl;
+        const path = rawUrl.startsWith('/') ? rawUrl.substring(1) : rawUrl; // strip leading '/'
         const urlObj = new URL(path, safeBase);
 
-        // Manually merge query params to ensure proper '?' handling
         if (config.params && typeof config.params === 'object') {
-          const current = new URLSearchParams(urlObj.search);
           Object.entries(config.params as Record<string, unknown>).forEach(([key, value]) => {
             if (value === undefined || value === null) return;
-            current.append(key, String(value));
+            urlObj.searchParams.append(key, String(value));
           });
-          const query = current.toString();
-          urlObj.search = query ? `?${query}` : '';
-          // Prevent axios from re-appending params
+          // prevent axios from appending again
           (config as any).params = undefined;
         }
 
-        // Force axios to use absolute URL
+        // Force axios to use our absolute URL
         (config as any).baseURL = undefined;
         config.url = urlObj.toString();
 

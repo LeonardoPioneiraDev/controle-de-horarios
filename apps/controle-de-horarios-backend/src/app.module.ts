@@ -12,6 +12,8 @@ import { OracleModule } from './database/oracle/oracle.module';
 import { HealthController } from './health/health.controller';
 import oracleConfig from './database/oracle/oracle.config';
 
+import { LogsModule } from './logs/logs.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -28,6 +30,7 @@ import oracleConfig from './database/oracle/oracle.config';
     ComparacaoViagensModule,
     ControleHorariosModule, // ✅ ADICIONAR
     OracleModule,
+    LogsModule,
   ],
   controllers: [HealthController],
   providers: [],

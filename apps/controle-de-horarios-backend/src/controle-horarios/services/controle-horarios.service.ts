@@ -41,8 +41,19 @@ export class ControleHorariosService {
 
       // Critérios de propagação
       // Para Veículo, Motorista e Cobrador, propagar para viagens com a mesma linha e serviço
-      queryBuilder.andWhere('controle.codigo_linha = :codigoLinha', { codigoLinha: originalControleHorario.codigo_linha });
+      const isVehicleUpdate = Object.prototype.hasOwnProperty.call(fieldsToUpdate, 'prefixo_veiculo');
       queryBuilder.andWhere('controle.cod_servico_numero = :codServicoNumero', { codServicoNumero: originalControleHorario.cod_servico_numero });
+      if (isVehicleUpdate) {
+        if (originalControleHorario.cracha_motorista) {
+          queryBuilder.andWhere('controle.cracha_motorista = :crachaMotorista', { crachaMotorista: originalControleHorario.cracha_motorista });
+        } else if (originalControleHorario.cod_motorista) {
+          queryBuilder.andWhere('controle.cod_motorista = :codMotorista', { codMotorista: originalControleHorario.cod_motorista });
+        } else if (originalControleHorario.nome_motorista) {
+          queryBuilder.andWhere('controle.nome_motorista = :nomeMotorista', { nomeMotorista: originalControleHorario.nome_motorista });
+        }
+      } else {
+        queryBuilder.andWhere('controle.codigo_linha = :codigoLinha', { codigoLinha: originalControleHorario.codigo_linha });
+      }
       if (originalControleHorario.flg_sentido) {
         queryBuilder.andWhere('controle.flg_sentido = :flgSentido', { flgSentido: originalControleHorario.flg_sentido });
       }

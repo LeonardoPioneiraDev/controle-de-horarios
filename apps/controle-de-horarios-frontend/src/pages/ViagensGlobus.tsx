@@ -24,6 +24,9 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription, AlertTitle, AlertIcon } from '../components/ui/alert';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { useAuth } from '../contexts/AuthContext';
+import { UserRole } from '../types/user.types';
 
 // Helper for glowing card effect
 const GlowingCard = ({ children, className }: { children: React.ReactNode, className?: string }) => (
@@ -36,42 +39,70 @@ const GlowingCard = ({ children, className }: { children: React.ReactNode, class
 );
 
 // Reusable components
-const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, onTestOracle, testingOracle }: any) => (
-  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-    <div>
-      <h1 className="text-3xl font-bold text-gray-100">Viagens Globus</h1>
-      <p className="mt-1 text-md text-gray-400">
-        Consulte e gerencie as viagens do sistema Oracle Globus.
-      </p>
+const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, onTestOracle, testingOracle, hasData, isAdmin }: any) => {
+  const [openConfirm, setOpenConfirm] = useState(false);
+
+  const handleSyncClick = () => {
+    if (hasData) {
+      setOpenConfirm(true);
+    } else {
+      onSync();
+    }
+  };
+
+  return (
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <h1 className="text-3xl font-bold text-gray-100">Viagens Globus</h1>
+        <p className="mt-1 text-md text-gray-400">
+          Consulte e gerencie as viagens do sistema Oracle Globus.
+        </p>
+      </div>
+      <div className="flex space-x-3">
+        <Button
+          variant={filtersVisible ? 'default' : 'outline'}
+          onClick={onToggleFilters}
+        >
+          <Filter className="h-4 w-4 mr-2" />
+          Filtros
+          <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${filtersVisible ? 'rotate-180' : ''}`} />
+        </Button>
+        {isAdmin && (
+          <Button
+            onClick={onTestOracle}
+            disabled={testingOracle}
+            variant="outline"
+            className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
+          >
+            <Server className={`h-4 w-4 mr-2 ${testingOracle ? 'animate-pulse' : ''}`} />
+            {testingOracle ? 'Testando...' : 'Testar Oracle'}
+          </Button>
+        )}
+        <Button onClick={handleSyncClick} disabled={synchronizing}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
+          {synchronizing ? 'Sincronizando...' : 'Sincronizar'}
+        </Button>
+      </div>
+
+      <ConfirmDialog
+        open={openConfirm}
+        onOpenChange={setOpenConfirm}
+        variant="warning"
+        title="Sincronizar dados do dia selecionado?"
+        description={
+          <span>
+            Ao sincronizar, os dados <strong>existentes</strong> do dia selecionado serão
+            apagados antes de importar novos, para evitar <strong>duplicidades</strong>.
+            Deseja continuar?
+          </span>
+        }
+        confirmText="Sim, sincronizar"
+        cancelText="Cancelar"
+        onConfirm={onSync}
+      />
     </div>
-    <div className="flex space-x-3">
-      <Button
-        variant={filtersVisible ? 'default' : 'outline'}
-        onClick={onToggleFilters}
-      >
-        <Filter className="h-4 w-4 mr-2" />
-        Filtros
-        <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${filtersVisible ? 'rotate-180' : ''}`} />
-      </Button>
-      <Button
-        onClick={onTestOracle}
-        disabled={testingOracle}
-        variant="outline"
-        className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
-      >
-        <Server className={`h-4 w-4 mr-2 ${testingOracle ? 'animate-pulse' : ''}`} />
-        {testingOracle ? 'Testando...' : 'Testar Oracle'}
-      </Button>
-      <Button
-        onClick={onSync}
-        disabled={synchronizing}
-      >
-        <RefreshCw className={`h-4 w-4 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
-        {synchronizing ? 'Sincronizando...' : 'Sincronizar'}
-      </Button>
-    </div>
-  </div>
-);
+  );
+};
 
 const DateAndStatus = ({ date, onDateChange, status }: any) => (
   <GlowingCard>
@@ -400,7 +431,7 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
   );
 };
 
-const NoData = ({ onSync, synchronizing, onTestOracle, testingOracle }: any) => (
+const NoData = ({ onSync, synchronizing, onTestOracle, testingOracle, isAdmin }: any) => (
   <GlowingCard className="text-center">
     <CardContent className="p-8">
         <Calendar className="mx-auto h-12 w-12 text-gray-500" />
@@ -411,15 +442,17 @@ const NoData = ({ onSync, synchronizing, onTestOracle, testingOracle }: any) => 
         Clique no botão abaixo para buscar os dados do Oracle Globus.
         </p>
         <div className="mt-6 flex justify-center items-center space-x-4">
-            <Button
-                onClick={onTestOracle}
-                disabled={testingOracle}
-                variant="outline"
-                className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
-            >
-                <Server className={`h-4 w-4 mr-2 ${testingOracle ? 'animate-pulse' : ''}`} />
-                {testingOracle ? 'Testando...' : 'Testar Oracle'}
-            </Button>
+            {isAdmin && (
+              <Button
+                  onClick={onTestOracle}
+                  disabled={testingOracle}
+                  variant="outline"
+                  className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
+              >
+                  <Server className={`h-4 w-4 mr-2 ${testingOracle ? 'animate-pulse' : ''}`} />
+                  {testingOracle ? 'Testando...' : 'Testar Oracle'}
+              </Button>
+            )}
             <Button
                 onClick={onSync}
                 disabled={synchronizing}
@@ -429,6 +462,34 @@ const NoData = ({ onSync, synchronizing, onTestOracle, testingOracle }: any) => 
                 {synchronizing ? 'Sincronizando...' : 'Sincronizar Dados'}
             </Button>
         </div>
+    </CardContent>
+  </GlowingCard>
+);
+
+// Mensagem clara quando não há dados para a data selecionada
+const NoDataGlobus = ({ onSync, synchronizing, onTestOracle, testingOracle, isAdmin }: any) => (
+  <GlowingCard className="text-center">
+    <CardContent className="p-8">
+      <Calendar className="mx-auto h-12 w-12 text-gray-500" />
+      <h3 className="mt-4 text-xl font-semibold text-gray-200">Não há dados para esta data</h3>
+      <p className="mt-2 text-md text-gray-400">Faça a sincronização para carregar os dados deste dia.</p>
+      <div className="mt-6 flex justify-center items-center space-x-4">
+        {isAdmin && (
+          <Button
+            onClick={onTestOracle}
+            disabled={testingOracle}
+            variant="outline"
+            className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
+          >
+            <Server className={`h-4 w-4 mr-2 ${testingOracle ? 'animate-pulse' : ''}`} />
+            {testingOracle ? 'Testando...' : 'Testar Oracle'}
+          </Button>
+        )}
+        <Button onClick={onSync} disabled={synchronizing} size="lg">
+          <RefreshCw className={`h-5 w-5 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
+          {synchronizing ? 'Sincronizando...' : 'Sincronizar Dados'}
+        </Button>
+      </div>
     </CardContent>
   </GlowingCard>
 );
@@ -443,6 +504,7 @@ const initialFilters: FiltrosViagemGlobus = {
 };
 
 export const ViagensGlobus: React.FC = () => {
+  const { user } = useAuth();
   const [viagens, setViagens] = useState<ControleHorarioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -456,6 +518,7 @@ export const ViagensGlobus: React.FC = () => {
   const [sincronizando, setSincronizando] = useState(false);
   const [testingOracle, setTestingOracle] = useState(false);
   const [oracleStatus, setOracleStatus] = useState<any>(null);
+  const isAdmin = user?.role === UserRole.ADMINISTRADOR || user?.role === UserRole.ADMIN;
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);
@@ -568,6 +631,8 @@ export const ViagensGlobus: React.FC = () => {
                 synchronizing={sincronizando}
                 onTestOracle={handleTestOracle}
                 testingOracle={testingOracle}
+                hasData={(statusDados?.totalRegistros || 0) > 0}
+                isAdmin={isAdmin}
             />
 
             {error && (
@@ -606,7 +671,7 @@ export const ViagensGlobus: React.FC = () => {
                     <Loader2 className="h-8 w-8 animate-spin text-yellow-400" />
                     <span className="ml-3 text-gray-300">Verificando dados...</span>
                 </div>
-            ) : statusDados?.existeNoBanco ? (
+            ) : (statusDados?.existeNoBanco && (statusDados?.totalRegistros || 0) > 0) ? (
                 <GlowingCard>
                     <CardContent className="p-4 md:p-0 md:overflow-hidden">
                         <ViagensTable
@@ -617,11 +682,12 @@ export const ViagensGlobus: React.FC = () => {
                     </CardContent>
                 </GlowingCard>
             ) : (
-                <NoData
+                <NoDataGlobus
                     onSync={handleSincronizar}
                     synchronizing={sincronizando}
                     onTestOracle={handleTestOracle}
                     testingOracle={testingOracle}
+                    isAdmin={isAdmin}
                 />
             )}
         </div>

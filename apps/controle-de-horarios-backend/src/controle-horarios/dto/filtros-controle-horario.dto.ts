@@ -33,11 +33,11 @@ export class FiltrosControleHorarioDto {
   @Type(() => Number)
   setores?: number[];
 
-  @ApiPropertyOptional({ description: 'Códigos das linhas (até 6) separados por vírgula', type: [String] })
+  @ApiPropertyOptional({ description: 'Códigos das linhas (até 20) separados por vírgula', type: [String] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @Transform(({ value }) => (Array.isArray(value) ? value : value.split(',').slice(0, 6)))
+  @Transform(({ value }) => (Array.isArray(value) ? value : value.split(',').slice(0, 20)))
   codigo_linha?: string[];
 
   @ApiPropertyOptional({ description: 'Nome da linha (busca parcial)' })

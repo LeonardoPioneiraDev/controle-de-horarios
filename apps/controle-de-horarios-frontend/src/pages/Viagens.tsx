@@ -21,6 +21,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription, AlertTitle, AlertIcon } from '../components/ui/alert';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
 
 // Helper for glowing card effect
 const GlowingCard = ({ children, className }: { children: React.ReactNode, className?: string }) => (
@@ -34,35 +35,64 @@ const GlowingCard = ({ children, className }: { children: React.ReactNode, class
 
 
 // Componente para o cabeçalho da página
-const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing }: any) => (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-            <h1 className="text-3xl font-bold text-gray-100">Viagens Transdata</h1>
-            <p className="mt-1 text-md text-gray-400">
-                Consulte e gerencie as viagens programadas em tempo real.
-            </p>
+const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, hasData }: any) => {
+    const [openConfirm, setOpenConfirm] = useState(false);
+
+    const handleSyncClick = () => {
+        if (hasData) {
+            setOpenConfirm(true);
+        } else {
+            onSync();
+        }
+    };
+
+    return (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 className="text-3xl font-bold text-gray-100">Viagens Transdata</h1>
+                <p className="mt-1 text-md text-gray-400">
+                    Consulte e gerencie as viagens programadas em tempo real.
+                </p>
+            </div>
+            <div className="flex space-x-3">
+                <Button
+                    variant={filtersVisible ? 'default' : 'outline'}
+                    onClick={onToggleFilters}
+                    className="w-full sm:w-auto"
+                >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filtros
+                    <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${filtersVisible ? 'rotate-180' : ''}`} />
+                </Button>
+                <Button
+                    onClick={handleSyncClick}
+                    disabled={synchronizing}
+                    className="w-full sm:w-auto"
+                >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
+                    {synchronizing ? 'Sincronizando...' : 'Sincronizar'}
+                </Button>
+            </div>
+
+            <ConfirmDialog
+                open={openConfirm}
+                onOpenChange={setOpenConfirm}
+                variant="warning"
+                title="Sincronizar dados do dia selecionado?"
+                description={
+                    <span>
+                        Ao sincronizar, os dados <strong>existentes</strong> do dia selecionado serão
+                        apagados antes de importar novos, para evitar <strong>duplicidades</strong>.
+                        Deseja continuar?
+                    </span>
+                }
+                confirmText="Sim, sincronizar"
+                cancelText="Cancelar"
+                onConfirm={onSync}
+            />
         </div>
-        <div className="flex space-x-3">
-            <Button
-                variant={filtersVisible ? 'default' : 'outline'}
-                onClick={onToggleFilters}
-                className="w-full sm:w-auto"
-            >
-                <Filter className="h-4 w-4 mr-2" />
-                Filtros
-                <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${filtersVisible ? 'rotate-180' : ''}`} />
-            </Button>
-            <Button
-                onClick={onSync}
-                disabled={synchronizing}
-                className="w-full sm:w-auto"
-            >
-                <RefreshCw className={`h-4 w-4 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
-                {synchronizing ? 'Sincronizando...' : 'Sincronizar'}
-            </Button>
-        </div>
-    </div>
-);
+    );
+};
 
 // Componente para a seleção de data e exibição de status
 const DateAndStatus = ({ date, onDateChange, status }: any) => (
@@ -489,6 +519,7 @@ export const Viagens: React.FC = () => {
                     onToggleFilters={() => setShowFilters(!showFilters)}
                     filtersVisible={showFilters}
                     synchronizing={sincronizando}
+                    hasData={!!statusDados?.existemDados}
                 />
 
                 {error && (
