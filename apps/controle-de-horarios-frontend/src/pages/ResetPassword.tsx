@@ -8,6 +8,7 @@ import { Label } from '../components/ui/label';
 import { Alert, AlertDescription, AlertIcon, AlertTitle } from '../components/ui/alert';
 import { authService } from '../services/api';
 import logo from '../assets/logo.png';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
 
 function isHttpError(error: unknown): error is { response?: { status?: number; data?: { message?: string } } } {
   return typeof error === 'object' && error !== null && 'response' in (error as any);
@@ -18,6 +19,10 @@ export const ResetPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalDescription, setModalDescription] = useState<React.ReactNode>('');
+  const [modalVariant, setModalVariant] = useState<'info' | 'danger' | 'warning'>('info');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,13 +31,27 @@ export const ResetPassword: React.FC = () => {
     setSuccess('');
     try {
       await authService.forgotPassword(email);
-      setSuccess('Se o e-mail estiver cadastrado, enviaremos instruções para redefinir sua senha.');
+      const msg = 'Se o e-mail estiver cadastrado, enviaremos instruções para redefinir sua senha.';
+      setSuccess(msg);
+      setModalTitle('Solicitação enviada');
+      setModalDescription(msg);
+      setModalVariant('info');
+      setModalOpen(true);
     } catch (err: unknown) {
       if (isHttpError(err) && err.response?.status === 404) {
-        setError('E-mail não cadastrado. Verifique e tente novamente.');
+        const msg = 'E-mail não cadastrado. Verifique e tente novamente.';
+        setError(msg);
+        setModalTitle('Não foi possível enviar');
+        setModalDescription(msg);
+        setModalVariant('danger');
+        setModalOpen(true);
       } else {
         const message = isHttpError(err) ? (err.response?.data?.message || 'Erro ao solicitar recuperação. Tente novamente.') : 'Erro ao solicitar recuperação. Tente novamente.';
         setError(message);
+        setModalTitle('Não foi possível enviar');
+        setModalDescription(message);
+        setModalVariant('danger');
+        setModalOpen(true);
       }
     } finally {
       setLoading(false);
@@ -47,6 +66,24 @@ export const ResetPassword: React.FC = () => {
             <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
             <Card className="relative border border-yellow-400/20 shadow-[0_0_40px_rgba(251,191,36,0.15)]">
               <CardHeader className="text-center">
+                <ConfirmDialog
+                  open={modalOpen}
+                  onOpenChange={(open) => {
+                    setModalOpen(open);
+                  }}
+                  title={modalTitle}
+                  description={modalDescription}
+                  confirmText={modalVariant === 'info' ? 'Ir para o login' : 'Fechar'}
+                  cancelText="Cancelar"
+                  onConfirm={() => {
+                    setModalOpen(false);
+                    if (modalVariant === 'info') {
+                      // Redireciona para login em sucesso
+                      window.location.assign('/login');
+                    }
+                  }}
+                  variant={modalVariant}
+                />
                 <div className="flex flex-col items-center mb-2">
                   <div className="relative">
                     <div className="absolute inset-0 rounded-full bg-yellow-400/30 blur-xl" />

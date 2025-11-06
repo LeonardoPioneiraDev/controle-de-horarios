@@ -16,6 +16,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { Logs } from './Logs';
+import { Alert, AlertDescription, AlertIcon, AlertTitle } from '../components/ui/alert';
 
 export const Users: React.FC = () => {
   const { user: currentUser } = useAuth();
@@ -31,6 +32,8 @@ export const Users: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [actionSuccess, setActionSuccess] = useState('');
+  const [actionError, setActionError] = useState('');
   
   // Dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -119,7 +122,7 @@ export const Users: React.FC = () => {
       await loadUsers();
       setOpenDropdown(null);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao excluir usuário');
+      setActionError(err.response?.data?.message || 'Erro ao excluir usuário');
     }
   };
 
@@ -131,7 +134,11 @@ export const Users: React.FC = () => {
       const payload: any = { ...userData };
       if ((payload as any).role) payload.role = normalizeRole((payload as any).role);
       
-      if (selectedUser) {
+      const wasUpdate = Boolean(selectedUser);
+      if (wasUpdate) {
+        if (!selectedUser) {
+          throw new Error('Usuário não selecionado para atualização');
+        }
         await usersService.updateUser(selectedUser.id, payload as UpdateUserRequest);
       } else {
         await usersService.createUser(payload as CreateUserRequest);
@@ -139,8 +146,10 @@ export const Users: React.FC = () => {
       
       setIsModalOpen(false);
       await loadUsers();
+      setActionSuccess(wasUpdate ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
+      setTimeout(() => setActionSuccess(''), 4000);
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Erro ao salvar usuário');
+      setActionError(err.response?.data?.message || 'Erro ao salvar usuário');
     } finally {
       setModalLoading(false);
     }
@@ -232,6 +241,19 @@ export const Users: React.FC = () => {
           {!isAdmin && <Shield className="h-4 w-4 ml-2" />}
         </button>
       </div>
+
+      {/* Feedback de ações */}
+      {actionSuccess && (
+        <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          <p className="text-green-800">{actionSuccess}</p>
+        </div>
+      )}
+
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-red-800">{actionError}</p>
+        </div>
+      )}
 
       {/* Aviso de Permissão */}
       {!isAdmin && (
@@ -430,8 +452,6 @@ export const Users: React.FC = () => {
           )}
         </div>
       </div>
-
-    
 
       {/* User Modal */}
       {isAdmin && (

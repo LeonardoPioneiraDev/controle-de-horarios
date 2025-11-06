@@ -7,6 +7,7 @@ import { Layout } from './components/Layout';
 import { Login } from './pages/Login';
 import Instructions from './pages/Instructions';
 import { ResetPassword } from './pages/ResetPassword';
+import SetPassword from './pages/SetPassword';
 import Dashboard from './pages/Dashboard';
 import { Users } from './pages/Users';
 import { UserCreate } from './pages/UserCreate';
@@ -31,6 +32,8 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/reset-password/confirm" element={<SetPassword />} />
+          <Route path="/first-login" element={<SetPassword />} />
           <Route path="/instrucoes" element={<Instructions />} />
           
           {/* Protected Routes */}

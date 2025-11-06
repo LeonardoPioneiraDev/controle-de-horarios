@@ -89,7 +89,7 @@ export class UsersService {
     console.log(`   👤 Nome: ${savedUser.firstName}`);
     console.log(`   🔑 Senha Temporária: ${tempPassword}`);
     console.log(`   🔗 Token de Reset: ${resetToken}`);
-    console.log(`   🌐 Link: ${this.configService.get('FRONTEND_URL', 'http://localhost:3000')}/reset-password?token=${resetToken}`);
+    console.log(`   🌐 Link: ${this.configService.get('FRONTEND_URL', 'http://localhost:3000')}/first-login?token=${resetToken}`);
 
     return savedUser;
   }

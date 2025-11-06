@@ -2,6 +2,27 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Transporter } from 'nodemailer';
+import { first } from 'rxjs';
+
+// Utilitário para normalização de URL do frontend e construção de links
+function normalizeFrontendBaseUrl(raw: string | undefined): string {
+  let base = (raw || '').trim();
+  if (!base) return 'http://localhost:3000';
+  if (!/^https?:\/\//i.test(base)) base = `http://${base.replace(/^\/+/, '')}`;
+  return base.replace(/\/+$/, '');
+}
+
+function buildFrontendUrl(base: string, pathname: string, query: Record<string, string>): string {
+  const path = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  try {
+    const url = new URL(path, base);
+    Object.entries(query).forEach(([k, v]) => url.searchParams.set(k, v));
+    return url.toString();
+  } catch {
+    const qs = new URLSearchParams(query).toString();
+    return `${base}${path}${qs ? `?${qs}` : ''}`;
+  }
+}
 
 interface SMTPConfig {
   name: string;
@@ -183,8 +204,8 @@ export class EmailService implements OnModuleInit {
     temporaryPassword: string,
     resetToken: string
   ): Promise<boolean> {
-    const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
-    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+    const base = normalizeFrontendBaseUrl(this.configService.get<string>('FRONTEND_URL'));
+    const resetUrl = buildFrontendUrl(base, '/first-login', { token: resetToken });
     
     const htmlContent = this.generateWelcomeEmailTemplate(firstName, temporaryPassword, resetUrl);
     const textContent = this.generateWelcomeTextContent(firstName, temporaryPassword, resetUrl);
@@ -313,5 +334,33 @@ IMPORTANTE: Esta senha temporária expira em 24 horas.
 Controle de Horários - Viação Pioneira Ltda
 Suporte: suporte@vpioneira.com.br
     `;
+  }
+
+  async sendPasswordResetEmail(
+    email: string,
+    firstName: string,
+    resetToken: string
+  ): Promise<boolean> {
+    const base = normalizeFrontendBaseUrl(this.configService.get<string>('FRONTEND_URL'));
+    const confirmUrl = buildFrontendUrl(base, '/reset-password/confirm', { token: resetToken });
+    const subject = this.configService.get<string>('EMAIL_RESET_SUBJECT', 'Redefinição de senha');
+    const html = `
+      <div style="font-family: Arial, sans-serif; color: #111;">
+        <h2>Olá, ${firstName}!</h2>
+        <p>Recebemos uma solicitação para redefinir sua senha.</p>
+        <p>Clique no botão abaixo para informar a sua nova senha:</p>
+        <p style=\"margin: 24px 0;\">
+          <a href=\"${confirmUrl}\" style=\"background:#FBBF24;color:#111;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block\">Redefinir senha</a>
+        </p>
+        <p>Se o botão não funcionar, copie e cole este link no navegador:</p>
+        <p><a href=\"${confirmUrl}\">${confirmUrl}</a></p>
+        <hr />
+        <small>Se você não solicitou a redefinição, ignore este e-mail.</small>
+      </div>
+    `;
+    const text = `Olá, ${firstName}!\n\nPara redefinir sua senha, acesse: ${confirmUrl}\n\nSe você não fez esta solicitação, ignore este e-mail.`;
+
+    this.logger.log(`📩 [RESET] Enviando e-mail de reset para: ${email}`);
+    return this.sendEmail({ to: email, subject, html, text });
   }
 }

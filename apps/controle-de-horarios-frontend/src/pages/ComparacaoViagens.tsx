@@ -421,14 +421,14 @@ function downloadFile(content: string | Blob, filename: string, type: string) {
 
 function exportHtmlReport(params: { date: string; stats: ResultadoComparacao | null; comparisons: ComparacaoViagem[]; filters: FiltrosComparacao }) {
   const html = buildReportHtml(params);
-  const safeDate = params.date.replaceAll(':', '-');
+  const safeDate = params.date.replace(/:/g, '-');
   downloadFile(html, `relatorio_comparacao_${safeDate}.html`, 'text/html;charset=utf-8');
 }
 
 // Excel via HTML table (compatível com Excel)
 function exportExcelReport(params: { date: string; stats: ResultadoComparacao | null; comparisons: ComparacaoViagem[]; filters: FiltrosComparacao }) {
   const html = buildReportHtml(params);
-  const safeDate = params.date.replaceAll(':', '-');
+  const safeDate = params.date.replace(/:/g, '-');
   downloadFile(html, `relatorio_comparacao_${safeDate}.xls`, 'application/vnd.ms-excel');
 }
 
