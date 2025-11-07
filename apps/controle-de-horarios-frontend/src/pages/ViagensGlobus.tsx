@@ -26,7 +26,7 @@ import { Label } from '../components/ui/label';
 import { Alert, AlertDescription, AlertTitle, AlertIcon } from '../components/ui/alert';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { useAuth } from '../contexts/AuthContext';
-import { UserRole } from '../types/user.types';
+import { UserRole, isAtLeast } from '../types/user.types';
 
 // Helper for glowing card effect
 const GlowingCard = ({ children, className }: { children: React.ReactNode, className?: string }) => (
@@ -518,7 +518,7 @@ export const ViagensGlobus: React.FC = () => {
   const [sincronizando, setSincronizando] = useState(false);
   const [testingOracle, setTestingOracle] = useState(false);
   const [oracleStatus, setOracleStatus] = useState<any>(null);
-  const isAdmin = user?.role === UserRole.ADMINISTRADOR || user?.role === UserRole.ADMIN;
+  const isAdmin = isAtLeast(user?.role, UserRole.ADMINISTRADOR);
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);

@@ -36,6 +36,16 @@ export class ControleHorariosService {
         continue;
       }
 
+      // Guard: if service or driver badge is missing, update only this record (no propagation)
+      if (!originalControleHorario.cod_servico_numero || !originalControleHorario.cracha_motorista) {
+        Object.assign(originalControleHorario, fieldsToUpdate);
+        originalControleHorario.editado_por_nome = editorNome;
+        originalControleHorario.editado_por_email = editorEmail;
+        originalControleHorario.updated_at = new Date();
+        updatedRecords.push(originalControleHorario);
+        continue;
+      }
+
       const queryBuilder = this.controleHorarioRepository.createQueryBuilder('controle');
       queryBuilder.where('controle.data_referencia = :dataReferencia', { dataReferencia: originalControleHorario.data_referencia });
 
@@ -43,6 +53,8 @@ export class ControleHorariosService {
       // Para Veículo, Motorista e Cobrador, propagar para viagens com a mesma linha e serviço
       const isVehicleUpdate = Object.prototype.hasOwnProperty.call(fieldsToUpdate, 'prefixo_veiculo');
       queryBuilder.andWhere('controle.cod_servico_numero = :codServicoNumero', { codServicoNumero: originalControleHorario.cod_servico_numero });
+      // Always restrict by the same driver's badge for propagation
+      queryBuilder.andWhere('controle.cracha_motorista = :crachaMotoristaAnchor', { crachaMotoristaAnchor: originalControleHorario.cracha_motorista });
       if (isVehicleUpdate) {
         if (originalControleHorario.cracha_motorista) {
           queryBuilder.andWhere('controle.cracha_motorista = :crachaMotorista', { crachaMotorista: originalControleHorario.cracha_motorista });
@@ -66,7 +78,8 @@ export class ControleHorariosService {
         queryBuilder.andWhere('controle.cracha_motorista = :crachaMotorista', { crachaMotorista: originalControleHorario.cracha_motorista });
       }
       if (fieldsToUpdate.cobrador_substituto_cracha || fieldsToUpdate.cobrador_substituto_nome) {
-        queryBuilder.andWhere('controle.cracha_cobrador = :crachaCobrador', { crachaCobrador: originalControleHorario.cracha_cobrador });
+        // Propagar com base no crach� do motorista, n�o do cobrador
+        queryBuilder.andWhere('controle.cracha_motorista = :crachaMotorista', { crachaMotorista: originalControleHorario.cracha_motorista });
       }
 
       const relatedHorarios = await queryBuilder.getMany();

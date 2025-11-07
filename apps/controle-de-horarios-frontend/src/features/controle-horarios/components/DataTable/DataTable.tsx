@@ -19,6 +19,8 @@ interface DataTableProps {
   scaleFilterActive?: boolean;
   scaleFilterLabel?: string;
   onClearScaleFilter?: () => void;
+  // Permissão para salvar/editar (opcional)
+  canSave?: boolean;
 }
 
 interface PersonOptionsModalProps {
@@ -87,6 +89,43 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personTyp
   );
 };
 
+interface ConfirmVehicleModalProps {
+  isOpen: boolean;
+  vehicleNumber: string;
+  anchorItem: ControleHorarioItem | null;
+  affectedCount: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehicleNumber, anchorItem, affectedCount, onConfirm, onCancel }) => {
+  if (!isOpen || !anchorItem) return null;
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={onCancel}>
+      <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-1 text-left">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">Confirmar número do veículo</h3>
+          <p className="text-sm text-gray-700 mb-4">
+            Aplicar o número <b>{vehicleNumber}</b> nesta viagem e propagar para as viagens seguintes do mesmo serviço (<b>{(anchorItem as any).cod_servico_numero || 'N/I'}</b>)
+            com o mesmo crachá de motorista (<b>{(anchorItem as any).crachaMotoristaGlobus || (anchorItem as any).crachaMotoristaEditado || 'N/I'}</b>)?
+          </p>
+          <div className="text-sm text-gray-600 mb-4">
+            Serão afetadas <b>{affectedCount}</b> viagem(ns) subsequentes (além desta), conforme ordenação por horário.
+          </div>
+          <div className="mt-4 flex justify-end space-x-2">
+            <button onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+              Cancelar
+            </button>
+            <button onClick={onConfirm} className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const DataTable: React.FC<DataTableProps> = ({
   controleHorarios,
   controleHorariosOriginais,
@@ -106,7 +145,32 @@ export const DataTable: React.FC<DataTableProps> = ({
   const [showDriverOptionsModal, setShowDriverOptionsModal] = useState<ControleHorarioItem | null>(null);
   const [showCobradorOptionsModal, setShowCobradorOptionsModal] = useState<ControleHorarioItem | null>(null);
   const [vehicleDrafts, setVehicleDrafts] = useState<Record<string, string>>({});
+  const [pendingVehicle, setPendingVehicle] = useState<{ open: boolean; vehicle: string; anchorId: string }>({ open: false, vehicle: '', anchorId: '' });
   const visibleItems = controleHorarios;
+
+  const anchorItem = pendingVehicle.open
+    ? (visibleItems.find((it) => it.id === pendingVehicle.anchorId) || null)
+    : null;
+
+  const propagationTargets: string[] = (() => {
+    if (!anchorItem) return [];
+    const service = (anchorItem as any).cod_servico_numero;
+    const driverBadge = (anchorItem as any).crachaMotoristaGlobus || (anchorItem as any).crachaMotoristaEditado;
+    const anchorIndex = visibleItems.findIndex((it) => it.id === anchorItem.id);
+    const anchorTime = new Date((anchorItem as any).hor_saida || (anchorItem as any).horaSaida || new Date(0)).getTime();
+    const ids: string[] = [];
+    for (let i = anchorIndex + 1; i < visibleItems.length; i++) {
+      const it: any = visibleItems[i];
+      if (it.cod_servico_numero !== service) continue;
+      const itBadge = it.crachaMotoristaGlobus || it.crachaMotoristaEditado;
+      if (!driverBadge || itBadge !== driverBadge) continue;
+      const t = new Date(it.hor_saida || it.horaSaida || new Date(0)).getTime();
+      if (isFinite(anchorTime) && isFinite(t) && t >= anchorTime) {
+        ids.push(it.id);
+      }
+    }
+    return ids;
+  })();
 
   const formatTime = (timeString?: string): string => {
     if (!timeString) return 'N/A';
@@ -321,11 +385,15 @@ export const DataTable: React.FC<DataTableProps> = ({
                     <input
                       type="text"
                       value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
-                      onChange={(e) => setVehicleDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                      onChange={(e) => {
+                        const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '');
+                        setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
+                      }}
                       onBlur={(e) => {
                         const val = (e.target.value || '').trim();
                         if (!val) return;
                         if (val.length < 6) { e.target.focus(); return; }
+                        if (/^\d{6,7}$/.test(val)) { setPendingVehicle({ open: true, vehicle: val, anchorId: item.id }); return; }
                         const ok = window.confirm(`Salvar número do veículo "${val}"?`);
                         if (ok) onInputChange(item.id, 'numeroCarro', val);
                       }}
@@ -346,6 +414,26 @@ export const DataTable: React.FC<DataTableProps> = ({
       {showCobradorOptionsModal && (
         <PersonOptionsModal item={showCobradorOptionsModal} personType="cobrador" onClose={() => setShowCobradorOptionsModal(null)} onInputChange={onInputChange} onApplyScaleFilter={onApplyScaleFilter} />
       )}
+
+      <ConfirmVehicleModal
+        isOpen={pendingVehicle.open}
+        vehicleNumber={pendingVehicle.vehicle}
+        anchorItem={anchorItem}
+        affectedCount={propagationTargets.length}
+        onCancel={() => { setPendingVehicle({ open: false, vehicle: '', anchorId: '' }); }}
+        onConfirm={() => {
+          const newVal = pendingVehicle.vehicle;
+          if (pendingVehicle.anchorId) {
+            onInputChange(pendingVehicle.anchorId, 'numeroCarro', newVal);
+            setVehicleDrafts(prev => ({ ...prev, [pendingVehicle.anchorId]: newVal }));
+          }
+          propagationTargets.forEach((targetId) => {
+            onInputChange(targetId, 'numeroCarro', newVal);
+            setVehicleDrafts(prev => ({ ...prev, [targetId]: newVal }));
+          });
+          setPendingVehicle({ open: false, vehicle: '', anchorId: '' });
+        }}
+      />
     </div>
   );
 }

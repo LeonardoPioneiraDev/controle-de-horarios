@@ -88,8 +88,7 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
           {/* Navigation */}
           <nav className="flex flex-1 flex-col px-6 py-4">
             <ul className="flex flex-1 flex-col gap-y-2">
-              
-              {([...navigation, { name: 'Histórico Comparações', href: '/historico-comparacoes', icon: TrendingUp }]).map((item) => {
+              {navigation.map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
                   <li key={item.name}>

@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { Calendar, Filter, Save, RefreshCw, Clock, X, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../../../contexts/AuthContext';
-import { UserRole } from '../../../../types/user.types';
+import { canSyncControleHorarios } from '../../../../types/user.types';
 
 interface HeaderProps {
   dataReferencia: string;
@@ -36,16 +36,7 @@ export const Header: React.FC<HeaderProps> = ({
   onManualSync // Added
 }) => {
   const { user } = useAuth();
-  const canSync = useMemo(() => {
-    const role = user?.role;
-    return (
-      role === UserRole.ANALISTA ||
-      role === UserRole.GERENTE ||
-      role === UserRole.DIRETOR ||
-      role === UserRole.ADMIN ||
-      role === UserRole.ADMINISTRADOR
-    );
-  }, [user]);
+  const canSync = useMemo(() => canSyncControleHorarios(user?.role), [user]);
   return (
     <div className="bg-white shadow rounded-lg p-6">
       <div className="flex items-center justify-between">

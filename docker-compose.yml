@@ -54,7 +54,7 @@ services:
     volumes:
       - ./apps/controle-de-horarios-backend/logs:/app/logs
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3335/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://10.10.100.176:3335/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

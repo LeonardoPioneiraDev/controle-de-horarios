@@ -7,7 +7,8 @@ import { first } from 'rxjs';
 // Utilitário para normalização de URL do frontend e construção de links
 function normalizeFrontendBaseUrl(raw: string | undefined): string {
   let base = (raw || '').trim();
-  if (!base) return 'http://localhost:3000';
+  if (!base) return 'http://localhost:3000';  //Desenvolvimento
+  //if (!base) return 'http://10.10.100.176:3000';  //Produção
   if (!/^https?:\/\//i.test(base)) base = `http://${base.replace(/^\/+/, '')}`;
   return base.replace(/\/+$/, '');
 }

@@ -17,7 +17,8 @@ import { Viagens } from './pages/Viagens';
 import { ViagensGlobus } from './pages/ViagensGlobus';
 import ComparacaoViagens from './pages/ComparacaoViagens';
 import HistoricoComparacoes from './pages/HistoricoComparacoes';
-import { ControleHorariosPage } from './features/controle-horarios/ControleHorariosPage'; // ✅ IMPORTAÇÃO CORRIGIDA
+import { ControleHorariosPage } from './features/controle-horarios/ControleHorariosPage';
+import { UserRole } from './types/user.types';
 
 function App() {
   return (
@@ -35,26 +36,93 @@ function App() {
           <Route path="/reset-password/confirm" element={<SetPassword />} />
           <Route path="/first-login" element={<SetPassword />} />
           <Route path="/instrucoes" element={<Instructions />} />
-          
+
           {/* Protected Routes */}
-          <Route path="/" element={
-            <ProtectedRoute>
-              <Layout />
-            </ProtectedRoute>
-          }>
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
-            <Route path="users" element={<Users />} />
-            <Route path="users/new" element={<UserCreate />} />
-            <Route path="users/:id/edit" element={<UserEdit />} />
+
+            {/* Users - apenas administrador */}
+            <Route
+              path="users"
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.ADMINISTRADOR, UserRole.ADMIN]}>
+                  <Users />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="users/new"
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.ADMINISTRADOR, UserRole.ADMIN]}>
+                  <UserCreate />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="users/:id/edit"
+              element={
+                <ProtectedRoute allowedRoles={[UserRole.ADMINISTRADOR, UserRole.ADMIN]}>
+                  <UserEdit />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Viagens e Comparações - analista ou superior */}
+            <Route
+              path="viagens"
+              element={
+                <ProtectedRoute minRole={UserRole.ANALISTA}>
+                  <Viagens />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="viagens-globus"
+              element={
+                <ProtectedRoute minRole={UserRole.ANALISTA}>
+                  <ViagensGlobus />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="comparacao-viagens"
+              element={
+                <ProtectedRoute minRole={UserRole.ANALISTA}>
+                  <ComparacaoViagens />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="historico-comparacoes"
+              element={
+                <ProtectedRoute minRole={UserRole.ANALISTA}>
+                  <HistoricoComparacoes />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Controle de Horários - operador ou superior */}
+            <Route
+              path="controle-horarios"
+              element={
+                <ProtectedRoute minRole={UserRole.OPERADOR}>
+                  <ControleHorariosPage />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Logs - manter como estava (se precisar, ajustamos depois) */}
             <Route path="logs" element={<Logs />} />
-            <Route path="viagens" element={<Viagens />} />
-            <Route path="viagens-globus" element={<ViagensGlobus />} />
-            <Route path="comparacao-viagens" element={<ComparacaoViagens />} />
-            <Route path="historico-comparacoes" element={<HistoricoComparacoes />} />
-            <Route path="controle-horarios" element={<ControleHorariosPage />} /> {/* ✅ COMPONENTE CORRIGIDO */}
           </Route>
-          
+
           {/* Catch all route */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>

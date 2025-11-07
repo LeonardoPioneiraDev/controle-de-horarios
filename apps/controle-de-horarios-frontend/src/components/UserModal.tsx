@@ -380,6 +380,7 @@ export const UserModal: React.FC<UserModalProps> = ({
             >
               <option value={UserRole.FUNCIONARIO}>Funcionário</option>
               <option value={UserRole.OPERADOR}>Operador</option>
+              <option value={UserRole.ENCARREGADO}>Encarregado</option>
               <option value={UserRole.ANALISTA}>Analista</option>
               <option value={UserRole.GERENTE}>Gerente</option>
               <option value={UserRole.DIRETOR}>Diretor</option>

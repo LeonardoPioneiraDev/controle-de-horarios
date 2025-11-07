@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserRole } from '../../types/user.types';
+import { UserRole, canSyncControleHorarios, canEditControleHorarios } from '../../types/user.types';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { useControleHorarios } from './hooks/useControleHorarios';
 import { FiltersPanel } from './components/FiltersPanel/FiltersPanel';
@@ -56,6 +56,8 @@ export const ControleHorariosPage: React.FC = () => {
       role === UserRole.ADMINISTRADOR
     );
   }, [user]);
+  const canSyncCH = useMemo(() => canSyncControleHorarios(user?.role), [user]);
+  const canSaveCH = useMemo(() => canEditControleHorarios(user?.role), [user]);
 
   const dayType = useMemo(() => {
     if (!dataReferencia) return '';
@@ -306,6 +308,7 @@ export const ControleHorariosPage: React.FC = () => {
                 estatisticas={estatisticas}
                 temAlteracoesPendentes={temAlteracoesPendentes}
                 contarAlteracoesPendentes={contarAlteracoesPendentes}
+                canSave={canSaveCH}
                 onApplyScaleFilter={({ servico, cracha }) => {
                   setFiltros((prev: any) => ({
                     ...prev,
@@ -332,24 +335,26 @@ export const ControleHorariosPage: React.FC = () => {
                 }}
               />
 
-              <FloatingActionButton
-                temAlteracoesPendentes={temAlteracoesPendentes}
-                alteracoesPendentes={contarAlteracoesPendentes()}
-                onDescartarAlteracoes={descartarAlteracoes}
-                onSalvarAlteracoes={salvarTodasAlteracoes}
-                saving={loading}
-              />
+              {canSaveCH && (
+                <FloatingActionButton
+                  temAlteracoesPendentes={temAlteracoesPendentes}
+                  alteracoesPendentes={contarAlteracoesPendentes()}
+                  onDescartarAlteracoes={descartarAlteracoes}
+                  onSalvarAlteracoes={salvarTodasAlteracoes}
+                  saving={loading}
+                />
+              )}
             </div>
           </div>
         ) : (
           <div className="text-center py-12 space-y-4">
             <p className="text-gray-400">Nenhuma viagem encontrada</p>
-            {isAnalistaOuMais ? (
+            {canSyncCH ? (
               <Button onClick={() => setOpenConfirmSync(true)} disabled={loading}>
                 Sincronizar
               </Button>
             ) : (
-              <Button variant="outline" disabled title="Apenas Analista, Gerente, Diretor ou Administrador pode sincronizar">
+              <Button variant="outline" disabled title="Apenas Encarregado, Analista, Gerente, Diretor ou Administrador pode sincronizar">
                 Sincronizar
               </Button>
             )}

@@ -12,7 +12,8 @@ export class BaseApiService {
 
   constructor() {
     // Build a safe base URL
-    const rawOrigin = 'http://localhost:3336';
+    const rawOrigin = 'http://localhost:3336'; // Desenvolvimento
+    //const rawOrigin = 'http://10.10.100.176:3335'; // Desenvolvimento
     const origin = rawOrigin.endsWith('/') ? rawOrigin : `${rawOrigin}/`;
     this.baseURL = new URL('api/', origin).toString().replace(/\/$/, ''); // -> http://localhost:3336/api
     this.timeout = 500000;
@@ -173,7 +174,8 @@ export const makeAuthenticatedRequest = async (
     throw new Error('Token de autenticação não encontrado');
   }
 
-  const rawBaseURL = 'http://localhost:3336/api';
+  const rawBaseURL = 'http://localhost:3336/api'; // Desenvolvimento
+  //const rawBaseURL = 'http://10.10.100.176:3335/api'; // Produção
   const base = rawBaseURL.endsWith('/') ? rawBaseURL : `${rawBaseURL}/`;
   const ep = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   const url = new URL(ep, base).toString();

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { controleHorariosService } from '../../../services/controleHorariosService';
+import { isAtLeast, UserRole } from '../../../types/user.types';
 import {
   ControleHorarioItem,
   FiltrosControleHorarios,
@@ -222,6 +223,11 @@ export const useControleHorarios = () => {
 
   const salvarTodasAlteracoes = useCallback(async () => {
     const usuarioAtual = obterUsuarioAtual();
+    const roleNorm = (usuarioAtual.perfil || '').toString().toLowerCase() as UserRole;
+    if (!isAtLeast(roleNorm, UserRole.ANALISTA)) {
+      setError('Você não tem permissão para salvar alterações. Requer perfil Analista ou superior.');
+      return;
+    }
     const origById = new Map(controleHorariosOriginais.map((o) => [o.id, o]));
     const itensAlterados = controleHorarios.filter((item) => {
       const original = origById.get(item.id);
@@ -256,7 +262,12 @@ export const useControleHorarios = () => {
       setTemAlteracoesPendentes(false);
       await Promise.all([buscarControleHorarios(), verificarStatusDados()]);
     } catch (err: any) {
-      setError(err.message || 'Erro ao salvar alteraÃ§Ãµes');
+      const msg = String(err?.message || '').toLowerCase();
+      if (msg.includes('forbidden')) {
+        setError('Ação não permitida: seu perfil não pode salvar. Requer Analista ou superior.');
+      } else {
+        setError(err.message || 'Erro ao salvar alterações');
+      }
     } finally {
       setLoading(false);
     }
