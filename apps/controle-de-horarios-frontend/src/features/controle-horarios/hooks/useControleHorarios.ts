@@ -225,7 +225,7 @@ export const useControleHorarios = () => {
     const usuarioAtual = obterUsuarioAtual();
     const roleNorm = (usuarioAtual.perfil || '').toString().toLowerCase() as UserRole;
     if (!isAtLeast(roleNorm, UserRole.ANALISTA)) {
-      setError('Você não tem permissão para salvar alterações. Requer perfil Analista ou superior.');
+      setError('Vocï¿½ nï¿½o tem permissï¿½o para salvar alteraï¿½ï¿½es. Requer perfil Analista ou superior.');
       return;
     }
     const origById = new Map(controleHorariosOriginais.map((o) => [o.id, o]));
@@ -264,9 +264,9 @@ export const useControleHorarios = () => {
     } catch (err: any) {
       const msg = String(err?.message || '').toLowerCase();
       if (msg.includes('forbidden')) {
-        setError('Ação não permitida: seu perfil não pode salvar. Requer Analista ou superior.');
+        setError('Aï¿½ï¿½o nï¿½o permitida: seu perfil nï¿½o pode salvar. Requer Analista ou superior.');
       } else {
-        setError(err.message || 'Erro ao salvar alterações');
+        setError(err.message || 'Erro ao salvar alteraï¿½ï¿½es');
       }
     } finally {
       setLoading(false);
@@ -298,8 +298,10 @@ export const useControleHorarios = () => {
   }, []);
 
   const limparFiltros = useCallback(() => {
-    setFiltros({ limite: 100, pagina: 1, ordenar_por: 'hor_saida', ordem: 'ASC' });
-  }, []);
+    setFiltros({}); // Reset all filters to an empty object
+    setTipoLocal(undefined);
+    setStatusEdicaoLocal('todos');
+  }, [setFiltros, setTipoLocal, setStatusEdicaoLocal]);
 
   const aplicarFiltros = useCallback(() => {
     buscarControleHorarios();

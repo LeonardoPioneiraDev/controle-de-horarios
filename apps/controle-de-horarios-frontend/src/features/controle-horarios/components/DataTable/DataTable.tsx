@@ -46,41 +46,69 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personTyp
   };
 
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={onClose}>
-      <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white" onClick={(e) => e.stopPropagation()}>
-        <div className="mt-3 text-center">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">Opções do {isMotorista ? 'Motorista' : 'Cobrador'}</h3>
-          <div className="mt-2 px-7 py-3">
-            <p className="text-sm text-gray-500 mb-4">Crachá Original: <strong>{crachaOriginal || 'Não informado'}</strong></p>
-            <button
-              onClick={() => {
-                const servico = (item as any).cod_servico_numero || '';
-                // Usar SEMPRE o crachá original (Globus) para filtrar escala
-                const cracha = isMotorista
-                  ? ((item as any).crachaMotoristaGlobus || (item as any).crachaMotoristaEditado || '')
-                  : ((item as any).crachaCobradorGlobus || (item as any).crachaCobradorEditado || '');
-                if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: isMotorista ? 'motorista' : 'cobrador' });
-                onClose();
-              }}
-              className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mb-3"
-            >
-              <ClipboardList className="h-4 w-4 mr-2" /> Ver Escala
-            </button>
-            <div className="text-left mb-4">
-              <label className="block text-sm font-medium text-gray-700">Nome</label>
-              <input className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value={tempNome} onChange={(e) => setTempNome(e.target.value)} />
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="relative">
+          <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
+          <div className="relative rounded-xl border border-yellow-400/20 bg-neutral-900 text-gray-100 shadow-2xl">
+            <div className="px-6 py-4 border-b border-yellow-400/20">
+              <h3 className="text-lg font-semibold text-yellow-400">Opções do {isMotorista ? 'Motorista' : 'Cobrador'}</h3>
+              <p className="text-sm text-gray-400 mt-1">Crachá Original: <span className="font-semibold text-gray-200">{crachaOriginal || 'Não informado'}</span></p>
             </div>
-            <div className="text-left mb-4">
-              <label className="block text-sm font-medium text-gray-700">Crachá</label>
-              <input className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value={tempCracha} onChange={(e) => setTempCracha(e.target.value)} />
+
+            <div className="px-6 py-5 space-y-4">
+              <button
+                onClick={() => {
+                  const servico = (item as any).cod_servico_numero || '';
+                  const cracha = isMotorista
+                    ? ((item as any).crachaMotoristaGlobus || (item as any).crachaMotoristaEditado || '')
+                    : ((item as any).crachaCobradorGlobus || (item as any).crachaCobradorEditado || '');
+                  if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: isMotorista ? 'motorista' : 'cobrador' });
+                  onClose();
+                }}
+                className="w-full flex items-center justify-center px-4 py-2 border border-yellow-400/30 rounded-md shadow-sm text-sm font-medium text-yellow-300 bg-yellow-400/10 hover:bg-yellow-400/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-yellow-500 transition-colors"
+              >
+                <ClipboardList className="h-4 w-4 mr-2" /> Ver Escala Completa
+              </button>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Nome do Substituto</label>
+                <input
+                  className="block w-full px-3 py-2 border border-neutral-700 bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm text-gray-100"
+                  value={tempNome}
+                  onChange={(e) => setTempNome(e.target.value)}
+                  placeholder="Digite o nome"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Crachá do Substituto</label>
+                <input
+                  className="block w-full px-3 py-2 border border-neutral-700 bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm text-gray-100"
+                  value={tempCracha}
+                  onChange={(e) => setTempCracha(e.target.value)}
+                  placeholder="Digite o crachá"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Observações</label>
+                <textarea
+                  className="block w-full px-3 py-2 border border-neutral-700 bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-yellow-500 focus:border-yellow-500 sm:text-sm text-gray-100"
+                  value={tempObservacoes}
+                  onChange={(e) => setTempObservacoes(e.target.value)}
+                  rows={2}
+                  placeholder="Adicione uma observação se necessário"
+                />
+              </div>
             </div>
-            <div className="text-left mb-4">
-              <label className="block text-sm font-medium text-gray-700">Observações</label>
-              <textarea className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" value={tempObservacoes} onChange={(e) => setTempObservacoes(e.target.value)} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-red text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"><Save className="h-4 w-4 mr-2 inline" /> Salvar</button>
-              <button onClick={onClose} className="px-4 py-2 bg-white text-gray-700 text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-300 transition-colors"><X className="h-4 w-4 mr-2 inline" /> Cancelar</button>
+
+            <div className="px-6 py-4 border-t border-yellow-400/20 flex justify-end gap-3">
+              <button onClick={onClose} className="px-4 py-2 bg-neutral-700 text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors">
+                Cancelar
+              </button>
+              <button onClick={handleSave} className="px-5 py-2 bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-yellow-500 transition-colors">
+                <Save className="h-4 w-4 mr-2 inline" />
+                Salvar Alterações
+              </button>
             </div>
           </div>
         </div>
@@ -100,25 +128,52 @@ interface ConfirmVehicleModalProps {
 
 const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehicleNumber, anchorItem, affectedCount, onConfirm, onCancel }) => {
   if (!isOpen || !anchorItem) return null;
+  const service = (anchorItem as any).cod_servico_numero || 'N/I';
+  const driverBadge = (anchorItem as any).crachaMotoristaGlobus || (anchorItem as any).crachaMotoristaEditado || 'N/I';
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" onClick={onCancel}>
-      <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white" onClick={(e) => e.stopPropagation()}>
-        <div className="mt-1 text-left">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">Confirmar número do veículo</h3>
-          <p className="text-sm text-gray-700 mb-4">
-            Aplicar o número <b>{vehicleNumber}</b> nesta viagem e propagar para as viagens seguintes do mesmo serviço (<b>{(anchorItem as any).cod_servico_numero || 'N/I'}</b>)
-            com o mesmo crachá de motorista (<b>{(anchorItem as any).crachaMotoristaGlobus || (anchorItem as any).crachaMotoristaEditado || 'N/I'}</b>)?
-          </p>
-          <div className="text-sm text-gray-600 mb-4">
-            Serão afetadas <b>{affectedCount}</b> viagem(ns) subsequentes (além desta), conforme ordenação por horário.
-          </div>
-          <div className="mt-4 flex justify-end space-x-2">
-            <button onClick={onCancel} className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-              Cancelar
-            </button>
-            <button onClick={onConfirm} className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-              Confirmar
-            </button>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-vehicle-title"
+    >
+      <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="relative">
+          <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
+          <div className="relative rounded-xl border border-yellow-400/20 bg-neutral-900 text-gray-100 shadow-2xl">
+            <div className="px-6 py-4 border-b border-yellow-400/20">
+              <h3 id="confirm-vehicle-title" className="text-lg font-semibold text-yellow-400">Confirmar Propagação de Veículo</h3>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-gray-300">
+                Aplicar o veículo <span className="font-semibold text-gray-100">{vehicleNumber}</span> a esta viagem e propagar para as próximas?
+              </p>
+              <div className="border border-neutral-700 bg-neutral-800/60 rounded-md p-3">
+                <p className="text-xs text-gray-400 mb-2">A alteração será aplicada em viagens com:</p>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">Serviço: <b className="text-blue-200">{service}</b></span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Crachá: <b className="text-indigo-200">{driverBadge}</b></span>
+                </div>
+                <p className="text-xs text-gray-400 mt-3">
+                  <span className="font-bold text-yellow-400">{affectedCount}</span> viagem(ns) subsequente(s) será(ão) afetada(s).
+                </p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-yellow-400/20 flex justify-end gap-3">
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 bg-neutral-700 text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={onConfirm}
+                className="px-5 py-2 bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-yellow-500 transition-colors"
+              >
+                Confirmar e Propagar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -146,7 +201,35 @@ export const DataTable: React.FC<DataTableProps> = ({
   const [showCobradorOptionsModal, setShowCobradorOptionsModal] = useState<ControleHorarioItem | null>(null);
   const [vehicleDrafts, setVehicleDrafts] = useState<Record<string, string>>({});
   const [pendingVehicle, setPendingVehicle] = useState<{ open: boolean; vehicle: string; anchorId: string }>({ open: false, vehicle: '', anchorId: '' });
+  const [hiddenRows, setHiddenRows] = useState(new Set<string>());
   const visibleItems = controleHorarios;
+
+  useEffect(() => {
+    const timers = new Map<string, ReturnType<typeof setTimeout>>();
+
+    controleHorarios.forEach((item) => {
+      const saidaISO = (item as any).hor_saida || (item as any).horaSaida;
+      const saidaDate = saidaISO ? new Date(saidaISO) : null;
+      const passou = !!(saidaDate && saidaDate.getTime() < Date.now());
+      const temVeiculo = !!(item.numeroCarro && String(item.numeroCarro).trim() !== '');
+      const trocouMotorista = !!(item.nomeMotoristaEditado || item.crachaMotoristaEditado);
+      const trocouCobrador = !!(item.nomeCobradorEditado || item.crachaCobradorEditado);
+
+      const isGreenRow = passou && temVeiculo && !trocouMotorista && !trocouCobrador;
+
+      if (isGreenRow && !hiddenRows.has(item.id)) {
+        const timerId = setTimeout(() => {
+          setHiddenRows(prev => new Set(prev).add(item.id));
+        }, 40000); // 40 seconds
+        timers.set(item.id, timerId);
+      }
+    });
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [controleHorarios, hiddenRows]);
+
 
   const anchorItem = pendingVehicle.open
     ? (visibleItems.find((it) => it.id === pendingVehicle.anchorId) || null)
@@ -214,12 +297,12 @@ export const DataTable: React.FC<DataTableProps> = ({
   return (
     <div className="w-full">
       {scaleFilterActive && (
-        <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-md border border-yellow-300 bg-yellow-50 text-yellow-800">
+        <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-md border border-yellow-400/30 bg-yellow-900/20 text-yellow-300">
           <div className="text-sm">Filtro de escala ativo{scaleFilterLabel ? `: ${scaleFilterLabel}` : ''}</div>
           {onClearScaleFilter && (
             <button
               onClick={onClearScaleFilter}
-              className="text-xs px-2 py-1 rounded border border-yellow-400 hover:bg-yellow-100"
+              className="text-xs px-2 py-1 rounded border border-yellow-400/30 text-yellow-300 hover:bg-yellow-400/10"
               title="Remover filtro de escala"
             >
               Limpar filtro
@@ -245,6 +328,9 @@ export const DataTable: React.FC<DataTableProps> = ({
           </thead>
           <tbody className="bg-transparent divide-y divide-gray-800">
             {visibleItems.map((item) => {
+               if (hiddenRows.has(item.id)) {
+                return null;
+              }
               const saidaISO = (item as any).hor_saida || (item as any).horaSaida;
               const saidaDate = saidaISO ? new Date(saidaISO) : null;
               const passou = !!(saidaDate && saidaDate.getTime() < Date.now());
@@ -254,11 +340,11 @@ export const DataTable: React.FC<DataTableProps> = ({
               const nomeAtividade = ((item as any).nome_atividade || '').toString().toUpperCase();
               const isAtividadeAmarela = nomeAtividade === 'RECOLHIMENTO' || nomeAtividade === 'RENDIÇÃO';
               const rowClass = (passou && !temVeiculo)
-                ? 'border-l-4 border-red-500 bg-red-900/10'
+                ? 'border-l-4 border-red-500 bg-red-900/30'
                 : (passou && (trocouMotorista || trocouCobrador))
-                  ? 'border-l-4 border-yellow-400 bg-yellow-900/10'
+                  ? 'border-l-4 border-yellow-400 bg-yellow-900/25'
                   : (passou && temVeiculo && !trocouMotorista && !trocouCobrador)
-                    ? 'border-l-4 border-green-500 bg-green-900/10'
+                    ? 'border-l-4 border-green-500 bg-green-900/20'
                     : '';
               const draft = vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '');
               return (
@@ -274,7 +360,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                     <div className="flex flex-col">
                       <div className="text-sm font-medium text-gray-400">{(item as any).codigoLinha}</div>
                       <div className="text-xs text-gray-400" title={(item as any).nomeLinha}>{(item as any).nomeLinha}</div>
-                      <div className="text-base font-semibold text-blue-700 mt-1">Serviço {(item as any).cod_servico_numero || ''}</div>
+                      <div className="text-base font-semibold text-blue-400 mt-1">Serviço {(item as any).cod_servico_numero || ''}</div>
                     </div>
                   </td>
                   <td className="px-2 py-4 text-sm text-gray-400">
@@ -299,13 +385,13 @@ export const DataTable: React.FC<DataTableProps> = ({
                     </div>
                   </td>
                   <td className="px-2 py-4 text-sm text-gray-400">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-gray-300 text-gray-900 border-gray-200">{(item as any).setorPrincipalLinha}</span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-neutral-700 text-gray-300">{(item as any).setorPrincipalLinha}</span>
                   </td>
                   <td className="px-2 py-4">
                     <div className="cursor-pointer" onClick={() => setShowDriverOptionsModal(item)}>
                       <button
                         type="button"
-                        className="text-sm font-bold text-blue-700 leading-tight hover:underline"
+                        className="text-sm font-bold text-blue-400 leading-tight hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
                           const servico = (item as any).cod_servico_numero || '';
@@ -317,17 +403,15 @@ export const DataTable: React.FC<DataTableProps> = ({
                       >
                         {(item as any).crachaMotoristaEditado || (item as any).crachaMotoristaGlobus || 'N/A'}
                       </button>
-                      {((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') ? (
-                        <div className="mt-0.5 leading-tight">
-                          <div className="text-xs font-semibold text-yellow-700">Novo: {(item as any).nomeMotoristaEditado}</div>
-                          <div className="text-[11px] text-gray-400">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400 leading-tight">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
-                      )}
+                      <div className="mt-0.5 leading-tight">
+                        {((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') && (
+                          <div className="text-xs font-semibold text-yellow-500">Atual: {(item as any).nomeMotoristaEditado}</div>
+                        )}
+                        <div className="text-[11px] text-gray-400">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
+                      </div>
                       <button
                         type="button"
-                        className="mt-1 text-[11px] text-blue-600 hover:underline flex items-center"
+                        className="mt-1 text-[11px] text-blue-500 hover:underline flex items-center"
                         onClick={(e) => {
                           e.stopPropagation();
                           const servico = (item as any).cod_servico_numero || '';
@@ -345,7 +429,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                     <div className="cursor-pointer" onClick={() => setShowCobradorOptionsModal(item)}>
                       <button
                         type="button"
-                        className="text-sm font-bold text-blue-700 leading-tight hover:underline"
+                        className="text-sm font-bold text-blue-400 leading-tight hover:underline"
                         onClick={(e) => {
                           e.stopPropagation();
                           const servico = (item as any).cod_servico_numero || '';
@@ -357,36 +441,36 @@ export const DataTable: React.FC<DataTableProps> = ({
                       >
                         {(item as any).crachaCobradorEditado || (item as any).crachaCobradorGlobus || 'N/A'}
                       </button>
-                      {((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') ? (
-                        <div className="mt-0.5 leading-tight">
-                          <div className="text-xs font-semibold text-yellow-700">Novo: {(item as any).nomeCobradorEditado}</div>
-                          <div className="text-[11px] text-gray-400">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-gray-400 leading-tight">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
+                      <div className="mt-0.5 leading-tight">
+                        {((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') && (
+                          <div className="text-xs font-semibold text-yellow-500">Atual: {(item as any).nomeCobradorEditado}</div>
+                        )}
+                        <div className="text-[11px] text-gray-400">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
+                      </div>
+                      {!!(item.crachaCobradorGlobus || item.crachaCobradorEditado) && ( // Conditional render for "Ver escala"
+                        <button
+                          type="button"
+                          className="mt-1 text-[11px] text-blue-500 hover:underline flex items-center"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const servico = (item as any).cod_servico_numero || '';
+                            // Usar SEMPRE o crachá original (Globus) para filtrar escala
+                            const cracha = (item as any).crachaCobradorGlobus || (item as any).crachaCobradorEditado || '';
+                            if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'cobrador' });
+                          }}
+                          title="Ver escala com o cobrador atual"
+                        >
+                          <ClipboardList className="h-3.5 w-3.5 mr-1" /> Ver escala
+                        </button>
                       )}
-                      <button
-                        type="button"
-                        className="mt-1 text-[11px] text-blue-600 hover:underline flex items-center"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const servico = (item as any).cod_servico_numero || '';
-                          // Usar SEMPRE o crachá original (Globus) para filtrar escala
-                          const cracha = (item as any).crachaCobradorGlobus || (item as any).crachaCobradorEditado || '';
-                          if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'cobrador' });
-                        }}
-                        title="Ver escala com o cobrador atual"
-                      >
-                        <ClipboardList className="h-3.5 w-3.5 mr-1" /> Ver escala
-                      </button>
                     </div>
                   </td>
-                  <td className="px-2 py-4 text-black">
+                  <td className="px-2 py-4">
                     <input
                       type="text"
                       value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
                       onChange={(e) => {
-                        const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '');
+                        const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '').slice(0, 7);
                         setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
                       }}
                       onBlur={(e) => {
@@ -394,11 +478,9 @@ export const DataTable: React.FC<DataTableProps> = ({
                         if (!val) return;
                         if (val.length < 6) { e.target.focus(); return; }
                         if (/^\d{6,7}$/.test(val)) { setPendingVehicle({ open: true, vehicle: val, anchorId: item.id }); return; }
-                        const ok = window.confirm(`Salvar número do veículo "${val}"?`);
-                        if (ok) onInputChange(item.id, 'numeroCarro', val);
                       }}
                       placeholder="Nº Veículo"
-                      className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-500 bg-yellow-50' : 'border-gray-400'}`}
+                      className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-colors text-gray-100 ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-500 bg-yellow-900/20' : 'border-neutral-700 bg-neutral-800/60'}`}
                     />
                   </td>
                 </tr>
@@ -439,3 +521,5 @@ export const DataTable: React.FC<DataTableProps> = ({
 }
 
 export default DataTable;
+
+

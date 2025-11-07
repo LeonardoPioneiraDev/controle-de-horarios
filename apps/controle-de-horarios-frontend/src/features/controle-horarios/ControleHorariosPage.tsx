@@ -325,14 +325,7 @@ export const ControleHorariosPage: React.FC = () => {
                     ? `Serviço ${(filtros as any).cod_servico_numero} • Crachá ${(filtros as any).cracha_funcionario}`
                     : undefined
                 }
-                onClearScaleFilter={() => {
-                  setFiltros((prev: any) => ({
-                    ...prev,
-                    cod_servico_numero: undefined,
-                    cracha_funcionario: undefined,
-                  }));
-                  setTimeout(() => aplicarFiltros(), 0);
-                }}
+                onClearScaleFilter={limparFiltros}
               />
 
               {canSaveCH && (
