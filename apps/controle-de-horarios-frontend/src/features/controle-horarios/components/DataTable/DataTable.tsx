@@ -1,5 +1,5 @@
 // src/features/controle-horarios/components/DataTable/DataTable.tsx
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList } from 'lucide-react';
 import { ControleHorarioItem, StatusControleHorariosDto, EstatisticasControleHorariosDto } from '@/types/controle-horarios.types';
 
@@ -15,11 +15,9 @@ interface DataTableProps {
   temAlteracoesPendentes: boolean;
   contarAlteracoesPendentes: () => number;
   onApplyScaleFilter?: (params: { servico: string; cracha: string; tipo: 'motorista' | 'cobrador' }) => void;
-  // Novo: exibir banner de filtro de escala ativo + limpar
   scaleFilterActive?: boolean;
   scaleFilterLabel?: string;
   onClearScaleFilter?: () => void;
-  // Permissão para salvar/editar (opcional)
   canSave?: boolean;
 }
 
@@ -27,11 +25,11 @@ interface PersonOptionsModalProps {
   item: ControleHorarioItem;
   personType: 'motorista' | 'cobrador';
   onClose: () => void;
-  onInputChange: (viagemId: string, field: keyof ControleHorarioItem, value: string | number | boolean) => void;
   onApplyScaleFilter?: (params: { servico: string; cracha: string; tipo: 'motorista' | 'cobrador' }) => void;
+  onSave: (data: { nome: string; cracha: string; observacoes: string }) => void;
 }
 
-const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personType, onClose, onInputChange, onApplyScaleFilter }) => {
+const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personType, onClose, onApplyScaleFilter, onSave }) => {
   const isMotorista = personType === 'motorista';
   const crachaOriginal = isMotorista ? item.crachaMotoristaGlobus : item.crachaCobradorGlobus;
   const [tempNome, setTempNome] = useState(isMotorista ? item.nomeMotoristaEditado || '' : item.nomeCobradorEditado || '');
@@ -39,9 +37,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personTyp
   const [tempObservacoes, setTempObservacoes] = useState((item as any).observacoes || '');
 
   const handleSave = () => {
-    onInputChange(item.id, isMotorista ? 'nomeMotoristaEditado' : 'nomeCobradorEditado', tempNome);
-    onInputChange(item.id, isMotorista ? 'crachaMotoristaEditado' : 'crachaCobradorEditado', tempCracha);
-    onInputChange(item.id, 'observacoes' as any, tempObservacoes);
+    onSave({ nome: tempNome, cracha: tempCracha, observacoes: tempObservacoes });
     onClose();
   };
 
@@ -55,7 +51,6 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personTyp
               <h3 className="text-lg font-semibold text-yellow-400">Opções do {isMotorista ? 'Motorista' : 'Cobrador'}</h3>
               <p className="text-sm text-gray-400 mt-1">Crachá Original: <span className="font-semibold text-gray-200">{crachaOriginal || 'Não informado'}</span></p>
             </div>
-
             <div className="px-6 py-5 space-y-4">
               <button
                 onClick={() => {
@@ -70,7 +65,6 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personTyp
               >
                 <ClipboardList className="h-4 w-4 mr-2" /> Ver Escala Completa
               </button>
-
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Nome do Substituto</label>
                 <input
@@ -100,14 +94,13 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personTyp
                 />
               </div>
             </div>
-
             <div className="px-6 py-4 border-t border-yellow-400/20 flex justify-end gap-3">
               <button onClick={onClose} className="px-4 py-2 bg-neutral-700 text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors">
                 Cancelar
               </button>
               <button onClick={handleSave} className="px-5 py-2 bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-yellow-500 transition-colors">
                 <Save className="h-4 w-4 mr-2 inline" />
-                Salvar Alterações
+                Salvar e Propagar
               </button>
             </div>
           </div>
@@ -181,6 +174,70 @@ const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehic
   );
 };
 
+const ConfirmPersonPropagationModal: React.FC<{
+  isOpen: boolean;
+  personType: 'motorista' | 'cobrador';
+  newData: { nome: string; cracha: string };
+  anchorItem: ControleHorarioItem | null;
+  affectedCount: number;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({ isOpen, personType, newData, anchorItem, affectedCount, onConfirm, onCancel }) => {
+  if (!isOpen || !anchorItem) return null;
+
+  const service = (anchorItem as any).cod_servico_numero || 'N/I';
+  const originalDriverBadge = (anchorItem as any).crachaMotoristaGlobus || 'N/A';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="relative">
+          <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
+          <div className="relative rounded-xl border border-yellow-400/20 bg-neutral-900 text-gray-100 shadow-2xl">
+            <div className="px-6 py-4 border-b border-yellow-400/20">
+              <h3 className="text-lg font-semibold text-yellow-400">Confirmar Propagação de {personType === 'motorista' ? 'Motorista' : 'Cobrador'}</h3>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-gray-300">
+                Aplicar a substituição para <span className="font-semibold text-gray-100">{newData.nome} (crachá: {newData.cracha})</span> nesta viagem e propagar para as próximas?
+              </p>
+              <div className="border border-neutral-700 bg-neutral-800/60 rounded-md p-3">
+                <p className="text-xs text-gray-400 mb-2">A alteração será aplicada em viagens com o mesmo serviço e motorista original:</p>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">Serviço: <b className="text-blue-200">{service}</b></span>
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">Motorista Original: <b className="text-indigo-200">{originalDriverBadge}</b></span>
+                </div>
+                <p className="text-xs text-gray-400 mt-3">
+                  <span className="font-bold text-yellow-400">{affectedCount}</span> viagem(ns) subsequente(s) será(ão) afetada(s).
+                </p>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-yellow-400/20 flex justify-end gap-3">
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 bg-neutral-700 text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={onConfirm}
+                className="px-5 py-2 bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-yellow-500 transition-colors"
+              >
+                Confirmar e Propagar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const DataTable: React.FC<DataTableProps> = ({
   controleHorarios,
   controleHorariosOriginais,
@@ -202,6 +259,14 @@ export const DataTable: React.FC<DataTableProps> = ({
   const [vehicleDrafts, setVehicleDrafts] = useState<Record<string, string>>({});
   const [pendingVehicle, setPendingVehicle] = useState<{ open: boolean; vehicle: string; anchorId: string }>({ open: false, vehicle: '', anchorId: '' });
   const [hiddenRows, setHiddenRows] = useState(new Set<string>());
+  const [pendingPerson, setPendingPerson] = useState<{
+    open: boolean;
+    anchorId: string;
+    personType: 'motorista' | 'cobrador';
+    nome: string;
+    cracha: string;
+    observacoes: string;
+  }>({ open: false, anchorId: '', personType: 'motorista', nome: '', cracha: '', observacoes: '' });
   const visibleItems = controleHorarios;
 
   useEffect(() => {
@@ -233,6 +298,8 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   const anchorItem = pendingVehicle.open
     ? (visibleItems.find((it) => it.id === pendingVehicle.anchorId) || null)
+    : pendingPerson.open
+    ? (visibleItems.find((it) => it.id === pendingPerson.anchorId) || null)
     : null;
 
   const propagationTargets: string[] = (() => {
@@ -491,11 +558,50 @@ export const DataTable: React.FC<DataTableProps> = ({
       </div>
 
       {showDriverOptionsModal && (
-        <PersonOptionsModal item={showDriverOptionsModal} personType="motorista" onClose={() => setShowDriverOptionsModal(null)} onInputChange={onInputChange} onApplyScaleFilter={onApplyScaleFilter} />
+        <PersonOptionsModal
+          item={showDriverOptionsModal}
+          personType="motorista"
+          onClose={() => setShowDriverOptionsModal(null)}
+          onApplyScaleFilter={onApplyScaleFilter}
+          onSave={(data) => {
+            setPendingPerson({ open: true, anchorId: showDriverOptionsModal.id, personType: 'motorista', ...data });
+          }}
+        />
       )}
       {showCobradorOptionsModal && (
-        <PersonOptionsModal item={showCobradorOptionsModal} personType="cobrador" onClose={() => setShowCobradorOptionsModal(null)} onInputChange={onInputChange} onApplyScaleFilter={onApplyScaleFilter} />
+        <PersonOptionsModal
+          item={showCobradorOptionsModal}
+          personType="cobrador"
+          onClose={() => setShowCobradorOptionsModal(null)}
+          onApplyScaleFilter={onApplyScaleFilter}
+          onSave={(data) => {
+            setPendingPerson({ open: true, anchorId: showCobradorOptionsModal.id, personType: 'cobrador', ...data });
+          }}
+        />
       )}
+
+      <ConfirmPersonPropagationModal
+        isOpen={pendingPerson.open}
+        personType={pendingPerson.personType}
+        newData={{ nome: pendingPerson.nome, cracha: pendingPerson.cracha }}
+        anchorItem={anchorItem}
+        affectedCount={propagationTargets.length}
+        onCancel={() => setPendingPerson({ open: false, anchorId: '', personType: 'motorista', nome: '', cracha: '', observacoes: '' })}
+        onConfirm={() => {
+          if (!anchorItem) return;
+
+          const { nome, cracha, observacoes, personType } = pendingPerson;
+          const allIdsToUpdate = [anchorItem.id, ...propagationTargets];
+
+          allIdsToUpdate.forEach(id => {
+            onInputChange(id, personType === 'motorista' ? 'nomeMotoristaEditado' : 'nomeCobradorEditado', nome);
+            onInputChange(id, personType === 'motorista' ? 'crachaMotoristaEditado' : 'crachaCobradorEditado', cracha);
+            onInputChange(id, 'observacoes' as any, observacoes);
+          });
+
+          setPendingPerson({ open: false, anchorId: '', personType: 'motorista', nome: '', cracha: '', observacoes: '' });
+        }}
+      />
 
       <ConfirmVehicleModal
         isOpen={pendingVehicle.open}
@@ -521,5 +627,3 @@ export const DataTable: React.FC<DataTableProps> = ({
 }
 
 export default DataTable;
-
-
