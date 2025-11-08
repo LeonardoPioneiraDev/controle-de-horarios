@@ -23,88 +23,96 @@ export class ControleHorariosService {
     editorNome: string,
     editorEmail: string,
   ): Promise<ControleHorario[]> {
-    this.logger.log(`🔄 Iniciando atualização de múltiplos controles de horário com propagação.`);
+    this.logger.log(`🔄 Iniciando atualização de múltiplos controles de horário com ${updates.length} DTO(s).`);
     const updatedRecords: ControleHorario[] = [];
+    const processedIds = new Set<string>();
 
     for (const updateDto of updates) {
       const { id, ...fieldsToUpdate } = updateDto;
 
+      // 1. Verificação de processamento duplicado
+      if (processedIds.has(id)) {
+        this.logger.log(`⏭️ Pulando ID ${id} pois já foi processado neste lote.`);
+        continue;
+      }
+
+      // 2. Verificação de campos para atualização
+      if (Object.keys(fieldsToUpdate).length === 0) {
+        this.logger.warn(`⚠️ Nenhuma alteração solicitada para o ID ${id}. Pulando.`);
+        continue;
+      }
+
       const originalControleHorario = await this.controleHorarioRepository.findOne({ where: { id } });
 
       if (!originalControleHorario) {
-        this.logger.warn(`⚠️ Controle de Horário com ID ${id} não encontrado para atualização.`);
+        this.logger.warn(`⚠️ Controle de Horário com ID ${id} não encontrado.`);
         continue;
       }
 
-      // Guard: if service or driver badge is missing, update only this record (no propagation)
-      if (!originalControleHorario.cod_servico_numero || !originalControleHorario.cracha_motorista) {
-        Object.assign(originalControleHorario, fieldsToUpdate);
-        originalControleHorario.editado_por_nome = editorNome;
-        originalControleHorario.editado_por_email = editorEmail;
-        originalControleHorario.updated_at = new Date();
+      // 3. Guarda de segurança para propagação
+      const isPropagationSafe = originalControleHorario.cod_servico_numero && originalControleHorario.cracha_motorista;
+      if (!isPropagationSafe) {
+        this.logger.log(`🚫 Propagação não aplicável para o ID ${id}: serviço ou crachá do motorista ausente. Atualizando apenas este registro.`);
+        Object.assign(originalControleHorario, fieldsToUpdate, {
+          editado_por_nome: editorNome,
+          editado_por_email: editorEmail,
+          updated_at: new Date(),
+        });
         updatedRecords.push(originalControleHorario);
+        processedIds.add(id);
         continue;
       }
+
+      // --- Lógica de Propagação Controlada ---
+      this.logger.log(`[PROPAGAÇÃO INICIADA POR ID: ${id}]`);
+      this.logger.log(`Campos a serem propagados: ${Object.keys(fieldsToUpdate).join(', ')}`);
 
       const queryBuilder = this.controleHorarioRepository.createQueryBuilder('controle');
+
+      // Critérios estritos de correspondência
       queryBuilder.where('controle.data_referencia = :dataReferencia', { dataReferencia: originalControleHorario.data_referencia });
-
-      // Critérios de propagação
-      // Para Veículo, Motorista e Cobrador, propagar para viagens com a mesma linha e serviço
-      const isVehicleUpdate = Object.prototype.hasOwnProperty.call(fieldsToUpdate, 'prefixo_veiculo');
       queryBuilder.andWhere('controle.cod_servico_numero = :codServicoNumero', { codServicoNumero: originalControleHorario.cod_servico_numero });
-      // Always restrict by the same driver's badge for propagation
-      queryBuilder.andWhere('controle.cracha_motorista = :crachaMotoristaAnchor', { crachaMotoristaAnchor: originalControleHorario.cracha_motorista });
-      if (isVehicleUpdate) {
-        if (originalControleHorario.cracha_motorista) {
-          queryBuilder.andWhere('controle.cracha_motorista = :crachaMotorista', { crachaMotorista: originalControleHorario.cracha_motorista });
-        } else if (originalControleHorario.cod_motorista) {
-          queryBuilder.andWhere('controle.cod_motorista = :codMotorista', { codMotorista: originalControleHorario.cod_motorista });
-        } else if (originalControleHorario.nome_motorista) {
-          queryBuilder.andWhere('controle.nome_motorista = :nomeMotorista', { nomeMotorista: originalControleHorario.nome_motorista });
-        }
-      } else {
-        queryBuilder.andWhere('controle.codigo_linha = :codigoLinha', { codigoLinha: originalControleHorario.codigo_linha });
-      }
-      if (originalControleHorario.flg_sentido) {
-        queryBuilder.andWhere('controle.flg_sentido = :flgSentido', { flgSentido: originalControleHorario.flg_sentido });
-      }
-      if (originalControleHorario.hor_saida) {
-        queryBuilder.andWhere('controle.hor_saida IS NULL OR controle.hor_saida >= :anchorHora', { anchorHora: originalControleHorario.hor_saida });
-      }
+      queryBuilder.andWhere('controle.cracha_motorista = :crachaMotorista', { crachaMotorista: originalControleHorario.cracha_motorista });
 
-      // Se a alteração for de motorista ou cobrador, propagar para viagens com o mesmo motorista/cobrador original
-      if (fieldsToUpdate.motorista_substituto_cracha || fieldsToUpdate.motorista_substituto_nome) {
-        queryBuilder.andWhere('controle.cracha_motorista = :crachaMotorista', { crachaMotorista: originalControleHorario.cracha_motorista });
-      }
-      if (fieldsToUpdate.cobrador_substituto_cracha || fieldsToUpdate.cobrador_substituto_nome) {
-        // Propagar com base no crach� do motorista, n�o do cobrador
-        queryBuilder.andWhere('controle.cracha_motorista = :crachaMotorista', { crachaMotorista: originalControleHorario.cracha_motorista });
+      // Propagação afeta apenas viagens futuras ou a atual
+      if (originalControleHorario.hor_saida) {
+        queryBuilder.andWhere('controle.hor_saida >= :anchorHora', { anchorHora: originalControleHorario.hor_saida });
       }
 
       const relatedHorarios = await queryBuilder.getMany();
 
-      this.logger.log(`Encontrados ${relatedHorarios.length} registros relacionados para propagação da alteração do ID ${id}.`);
+      this.logger.log(`[PROPAGAÇÃO ID: ${id}] Encontrados ${relatedHorarios.length} registros para aplicar alterações (Serviço: ${originalControleHorario.cod_servico_numero}, Motorista: ${originalControleHorario.cracha_motorista}).`);
 
       for (const relatedHorario of relatedHorarios) {
-        Object.assign(relatedHorario, fieldsToUpdate);
-        relatedHorario.editado_por_nome = editorNome;
-        relatedHorario.editado_por_email = editorEmail;
-        relatedHorario.updated_at = new Date();
-        // Mantém o hash_dados inalterado para evitar violações de unicidade
+        if (processedIds.has(relatedHorario.id)) continue;
+
+        this.logger.log(`  -> Aplicando alterações no ID: ${relatedHorario.id}`);
+        Object.assign(relatedHorario, fieldsToUpdate, {
+          editado_por_nome: editorNome,
+          editado_por_email: editorEmail,
+          updated_at: new Date(),
+        });
+        
         updatedRecords.push(relatedHorario);
+        processedIds.add(relatedHorario.id);
       }
+      this.logger.log(`[PROPAGAÇÃO FINALIZADA PARA ID: ${id}]`);
     }
 
     if (updatedRecords.length > 0) {
-      const uniqueRecords = Array.from(new Map(updatedRecords.map((r) => [r.id, r] as const)).values());
-      await this.controleHorarioRepository.manager.transaction(async (trx) => {
-        await trx.getRepository(ControleHorario).save(uniqueRecords);
+      const uniqueRecords = Array.from(new Map(updatedRecords.map((r) => [r.id, r])).values());
+      
+      this.logger.log(`Salvando ${uniqueRecords.length} registros únicos no banco de dados.`);
+      await this.controleHorarioRepository.manager.transaction(async (transactionalEntityManager) => {
+        await transactionalEntityManager.save(ControleHorario, uniqueRecords);
       });
-      this.logger.log(`✅ ${updatedRecords.length} registros atualizados e propagados com sucesso.`);
+
+      this.logger.log(`✅ ${uniqueRecords.length} registros atualizados com sucesso.`);
+    } else {
+      this.logger.log('ℹ️ Nenhuma alteração foi realizada no final do processo.');
     }
 
-    return Array.from(new Map(updatedRecords.map((r) => [r.id, r] as const)).values());
+    return Array.from(new Map(updatedRecords.map((r) => [r.id, r])).values());
   }
 
   async buscarControleHorariosPorData(
@@ -784,38 +792,41 @@ export class ControleHorariosService {
       throw new Error(`Controle de Horário com ID ${id} não encontrado.`);
     }
 
-    // Atualiza apenas os campos permitidos para edição
-    { // forward propagation when applicable
-      const camposPropagaveis = [
-        'prefixo_veiculo',
-        'motorista_substituto_nome',
-        'motorista_substituto_cracha',
-        'cobrador_substituto_nome',
-        'cobrador_substituto_cracha',
-      ] as const;
-      const devePropagar = camposPropagaveis.some((k) => (updateDto as any)[k] !== undefined);
-      if (devePropagar) {
-        const updateForward: any = { id };
-        for (const k of camposPropagaveis) {
-          const v = (updateDto as any)[k];
-          if (v !== undefined) updateForward[k] = v;
-        }
-        const atualizados = await this.updateMultipleControleHorarios([updateForward], editorNome, editorEmail);
-        const registroAtualizado = atualizados.find((r) => r.id === id);
-        if (registroAtualizado) {
-          return registroAtualizado;
-        }
-        // If not found for any reason, fall back to simple update below
+    const camposPropagaveis = [
+      'prefixo_veiculo',
+      'motorista_substituto_nome',
+      'motorista_substituto_cracha',
+      'cobrador_substituto_nome',
+      'cobrador_substituto_cracha',
+    ];
+
+    const devePropagar = camposPropagaveis.some(key => key in updateDto);
+
+    if (devePropagar) {
+      this.logger.log(`✔️ Detecção de campos propagáveis. Acionando a lógica de atualização múltipla para o ID: ${id}`);
+      
+      const updateForward: SingleControleHorarioUpdateDto = { id, ...updateDto };
+      
+      const atualizados = await this.updateMultipleControleHorarios([updateForward], editorNome, editorEmail);
+      
+      const registroAtualizado = atualizados.find((r) => r.id === id);
+      
+      if (registroAtualizado) {
+        return registroAtualizado;
       }
+      
+      this.logger.warn(`⚠️ O registro com ID ${id} não foi encontrado no resultado da propagação. Retornando o estado original.`);
+      return controleHorario; // Retorna o original se algo der errado na propagação
+    } else {
+      this.logger.log(`🖊️ Nenhuma alteração propagável detectada. Atualizando apenas o registro com ID: ${id}`);
+      
+      Object.assign(controleHorario, updateDto, {
+        editado_por_nome: editorNome,
+        editado_por_email: editorEmail,
+        updated_at: new Date(),
+      });
+
+      return this.controleHorarioRepository.save(controleHorario);
     }
-
-    Object.assign(controleHorario, updateDto);
-
-    controleHorario.editado_por_nome = editorNome;
-    controleHorario.editado_por_email = editorEmail;
-    controleHorario.updated_at = new Date();
-    // Mantém o hash_dados inalterado nas edições
-
-    return this.controleHorarioRepository.save(controleHorario);
   }
 }

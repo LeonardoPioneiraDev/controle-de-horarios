@@ -923,10 +923,10 @@ export const DataTable: React.FC<DataTableProps> = ({
       <ConfirmPersonPropagationModal
         isOpen={pendingPerson.open}
         personType={pendingPerson.personType}
-        newData={{ nome: pendingPerson.nome, cracha: pendingPerson.cracha }}
+        newData={{ nome: pendingPerson.nome, cracha: pendingPerson.cracha, numeroCarro: pendingPerson.numeroCarro }}
         anchorItem={anchorItem}
         affectedCount={propagationTargets.length}
-        onCancel={() => setPendingPerson({ open: false, anchorId: '', personType: 'motorista', nome: '', cracha: '', observacoes: '' })}
+        onCancel={() => setPendingPerson({ open: false, anchorId: '', personType: 'motorista', nome: '', cracha: '', observacoes: '', numeroCarro: '' })}
         onConfirm={() => {
           if (!anchorItem) return;
 
@@ -940,7 +940,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             onInputChange(id, 'numeroCarro', numeroCarro); // Added numeroCarro update
           });
 
-          setPendingPerson({ open: false, anchorId: '', personType: 'motorista', nome: '', cracha: '', observacoes: '' });
+          setPendingPerson({ open: false, anchorId: '', personType: 'motorista', nome: '', cracha: '', observacoes: '', numeroCarro: '' });
         }}
       />
 

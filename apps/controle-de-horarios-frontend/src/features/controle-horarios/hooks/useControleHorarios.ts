@@ -37,7 +37,7 @@ export const useControleHorarios = () => {
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false);
 
   const [filtros, setFiltros] = useState<FiltrosControleHorarios>(() => {
-    const initialLimit = window.innerWidth <= 1208 ? 6 : 50;
+    const initialLimit = window.innerWidth <= 1208 ? 8 : 50;
     return {
       limite: initialLimit,
       pagina: 1,
