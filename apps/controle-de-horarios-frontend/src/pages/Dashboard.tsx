@@ -95,7 +95,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Boas práticas e recursos */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 custom-md:grid-cols-3 gap-4">
           <div className="rounded-xl border border-yellow-400/20 bg-gray-900/60 p-[10px]">
             <h3 className="text-sm font-semibold text-yellow-300 mb-1">Boas práticas</h3>
             <ul className="list-disc list-inside text-sm text-gray-300 space-y-1">

@@ -1,7 +1,7 @@
-import axios, { AxiosInstance, AxiosResponse } from 'axios';
+﻿import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 
 // ===============================================
-// 🌐 BASE API SERVICE CLASS
+// ðŸŒ BASE API SERVICE CLASS
 // ===============================================
 
 export class BaseApiService {
@@ -11,11 +11,28 @@ export class BaseApiService {
   protected readonly debug: boolean;
 
   constructor() {
-    // Build a safe base URL
-    const rawOrigin = 'http://localhost:3336'; // Desenvolvimento
-    //const rawOrigin = 'http://10.10.100.176:3335'; // Desenvolvimento
-    const origin = rawOrigin.endsWith('/') ? rawOrigin : `${rawOrigin}/`;
-    this.baseURL = new URL('api/', origin).toString().replace(/\/$/, ''); // -> http://localhost:3336/api
+    // Resolve API origin via Vite env (VITE_API_BASE_URL) ou window.location
+    const envBase =
+      typeof import.meta !== 'undefined' && (import.meta as ImportMeta).env
+        ? (import.meta as ImportMeta).env.VITE_API_BASE_URL
+        : undefined;
+
+    const resolveBaseOrigin = (): string => {
+      const raw = (envBase || '').trim();
+      if (!raw) return window.location.origin;
+      const fixed = raw.replace(/^https?:(?!\/)/, (m) => `${m}//`);
+      try {
+        const url = new URL(fixed, window.location.origin);
+        const origin = `${url.origin}${url.pathname && url.pathname !== '/' ? url.pathname.replace(/\/$/, '') : ''}`;
+        return origin;
+      } catch {
+        return window.location.origin;
+      }
+    };
+
+    const baseOrigin = resolveBaseOrigin();
+    const originWithSlash = baseOrigin.endsWith('/') ? baseOrigin : `${baseOrigin}/`;
+    this.baseURL = new URL('api/', originWithSlash).toString().replace(/\/$/, '');
     this.timeout = 500000;
     this.debug = true; // process.env.NODE_ENV !== 'production';
 
@@ -36,23 +53,23 @@ export class BaseApiService {
 
       if (this.debug) {
 
-        console.log('🌐 ==========================================');
+        console.log('ðŸŒ ==========================================');
 
-        console.log('🌐 CONFIGURAÇÃO DA API - FRONTEND');
+        console.log('ðŸŒ CONFIGURAÃ‡ÃƒO DA API - FRONTEND');
 
-        console.log('🌐 ==========================================');
+        console.log('ðŸŒ ==========================================');
 
-        console.log('🔧 Modo: Desenvolvimento');
+        console.log('ðŸ”§ Modo: Desenvolvimento');
 
-        console.log(`🔗 Base URL: ${this.baseURL}`);
+        console.log(`ðŸ”— Base URL: ${this.baseURL}`);
 
-        console.log('📡 Modo de conexão: proxy');
+        console.log('ðŸ“¡ Modo de conexÃ£o: proxy');
 
-        console.log(`⏱️ Timeout: ${this.timeout}ms`);
+        console.log(`â±ï¸ Timeout: ${this.timeout}ms`);
 
-        console.log(`🐛 Debug: ${this.debug}`);
+        console.log(`ðŸ› Debug: ${this.debug}`);
 
-        console.log('🌐 ==========================================');
+        console.log('ðŸŒ ==========================================');
 
       }
 
@@ -90,16 +107,16 @@ export class BaseApiService {
             if (value === undefined || value === null) return;
             urlObj.searchParams.append(key, String(value));
           });
-          // prevent axios from appending again
-          (config as any).params = undefined;
+          // evitar re-apensar params
+          (config as AxiosRequestConfig).params = undefined;
         }
 
-        // Force axios to use our absolute URL
-        (config as any).baseURL = undefined;
+        // forÃ§a uso da URL absoluta
+        (config as AxiosRequestConfig).baseURL = undefined;
         config.url = urlObj.toString();
 
         if (this.debug) {
-          console.log('🔄 API Request:', {
+          console.log('ðŸ”„ API Request:', {
             method: config.method?.toUpperCase(),
             url: config.url,
             baseURL: safeBase,
@@ -113,7 +130,7 @@ export class BaseApiService {
           return config;
         },
         (error) => {
-          console.error('❌ Request Error:', error);
+          console.error('âŒ Request Error:', error);
           return Promise.reject(error);
         }
       );
@@ -122,7 +139,7 @@ export class BaseApiService {
       this.api.interceptors.response.use(
       (response: AxiosResponse) => {
         if (this.debug) {
-          console.log('📥 API Response:', {
+          console.log('ðŸ“¥ API Response:', {
             status: response.status,
             statusText: response.statusText,
             url: response.config.url,
@@ -133,17 +150,17 @@ export class BaseApiService {
       },
       (error) => {
         if (error.response?.status === 401) {
-          console.log('🔒 Token inválido, limpando storage...');
+          console.log('ðŸ”’ Token invÃ¡lido, limpando storage...');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           
-          // Só redirecionar se não estiver já na página de login
+          // SÃ³ redirecionar se nÃ£o estiver jÃ¡ na pÃ¡gina de login
           if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/reset-password')) {
             window.location.href = '/login';
           }
         }
 
-        console.error('❌ Response Error:', {
+        console.error('âŒ Response Error:', {
           status: error.response?.status,
           statusText: error.response?.statusText,
           message: error.response?.data?.message || error.message,
@@ -157,29 +174,40 @@ export class BaseApiService {
 }
 
 // ===============================================
-// 🌐 FUNÇÃO AUXILIAR PARA REQUISIÇÕES AUTENTICADAS
+// ðŸŒ FUNÃ‡ÃƒO AUXILIAR PARA REQUISIÃ‡Ã•ES AUTENTICADAS
 // ===============================================
 
 /**
- * ✅ Função auxiliar para fazer requisições autenticadas
+ * âœ… FunÃ§Ã£o auxiliar para fazer requisiÃ§Ãµes autenticadas
  * Usada pelos componentes React
  */
 export const makeAuthenticatedRequest = async (
-  endpoint: string, 
+  endpoint: string,
   options: RequestInit = {}
 ): Promise<any> => {
   const token = localStorage.getItem('token');
-  
+
   if (!token) {
     throw new Error('Token de autenticação não encontrado');
   }
 
-  const rawBaseURL = 'http://localhost:3336/api'; // Desenvolvimento
-  //const rawBaseURL = 'http://10.10.100.176:3335/api'; // Produção
+  const envBase =
+    typeof import.meta !== 'undefined' && (import.meta as ImportMeta).env
+      ? (import.meta as ImportMeta).env.VITE_API_BASE_URL
+      : undefined;
+
+  const resolveApiBase = (): string => {
+    const raw = (envBase || '').trim();
+    const origin = raw ? raw.replace(/^https?:(?!\/)/, (m) => `${m}//`) : window.location.origin;
+    const withSlash = origin.endsWith('/') ? origin : `${origin}/`;
+    return new URL('api/', withSlash).toString().replace(/\/$/, '');
+  };
+
+  const rawBaseURL = resolveApiBase();
   const base = rawBaseURL.endsWith('/') ? rawBaseURL : `${rawBaseURL}/`;
   const ep = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
   const url = new URL(ep, base).toString();
-  
+
   const defaultOptions: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
@@ -196,7 +224,7 @@ export const makeAuthenticatedRequest = async (
     },
   };
 
-  console.log('🌐 makeAuthenticatedRequest:', {
+  console.log('makeAuthenticatedRequest:', {
     method: mergedOptions.method || 'GET',
     url,
     hasToken: !!token,
@@ -204,7 +232,7 @@ export const makeAuthenticatedRequest = async (
   });
 
   const response = await fetch(url, mergedOptions);
-  
+
   if (!response.ok) {
     if (response.status === 401) {
       localStorage.removeItem('token');
@@ -212,7 +240,7 @@ export const makeAuthenticatedRequest = async (
       window.location.href = '/login';
       throw new Error('Token expirado. Redirecionando para login...');
     }
-    
+
     const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
     throw new Error(errorData.message || `Erro HTTP: ${response.status}`);
   }

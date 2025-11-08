@@ -8,7 +8,7 @@
 # ✅ Token atualizado
 TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imxlb25hcmRvbG9wZXNAdnBpb25laXJhLmNvbS5iciIsInN1YiI6Ijk2NjUyYTQxLTliN2ItNDE1My1hNzUzLWVmNWU1MzE1ODc0OCIsInJvbGUiOiJhZG1pbmlzdHJhZG9yIiwiZmlyc3ROYW1lIjoiTEVPTkFSRE8iLCJsYXN0TmFtZSI6IkJPUkdFUyIsImlhdCI6MTc2MDEyMTY3OCwiZXhwIjoxNzYwMjA4MDc4fQ.yVj6UZz2-YpErDlXtRgDHy6sVTt_uQhoskwnGYseeSU"
 
-BASE_URL="http://localhost:3335/api"
+BASE_URL="http://localhost:3355/api"
 DATA_TESTE="2025-10-10"
 
 echo "🚀 =========================================="

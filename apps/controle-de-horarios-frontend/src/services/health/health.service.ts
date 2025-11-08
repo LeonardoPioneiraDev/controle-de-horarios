@@ -1,4 +1,4 @@
-import { BaseApiService } from '../shared/api.service';
+﻿import { BaseApiService } from '../shared/api.service';
 
 export class HealthService extends BaseApiService {
   constructor() {
@@ -6,38 +6,38 @@ export class HealthService extends BaseApiService {
   }
 
   async checkHealth(): Promise<{ status: string; timestamp: string; database: string }> {
-    console.log('🏥 Verificando saúde do backend...');
+    console.log('ðŸ¥ Verificando saÃºde do backend...');
     const response = await this.api.get('/health');
-    console.log('✅ Health check realizado');
+    console.log('âœ… Health check realizado');
     return response.data;
   }
 
   async checkDatabaseHealth(): Promise<{ status: string; database: string; timestamp: string }> {
-    console.log('💾 Verificando saúde do banco de dados...');
+    console.log('ðŸ’¾ Verificando saÃºde do banco de dados...');
     const response = await this.api.get('/health/database');
-    console.log('✅ Database health check realizado');
+    console.log('âœ… Database health check realizado');
     return response.data;
   }
 
   async getStatus(): Promise<{ application: string; version: string; environment: string; timestamp: string }> {
-    console.log('📊 Buscando status da aplicação...');
+    console.log('ðŸ“Š Buscando status da aplicaÃ§Ã£o...');
     const response = await this.api.get('/status');
-    console.log('✅ Status obtido');
+    console.log('âœ… Status obtido');
     return response.data;
   }
 
   async testConnectivity(): Promise<void> {
-    console.log('🧪 Executando teste de conectividade inicial...');
+    console.log('ðŸ§ª Executando teste de conectividade inicial...');
     
     try {
       await this.checkHealth();
-      console.log('✅ Conectividade com backend confirmada');
+      console.log('âœ… Conectividade com backend confirmada');
     } catch (error) {
-      console.error('❌ Falha na conectividade com backend:', error);
-      console.log('💡 Possíveis soluções:');
-      console.log('   1. Verificar se o backend está rodando em http://localhost:3335');
-      console.log('   2. Verificar configurações de CORS no backend');
-      console.log('   3. Verificar se não há firewall bloqueando a conexão');
+      console.error('âŒ Falha na conectividade com backend:', error);
+      console.log('ðŸ’¡ PossÃ­veis soluÃ§Ãµes:');
+      console.log(`   1. Verificar se o backend está rodando em ${this.baseURL}`);
+      console.log('   2. Verificar configuraÃ§Ãµes de CORS no backend');
+      console.log('   3. Verificar se nÃ£o hÃ¡ firewall bloqueando a conexÃ£o');
     }
   }
 }

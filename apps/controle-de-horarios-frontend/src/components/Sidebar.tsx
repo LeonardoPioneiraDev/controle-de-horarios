@@ -1,4 +1,4 @@
-﻿import { FC, useEffect, useRef } from 'react';
+﻿import { FC, useEffect, useMemo, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Users, LogOut, Settings, Home, Bus, Server, GitCompare, Clock, TrendingUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,58 +11,39 @@ interface NavigationItem {
 }
 
 interface SidebarProps {
-  sidebarOpen: boolean;
-  setSidebarOpen: (open: boolean) => void;
   isSidebarExpanded: boolean;
   setIsSidebarExpanded: (expanded: boolean) => void;
   navigation: NavigationItem[];
   handleLogout: () => void;
 }
 
-const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpanded, setIsSidebarExpanded, navigation, handleLogout }) => {
+const Sidebar: FC<SidebarProps> = ({ isSidebarExpanded, setIsSidebarExpanded, navigation, handleLogout }) => {
   const location = useLocation();
   const { user } = useAuth();
 
   const sidebarRef = useRef<HTMLDivElement>(null);
+const envBase = (import.meta as any).env?.VITE_API_BASE_URL?.trim();
+const backendInfo = useMemo(() => {
+  const fix = (raw: string) => raw.replace(/^https?:(?!\/)/, (m) => `${m}//`);
+  const origin = envBase && envBase.length > 0 ? fix(envBase) : window.location.origin;
+  let url: URL;
+  try { url = new URL(origin, window.location.origin); } catch { url = new URL(window.location.origin); }
+  const isHttps = url.protocol === 'https:';
+  const port = url.port || (isHttps ? '443' : '80');
+  return { origin: url.origin, port };
+}, [envBase]);
 
-  useEffect(() => {
-    const clickHandler = ({ target }: MouseEvent) => {
-      if (!sidebarRef.current) return;
-      if (!sidebarOpen || sidebarRef.current.contains(target as Node)) return;
-      setSidebarOpen(false);
-    };
-    document.addEventListener('click', clickHandler);
-    return () => document.removeEventListener('click', clickHandler);
-  });
 
-  useEffect(() => {
-    const keyHandler = ({ keyCode }: KeyboardEvent) => {
-      if (!sidebarOpen || keyCode !== 27) return;
-      setSidebarOpen(false);
-    };
-    document.addEventListener('keydown', keyHandler);
-    return () => document.removeEventListener('keydown', keyHandler);
-  });
 
   return (
     <>
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur bg-opacity-75 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        ></div>
-      )}
-
       <div
         ref={sidebarRef}
-        className={`fixed top-16 bottom-0 left-0 z-50 bg-black/70 backdrop-blur shadow-2xl transform transition-all duration-300 ease-in-out ${
-          sidebarOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'
-        } ${isSidebarExpanded ? 'lg:w-64' : 'lg:w-20'} lg:translate-x-0 lg:static lg:inset-y-0`}
+        className={`hidden custom-md:flex flex-col shrink-0 border-r border-yellow-400/20 bg-black/60 backdrop-blur ${isSidebarExpanded ? 'custom-md:w-64' : 'custom-md:w-20'}`}
       >
         <div className="flex h-full flex-col">
           {/* Logo and Toggle Button */}
-          <div className={`flex h-16 shrink-0 items-center border-b border-yellow-400/20 ${isSidebarExpanded ? 'px-6' : 'justify-center'}`}>
+          <div className={`hidden h-16 shrink-0 items-center border-b border-yellow-400/20 custom-md:flex ${isSidebarExpanded ? 'px-6' : 'justify-center'}`}>
             {isSidebarExpanded ? (
               <h1 className="text-sm font-bold text-yellow-300">Controle de Horários</h1>
             ) : (
@@ -99,7 +80,7 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
                           ? 'bg-yellow-400 text-gray-900'
                           : 'text-yellow-300 hover:text-gray-900 hover:bg-yellow-400'
                       }`}
-                      onClick={() => setSidebarOpen(false)} // Close sidebar on navigation
+                      onClick={() => {}} // No longer closes mobile sidebar, as this is desktop only
                     >
                       <item.icon
                         className={`h-5 w-5 shrink-0 ${
@@ -123,7 +104,7 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
                   </div>
                   <div className="flex justify-between">
                     <span>Backend:</span>
-                    <span className="font-medium text-yellow-300">:3335</span>
+                    <span className="font-medium text-yellow-300"> :{backendInfo.port}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Frontend:</span>
@@ -175,6 +156,12 @@ const Sidebar: FC<SidebarProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpan
 };
 
 export default Sidebar;
+
+
+
+
+
+
 
 
 

@@ -146,7 +146,7 @@ const DateAndStatus = ({ date, onDateChange, status }: any) => (
 const FilterSection = ({ filters, onFilterChange, onClearFilters, services }: any) => (
     <GlowingCard>
         <CardContent className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 custom-md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <div>
                     <Label htmlFor="nomeLinha">Nome da Linha</Label>
                     <Input
@@ -375,7 +375,7 @@ const NoData = ({ onSync, synchronizing }: any) => (
             <Button
                 onClick={onSync}
                 disabled={synchronizing}
-                className="mt-6"
+                className="mt-6 w-full sm:w-auto"
                 size="lg"
             >
                 <RefreshCw className={`h-5 w-5 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />

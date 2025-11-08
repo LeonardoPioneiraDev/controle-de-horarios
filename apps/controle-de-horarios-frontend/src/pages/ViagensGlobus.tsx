@@ -62,6 +62,7 @@ const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, on
         <Button
           variant={filtersVisible ? 'default' : 'outline'}
           onClick={onToggleFilters}
+          className="w-full sm:w-auto"
         >
           <Filter className="h-4 w-4 mr-2" />
           Filtros
@@ -72,13 +73,13 @@ const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, on
             onClick={onTestOracle}
             disabled={testingOracle}
             variant="outline"
-            className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
+            className="w-full sm:w-auto border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
           >
             <Server className={`h-4 w-4 mr-2 ${testingOracle ? 'animate-pulse' : ''}`} />
             {testingOracle ? 'Testando...' : 'Testar Oracle'}
           </Button>
         )}
-        <Button onClick={handleSyncClick} disabled={synchronizing}>
+        <Button onClick={handleSyncClick} disabled={synchronizing} className="w-full sm:w-auto">
           <RefreshCw className={`h-4 w-4 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
           {synchronizing ? 'Sincronizando...' : 'Sincronizar'}
         </Button>
@@ -152,7 +153,7 @@ const DateAndStatus = ({ date, onDateChange, status }: any) => (
 const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linhas }: any) => (
   <GlowingCard>
     <CardContent className="p-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 custom-md:grid-cols-3 lg:grid-cols-4 gap-4">
         <div>
           <Label htmlFor="setor">Setor</Label>
           <select
@@ -441,13 +442,13 @@ const NoData = ({ onSync, synchronizing, onTestOracle, testingOracle, isAdmin }:
         <p className="mt-2 text-md text-gray-400">
         Clique no botão abaixo para buscar os dados do Oracle Globus.
         </p>
-        <div className="mt-6 flex justify-center items-center space-x-4">
+        <div className="mt-6 flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4">
             {isAdmin && (
               <Button
                   onClick={onTestOracle}
                   disabled={testingOracle}
                   variant="outline"
-                  className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
+                  className="w-full sm:w-auto border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
               >
                   <Server className={`h-4 w-4 mr-2 ${testingOracle ? 'animate-pulse' : ''}`} />
                   {testingOracle ? 'Testando...' : 'Testar Oracle'}
@@ -457,6 +458,7 @@ const NoData = ({ onSync, synchronizing, onTestOracle, testingOracle, isAdmin }:
                 onClick={onSync}
                 disabled={synchronizing}
                 size="lg"
+                className="w-full sm:w-auto"
             >
                 <RefreshCw className={`h-5 w-5 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
                 {synchronizing ? 'Sincronizando...' : 'Sincronizar Dados'}
@@ -473,19 +475,19 @@ const NoDataGlobus = ({ onSync, synchronizing, onTestOracle, testingOracle, isAd
       <Calendar className="mx-auto h-12 w-12 text-gray-500" />
       <h3 className="mt-4 text-xl font-semibold text-gray-200">Não há dados para esta data</h3>
       <p className="mt-2 text-md text-gray-400">Faça a sincronização para carregar os dados deste dia.</p>
-      <div className="mt-6 flex justify-center items-center space-x-4">
+      <div className="mt-6 flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4">
         {isAdmin && (
           <Button
             onClick={onTestOracle}
             disabled={testingOracle}
             variant="outline"
-            className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
+            className="w-full sm:w-auto border-orange-500/50 text-orange-400 hover:bg-orange-500/10 hover:text-orange-300"
           >
             <Server className={`h-4 w-4 mr-2 ${testingOracle ? 'animate-pulse' : ''}`} />
             {testingOracle ? 'Testando...' : 'Testar Oracle'}
           </Button>
         )}
-        <Button onClick={onSync} disabled={synchronizing} size="lg">
+        <Button onClick={onSync} disabled={synchronizing} size="lg" className="w-full sm:w-auto">
           <RefreshCw className={`h-5 w-5 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
           {synchronizing ? 'Sincronizando...' : 'Sincronizar Dados'}
         </Button>

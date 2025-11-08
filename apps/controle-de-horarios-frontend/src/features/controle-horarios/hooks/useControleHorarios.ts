@@ -36,9 +36,12 @@ export const useControleHorarios = () => {
   const [error, setError] = useState<string | null>(null);
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false);
 
-  const [filtros, setFiltros] = useState<FiltrosControleHorarios>({
-    limite: 100,
-    pagina: 1,
+  const [filtros, setFiltros] = useState<FiltrosControleHorarios>(() => {
+    const initialLimit = window.innerWidth <= 1208 ? 6 : 50;
+    return {
+      limite: initialLimit,
+      pagina: 1,
+    };
   });
 
   // Filtros locais (não enviados ao backend)

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserRole, canSyncControleHorarios, canEditControleHorarios } from '../../types/user.types';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
@@ -18,6 +18,19 @@ export const ControleHorariosPage: React.FC = () => {
   const [showLinhaMultiSelect, setShowLinhaMultiSelect] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [openConfirmSync, setOpenConfirmSync] = useState(false);
+
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+      setWindowHeight(window.innerHeight);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const {
     dataReferencia,
@@ -199,6 +212,8 @@ export const ControleHorariosPage: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const shouldApplyZoom = isTableFullScreen && windowWidth <= 1390 && windowHeight <= 1900;
+
   return (
     <div className="space-y-6 p-4 md:p-6 min-h-screen bg-gradient-to-br from-black via-neutral-900 to-yellow-950 text-gray-100">
       <div className="max-w-[1400px] mx-auto">
@@ -211,7 +226,7 @@ export const ControleHorariosPage: React.FC = () => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Label htmlFor="date-picker">Data de referência</Label>
-                <div className="relative w-56">
+                <div className="relative w-full sm:w-56">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <Input
                     id="date-picker"
@@ -221,19 +236,16 @@ export const ControleHorariosPage: React.FC = () => {
                     className="pl-10"
                   />
                 </div>
-                {Array.isArray(controleHorarios) && controleHorarios.length > 0 && (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-xs text-yellow-200">
-                    <span className="h-2 w-2 rounded-full bg-yellow-400" />
-                    Tipo do dia: <b className="text-yellow-300 font-semibold">{dayType}</b>
-                  </span>
-                )}
+                
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" onClick={() => setShowFilters((v) => !v)}>
                   Filtros
                 </Button>
-                 
+                <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }}>
+                  Limpar Filtros
+                </Button>
                 <Button variant="outline" onClick={() => setShowReport(true)}>
                   <FileText className="h-4 w-4 mr-2" /> Gerar Relatório
                 </Button>
@@ -296,7 +308,7 @@ export const ControleHorariosPage: React.FC = () => {
               </div>
             )}
 
-            <div className={isTableFullScreen ? 'p-4' : ''}>
+            <div className={isTableFullScreen ? 'p-4' : ''}              style={shouldApplyZoom ? { transform: 'scale(1)', transformOrigin: 'top left' } : {}}>
               <DataTable
                 controleHorarios={sortedControleHorarios}
                 controleHorariosOriginais={controleHorariosOriginais}
@@ -343,11 +355,11 @@ export const ControleHorariosPage: React.FC = () => {
           <div className="text-center py-12 space-y-4">
             <p className="text-gray-400">Nenhuma viagem encontrada</p>
             {canSyncCH ? (
-              <Button onClick={() => setOpenConfirmSync(true)} disabled={loading}>
+              <Button onClick={() => setOpenConfirmSync(true)} disabled={loading} className="w-full sm:w-auto">
                 Sincronizar
               </Button>
             ) : (
-              <Button variant="outline" disabled title="Apenas Encarregado, Analista, Gerente, Diretor ou Administrador pode sincronizar">
+              <Button variant="outline" disabled title="Apenas Encarregado, Analista, Gerente, Diretor ou Administrador pode sincronizar" className="w-full sm:w-auto">
                 Sincronizar
               </Button>
             )}
@@ -358,16 +370,20 @@ export const ControleHorariosPage: React.FC = () => {
         {showReport && (
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur flex items-center justify-center p-4">
             <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-xl border border-yellow-400/20 bg-gray-900 shadow-2xl">
-              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-yellow-400/20 px-4 py-3 bg-gray-900">
-                <div>
-                  <div className="text-lg font-semibold">Relatório - Controle de Horários</div>
-                  <div className="text-xs text-gray-400">Data: {dataReferencia} • {dayType} • Registros: {Array.isArray(controleHorarios) ? controleHorarios.length : 0}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" onClick={handleExportHtml}><Download className="h-4 w-4 mr-2" /> Exportar HTML</Button>
-                  <Button variant="outline" onClick={() => setShowReport(false)}>Fechar</Button>
-                </div>
-              </div>
+                            <div className="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-yellow-400/20 px-4 py-3 bg-gray-900">
+                              <div>
+                                <div className="text-lg font-semibold">Relatório - Controle de Horários</div>
+                                <div className="text-xs text-gray-400">Data: {dataReferencia} • {dayType} • Registros: {Array.isArray(controleHorarios) ? controleHorarios.length : 0}</div>
+                              </div>
+                              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                                <Button variant="outline" onClick={handleExportHtml} className="w-full sm:w-auto">
+                                  <Download className="h-4 w-4 mr-2" /> Exportar HTML
+                                </Button>
+                                <Button variant="outline" onClick={() => setShowReport(false)} className="w-full sm:w-auto">
+                                  Fechar
+                                </Button>
+                              </div>
+                            </div>
               <div className="overflow-auto p-4">
                 <div className="text-sm text-gray-300 mb-2">Filtros aplicados:</div>
                 <div className="flex flex-wrap gap-2 mb-4">

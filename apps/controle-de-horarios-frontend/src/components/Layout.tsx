@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, LogOut, Bus, Server, GitCompare, Clock, TrendingUp } from 'lucide-react';
 
@@ -10,6 +10,7 @@ import { canViewUsers, canViewViagens, canViewControleHorarios } from '../types/
 export const Layout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = React.useState(true);
 
@@ -42,21 +43,20 @@ export const Layout: React.FC = () => {
         setSidebarOpen={setSidebarOpen}
         isSidebarExpanded={isSidebarExpanded}
         handleLogout={handleLogout}
+        navigation={navigation}
+        location={location}
       />
 
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
           isSidebarExpanded={isSidebarExpanded}
           setIsSidebarExpanded={setIsSidebarExpanded}
           navigation={navigation}
           handleLogout={handleLogout}
         />
 
-        <main className={`flex-1 overflow-y-auto p-4 bg-primary-800`}>
-          <div className="mx-auto max-w-[1600px] w-full rounded-lg shadow-md bg-primary-700 p-4 min-h-[calc(100vh-120px)]">
-            <Outlet />
+        <main className={`flex-1 overflow-y-auto p-4 bg-primary-800 custom-md:ml-0  `}>
+                      <div className="mx-auto max-w-[1600px] w-full rounded-lg shadow-md bg-primary-700 p-4">            <Outlet />
           </div>
         </main>
       </div>

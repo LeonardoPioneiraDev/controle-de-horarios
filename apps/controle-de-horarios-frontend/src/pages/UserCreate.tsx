@@ -54,12 +54,12 @@ export const UserCreate: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-primary-100">Novo Usuário</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-primary-100">Novo Usuário</h1>
           <p className="mt-1 text-sm text-primary-300">Crie um novo usuário do sistema</p>
         </div>
-        <button className="btn btn-secondary inline-flex items-center" onClick={() => navigate('/users')}>
+        <button className="btn btn-secondary inline-flex items-center w-full sm:w-auto" onClick={() => navigate('/users')}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
         </button>
       </div>

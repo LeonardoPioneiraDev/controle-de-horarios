@@ -224,16 +224,16 @@ export const Users: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold text-gray-400">Usuários</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-400">Usuários</h1>
           <p className="mt-1 text-sm text-gray-400">
             Gerencie os usuários do sistema
           </p>
         </div>
         <button
           onClick={handleCreateUser}
-          className={`btn ${isAdmin ? 'btn-primary' : 'btn-secondary'} flex items-center`}
+          className={`btn ${isAdmin ? 'btn-primary' : 'btn-secondary'} flex items-center w-full sm:w-auto`}
           title={!isAdmin ? 'Apenas administradores podem criar usuários' : ''}
         >
           <Plus className="h-4 w-4 mr-2" />

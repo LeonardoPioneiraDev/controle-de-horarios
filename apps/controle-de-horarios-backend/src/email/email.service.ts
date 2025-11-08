@@ -7,8 +7,8 @@ import { first } from 'rxjs';
 // Utilitário para normalização de URL do frontend e construção de links
 function normalizeFrontendBaseUrl(raw: string | undefined): string {
   let base = (raw || '').trim();
-  if (!base) return 'http://localhost:3000';  //Desenvolvimento
-  //if (!base) return 'http://10.10.100.176:3000';  //Produção
+  //if (!base) return 'http://localhost:3005';  //Desenvolvimento
+  if (!base) return 'http://10.10.100.176:3000';  //Produção
   if (!/^https?:\/\//i.test(base)) base = `http://${base.replace(/^\/+/, '')}`;
   return base.replace(/\/+$/, '');
 }
@@ -270,50 +270,54 @@ export class EmailService implements OnModuleInit {
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
-        .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 30px 20px; text-align: center; }
-        .header h1 { font-size: 28px; margin-bottom: 10px; font-weight: 700; }
+        .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-top: 5px solid #3b82f6; }
+        .header { background: #1e293b; color: white; padding: 20px; text-align: center; }
+        .header h1 { font-size: 24px; margin: 0; }
         .content { padding: 40px 30px; }
-        .credentials-box { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 2px solid #3b82f6; border-radius: 10px; padding: 25px; margin: 25px 0; }
-        .credential-value { font-family: 'Courier New', monospace; background-color: #f1f5f9; padding: 8px 12px; border-radius: 6px; font-weight: 600; color: #1e40af; }
-        .cta-button { display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px; }
-        .footer { background-color: #1e40af; color: white; padding: 25px; text-align: center; }
-        .warning-box { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .content h2 { color: #1e293b; margin-bottom: 15px; }
+        .content p { margin-bottom: 15px; }
+        .credentials-box { background-color: #f1f5f9; border-left: 4px solid #3b82f6; padding: 20px; margin: 25px 0; }
+        .credential-label { font-size: 14px; color: #64748b; }
+        .credential-value { font-family: 'Courier New', monospace; font-size: 18px; font-weight: 600; color: #1e3a8a; }
+        .cta-button { display: inline-block; background-color: #3b82f6; color: white; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px 0; }
+        .footer { background-color: #f1f5f9; color: #64748b; padding: 25px; text-align: center; font-size: 12px; }
+        .warning-box { background: #fffbeb; border: 1px solid #fde68a; padding: 15px; border-radius: 5px; margin: 20px 0; color: #92400e; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🕐 Controle de Horários</h1>
-            <p>Viação Pioneira Ltda</p>
+            <h1>Controle de Horários</h1>
         </div>
         <div class="content">
             <h2>Olá, ${firstName}! ✨</h2>
-            <p>Seja bem-vindo(a) ao <strong>Sistema de Controle de Horários</strong> da Viação Pioneira!</p>
+            <p>Sua conta no <strong>Sistema de Controle de Horários</strong> da Viação Pioneira foi criada com sucesso!</p>
             
             <div class="credentials-box">
-                <h3>🔑 Sua Senha Temporária</h3>
-                <p>Senha: <span class="credential-value">${temporaryPassword}</span></p>
+                <p class="credential-label">Sua senha temporária é:</p>
+                <p class="credential-value">${temporaryPassword}</p>
             </div>
             
+            <p>Para sua segurança, você deve definir uma nova senha no seu primeiro acesso. Clique no botão abaixo para começar:</p>
+
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${resetUrl}" class="cta-button">🚀 Definir Nova Senha</a>
             </div>
             
             <div class="warning-box">
-                <p style="margin: 0; color: #856404;">
-                    <strong>⚠️ Importante:</strong> Esta senha temporária expira em 24 horas.
+                <p style="margin: 0;">
+                    <strong>Atenção:</strong> O link para definir a nova senha e a senha temporária expiram em 24 horas.
                 </p>
             </div>
         </div>
         <div class="footer">
             <p><strong>Controle de Horários</strong> - Viação Pioneira Ltda</p>
-            <p>📧 suporte@vpioneira.com.br</p>
+            <p>Este é um e-mail automático, por favor, não responda.</p>
         </div>
     </div>
 </body>
 </html>
-    `;
+  `;
   }
 
   private generateWelcomeTextContent(
@@ -345,23 +349,58 @@ Suporte: suporte@vpioneira.com.br
     const base = normalizeFrontendBaseUrl(this.configService.get<string>('FRONTEND_URL'));
     const confirmUrl = buildFrontendUrl(base, '/reset-password/confirm', { token: resetToken });
     const subject = this.configService.get<string>('EMAIL_RESET_SUBJECT', 'Redefinição de senha');
-    const html = `
-      <div style="font-family: Arial, sans-serif; color: #111;">
-        <h2>Olá, ${firstName}!</h2>
-        <p>Recebemos uma solicitação para redefinir sua senha.</p>
-        <p>Clique no botão abaixo para informar a sua nova senha:</p>
-        <p style=\"margin: 24px 0;\">
-          <a href=\"${confirmUrl}\" style=\"background:#FBBF24;color:#111;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block\">Redefinir senha</a>
-        </p>
-        <p>Se o botão não funcionar, copie e cole este link no navegador:</p>
-        <p><a href=\"${confirmUrl}\">${confirmUrl}</a></p>
-        <hr />
-        <small>Se você não solicitou a redefinição, ignore este e-mail.</small>
-      </div>
-    `;
+    const html = this.generatePasswordResetEmailTemplate(firstName, confirmUrl);
     const text = `Olá, ${firstName}!\n\nPara redefinir sua senha, acesse: ${confirmUrl}\n\nSe você não fez esta solicitação, ignore este e-mail.`;
 
     this.logger.log(`📩 [RESET] Enviando e-mail de reset para: ${email}`);
     return this.sendEmail({ to: email, subject, html, text });
+  }
+
+  private generatePasswordResetEmailTemplate(firstName: string, confirmUrl: string): string {
+    return `
+  <!DOCTYPE html>
+  <html lang="pt-BR">
+  <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Redefinição de Senha</title>
+      <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f5f5f5; }
+          .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); border-top: 5px solid #FBBF24; }
+          .header { background: #1e293b; color: white; padding: 20px; text-align: center; }
+          .header h1 { font-size: 24px; margin: 0; }
+          .content { padding: 40px 30px; }
+          .content h2 { color: #1e293b; margin-bottom: 15px; }
+          .content p { margin-bottom: 15px; }
+          .cta-button { display: inline-block; background-color: #FBBF24; color: #1e293b; text-decoration: none; padding: 15px 30px; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px 0; }
+          .link-fallback { font-size: 12px; color: #64748b; word-break: break-all; }
+          .footer { background-color: #f1f5f9; color: #64748b; padding: 25px; text-align: center; font-size: 12px; }
+          .warning-text { font-size: 14px; color: #64748b; }
+      </style>
+  </head>
+  <body>
+      <div class="container">
+          <div class="header">
+              <h1>Controle de Horários</h1>
+          </div>
+          <div class="content">
+              <h2>Olá, ${firstName}!</h2>
+              <p>Recebemos uma solicitação para redefinir a senha da sua conta. Se foi você, clique no botão abaixo para continuar.</p>
+              <div style="text-align: center; margin: 30px 0;">
+                  <a href="${confirmUrl}" class="cta-button">Redefinir Senha</a>
+              </div>
+              <p class="warning-text">Se você não solicitou a redefinição de senha, por favor, ignore este e-mail. Sua conta continua segura.</p>
+              <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+              <p class="link-fallback">Se o botão não funcionar, copie e cole o seguinte link no seu navegador:<br>${confirmUrl}</p>
+          </div>
+          <div class="footer">
+              <p><strong>Controle de Horários</strong> - Viação Pioneira Ltda</p>
+              <p>Este é um e-mail automático, por favor, não responda.</p>
+          </div>
+      </div>
+  </body>
+  </html>
+    `;
   }
 }

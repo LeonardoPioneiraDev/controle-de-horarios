@@ -309,13 +309,15 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">Limite de Registros</label>
             <select
-              value={filtros.limite || 100}
+              value={filtros.limite || 10}
               onChange={(e) => handleFilterChange('limite', parseInt(e.target.value))}
               className="border border-gray-700 bg-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
             >
-              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={100}>100 registros</option>
-              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={200}>200 registros</option>
-              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={500}>500 registros</option>
+              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={10}>10 registros</option>
+              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={20}>20 registros</option>
+              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={30}>30 registros</option>
+              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={40}>40 registros</option>
+              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={50}>50 registros</option>
             </select>
           </div>
         </div>
