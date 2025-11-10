@@ -11,15 +11,8 @@ import {
 import { Exclude } from 'class-transformer';
 import * as bcrypt from 'bcrypt';
 
-// Usando os enums da estrutura existente
-export enum UserRole {
-  ADMINISTRADOR = 'administrador',
-  DIRETOR = 'diretor',
-  GERENTE = 'gerente',
-  ANALISTA = 'analista',
-  OPERADOR = 'operador',
-  FUNCIONARIO = 'funcionario'
-}
+import { UserRole, UserRoleHierarchy } from '@/common/enums';
+
 
 export enum UserStatus {
   ACTIVE = 'active',
@@ -149,15 +142,7 @@ export class User {
   }
 
   get roleHierarchy(): number {
-    const hierarchy = {
-      [UserRole.ADMINISTRADOR]: 5,
-      [UserRole.DIRETOR]: 4,
-      [UserRole.GERENTE]: 3,
-      [UserRole.ANALISTA]: 2,
-      [UserRole.OPERADOR]: 1,
-      [UserRole.FUNCIONARIO]: 1
-    };
-    return hierarchy[this.role] || 0;
+    return UserRoleHierarchy[this.role] || 0;
   }
 
   // Hooks
@@ -218,16 +203,7 @@ export class User {
   }
 
   hasRoleOrHigher(role: UserRole): boolean {
-    const hierarchy = {
-      [UserRole.ADMINISTRADOR]: 5,
-      [UserRole.DIRETOR]: 4,
-      [UserRole.GERENTE]: 3,
-      [UserRole.ANALISTA]: 2,
-      [UserRole.OPERADOR]: 1,
-      [UserRole.FUNCIONARIO]: 1
-    };
-    
-    return hierarchy[this.role] >= hierarchy[role];
+    return UserRoleHierarchy[this.role] >= UserRoleHierarchy[role];
   }
 
   canManageUser(targetUser: User): boolean {
