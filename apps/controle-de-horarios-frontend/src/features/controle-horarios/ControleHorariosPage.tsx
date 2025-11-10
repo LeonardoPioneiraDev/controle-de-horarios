@@ -11,6 +11,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Calendar, Maximize2, Minimize2, FileText, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export const ControleHorariosPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -69,14 +70,18 @@ export const ControleHorariosPage: React.FC = () => {
       role === UserRole.ADMINISTRADOR
     );
   }, [user]);
+  const isAdministrador = useMemo(() => user?.role === UserRole.ADMINISTRADOR, [user]);
   const canSyncCH = useMemo(() => canSyncControleHorarios(user?.role), [user]);
   const canSaveCH = useMemo(() => canEditControleHorarios(user?.role), [user]);
 
   const dayType = useMemo(() => {
     if (!dataReferencia) return '';
-    const d = new Date(dataReferencia);
+    // Parse YYYY-MM-DD string to avoid timezone issues
+    const [year, month, day] = dataReferencia.split('-').map(Number);
+    // Month is 0-indexed in JavaScript Date constructor
+    const d = new Date(year, month - 1, day);
     if (isNaN(d.getTime())) return '';
-    const wd = d.getDay();
+    const wd = d.getDay(); // getDay() returns 0 for Sunday, 1 for Monday, etc.
     if (wd === 0) return 'DOMINGO';
     if (wd === 6) return 'SÁBADO';
     return 'DIAS UTÉIS';
@@ -129,9 +134,27 @@ export const ControleHorariosPage: React.FC = () => {
         const isLateNoVehicle = hm !== null && hm < nowMinutes && !hasVehicle;
         const rowClass = isLateNoVehicle ? 'row-danger' : hasEdits ? 'row-warning' : 'row-ok';
 
+        const motoristaNome = it.nomeMotoristaEditado || it.nomeMotoristaGlobus || '';
+        const motoristaCracha = it.crachaMotoristaEditado || it.crachaMotoristaGlobus || '';
         const cobradorNome = it.nomeCobradorEditado || it.nomeCobradorGlobus || '';
+        const cobradorCracha = it.crachaCobradorEditado || it.crachaCobradorGlobus || '';
+
+        const motoristaDisplay = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus)
+          ? `${safe(motoristaNome)} <span class="text-xs text-gray-500">(Original: ${safe(it.nomeMotoristaGlobus)})</span>`
+          : safe(motoristaNome);
+        const motoristaCrachaDisplay = (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus)
+          ? `${safe(motoristaCracha)} <span class="text-xs text-gray-500">(Original: ${safe(it.crachaMotoristaGlobus)})</span>`
+          : safe(motoristaCracha);
+
+        const cobradorDisplay = (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) || (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus)
+          ? `${safe(cobradorNome)} <span class="text-xs text-gray-500">(Original: ${safe(it.nomeCobradorGlobus)})</span>`
+          : safe(cobradorNome);
+        const cobradorCrachaDisplay = (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus)
+          ? `${safe(cobradorCracha)} <span class="text-xs text-gray-500">(Original: ${safe(it.crachaCobradorGlobus)})</span>`
+          : safe(cobradorCracha);
+
         const cobradorCell = cobradorNome
-          ? safe(cobradorNome)
+          ? `<div>${cobradorDisplay}</div><div>${cobradorCrachaDisplay}</div>`
           : '<span class="badge badge-no-cobrador">SEM COBRADOR</span>';
 
         return `
@@ -141,8 +164,8 @@ export const ControleHorariosPage: React.FC = () => {
           <td>${safe(it.codServicoNumero ?? it.cod_servico_numero ?? '')}</td>
           <td>${safe(it.horaSaida)}</td>
           <td>${safe(it.horaChegada)}</td>
-          <td>${safe(it.nomeMotoristaEditado || it.nomeMotoristaGlobus)}</td>
-          <td>${safe(it.crachaMotoristaEditado || it.crachaMotoristaGlobus)}</td>
+          <td><div>${motoristaDisplay}</div></td>
+          <td><div>${motoristaCrachaDisplay}</div></td>
           <td>${safe(it.numeroCarro)}</td>
           <td>${cobradorCell}</td>
         </tr>`;
@@ -175,11 +198,10 @@ export const ControleHorariosPage: React.FC = () => {
   </style>
   </head>
   <body>
-    <div class="no-print" style="display:flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px;">
-      <button onclick="window.print()" style="padding:8px 12px; border:1px solid #ddd; border-radius:6px; background:#f8fafc; cursor:pointer;">Imprimir</button>
-    </div>
+    
     <h1>Relatório - Controle de Horários</h1>
     <div class="muted">Data de referência: <b>${safe(dataReferencia)}</b> • Tipo do dia: <b>${safe(dayType)}</b></div>
+    <div class="muted">Usuário: <b>${safe(user?.email)}</b></div>
     <div class="muted">Total de viagens: <b>${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</b></div>
     <div class="tags">${filtrosAtivos}</div>
     <table>
@@ -210,6 +232,88 @@ export const ControleHorariosPage: React.FC = () => {
     a.download = `relatorio_controle_horarios_${dataReferencia || 'data'}.html`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportExcel = () => {
+    if (!isAnalistaOuMais) {
+      alert('Você não tem permissão para exportar para Excel.');
+      return;
+    }
+
+    const items = Array.isArray(sortedControleHorarios) ? sortedControleHorarios : [];
+
+    const header = [
+      'Setor', 'Linha', 'Serviço', 'Saída', 'Chegada',
+      'Motorista (Atual)', 'Crachá Motorista (Atual)', 'Motorista (Original)', 'Crachá Motorista (Original)',
+      'Carro',
+      'Cobrador (Atual)', 'Crachá Cobrador (Atual)', 'Cobrador (Original)', 'Crachá Cobrador (Original)'
+    ];
+
+    const data = items.map((it: any) => [
+      it.setorPrincipalLinha,
+      `${it.codigoLinha} - ${it.nomeLinha}`,
+      it.codServicoNumero ?? it.cod_servico_numero ?? '',
+      it.horaSaida,
+      it.horaChegada,
+      it.nomeMotoristaEditado || it.nomeMotoristaGlobus,
+      it.crachaMotoristaEditado || it.crachaMotoristaGlobus,
+      (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) ? it.nomeMotoristaGlobus : '',
+      (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus) ? it.crachaMotoristaGlobus : '',
+      it.numeroCarro,
+      it.nomeCobradorEditado || it.nomeCobradorGlobus || 'SEM COBRADOR',
+      it.crachaCobradorEditado || it.crachaCobradorGlobus || '',
+      (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) ? it.nomeCobradorGlobus : '',
+      (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus) ? it.crachaCobradorGlobus : '',
+    ]);
+
+    const ws_data = [
+      ['Relatório - Controle de Horários'],
+      [`Data de referência: ${dataReferencia || ''}`],
+      [`Tipo do dia: ${dayType}`],
+      [`Usuário: ${user?.email || ''}`],
+      [`Total de viagens: ${items.length}`],
+      [], // Empty row for separation
+      ['Filtros Aplicados:'],
+      ...Object.entries((filtros as Record<string, unknown>) || {})
+        .filter(([, v]) => v !== undefined && v !== null && String(v) !== '')
+        .map(([k, v]) => [`${k}: ${String(v)}`]),
+      [], // Empty row for separation
+      header,
+      ...data,
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+
+    // Apply some basic styling
+    // Header row style
+    const headerRowIndex = ws_data.findIndex(row => row[0] === 'Setor');
+    if (headerRowIndex !== -1) {
+      for (let C = 0; C < header.length; ++C) {
+        const cellref = XLSX.utils.encode_cell({ r: headerRowIndex, c: C });
+        if (!ws[cellref]) ws[cellref] = {};
+        ws[cellref].s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "FBCC2C" } }, // Primary Yellow
+          alignment: { horizontal: "center" }
+        };
+      }
+    }
+
+    // Title and metadata styling
+    ws['A1'].s = { font: { sz: 16, bold: true, color: { rgb: "1A1A1A" } } }; // Dark Gray
+    ws['A2'].s = { font: { bold: true, color: { rgb: "666666" } } }; // Medium Gray
+    ws['A3'].s = { font: { bold: true, color: { rgb: "666666" } } };
+    ws['A4'].s = { font: { bold: true, color: { rgb: "666666" } } };
+    ws['A5'].s = { font: { bold: true, color: { rgb: "666666" } } };
+    ws['A7'].s = { font: { bold: true, color: { rgb: "1A1A1A" } } }; // Filters Applied
+
+    // Auto-width columns
+    const max_width = ws_data.reduce((w: number[], r: any[]) => r.map((cell: any, i: number) => Math.max(w[i] || 0, String(cell).length)), []);
+    ws['!cols'] = max_width.map((w: number) => ({ wch: w + 2 })); // Add a little padding
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Controle de Horários');
+    XLSX.writeFile(wb, `relatorio_controle_horarios_${dataReferencia || 'data'}.xlsx`);
   };
 
   const shouldApplyZoom = isTableFullScreen && windowWidth <= 1390 && windowHeight <= 1900;
@@ -260,6 +364,11 @@ export const ControleHorariosPage: React.FC = () => {
                     </>
                   )}
                 </Button>
+                {isAdministrador && ( // Conditionally render for ADMINISTRADOR
+                  <Button variant="outline" onClick={() => setOpenConfirmSync(true)} disabled={loading}>
+                    Sincronizar
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
@@ -354,15 +463,6 @@ export const ControleHorariosPage: React.FC = () => {
         ) : (
           <div className="text-center py-12 space-y-4">
             <p className="text-gray-400">Nenhuma viagem encontrada</p>
-            {canSyncCH ? (
-              <Button onClick={() => setOpenConfirmSync(true)} disabled={loading} className="w-full sm:w-auto">
-                Sincronizar
-              </Button>
-            ) : (
-              <Button variant="outline" disabled title="Apenas Encarregado, Analista, Gerente, Diretor ou Administrador pode sincronizar" className="w-full sm:w-auto">
-                Sincronizar
-              </Button>
-            )}
           </div>
         )}
 
@@ -379,6 +479,11 @@ export const ControleHorariosPage: React.FC = () => {
                                 <Button variant="outline" onClick={handleExportHtml} className="w-full sm:w-auto">
                                   <Download className="h-4 w-4 mr-2" /> Exportar HTML
                                 </Button>
+                                {isAnalistaOuMais && (
+                                  <Button variant="outline" onClick={handleExportExcel} className="w-full sm:w-auto">
+                                    <Download className="h-4 w-4 mr-2" /> Exportar Excel
+                                  </Button>
+                                )}
                                 <Button variant="outline" onClick={() => setShowReport(false)} className="w-full sm:w-auto">
                                   Fechar
                                 </Button>
@@ -405,9 +510,14 @@ export const ControleHorariosPage: React.FC = () => {
                         <th className="px-3 py-2 text-left font-semibold">Saída</th>
                         <th className="px-3 py-2 text-left font-semibold">Chegada</th>
                         <th className="px-3 py-2 text-left font-semibold">Motorista</th>
-                        <th className="px-3 py-2 text-left font-semibold">Crachá</th>
+                        <th className="px-3 py-2 text-left font-semibold">Crachá Motorista</th>
+                        <th className="px-3 py-2 text-left font-semibold">Motorista Original</th>
+                        <th className="px-3 py-2 text-left font-semibold">Crachá Motorista Original</th>
                         <th className="px-3 py-2 text-left font-semibold">Carro</th>
                         <th className="px-3 py-2 text-left font-semibold">Cobrador</th>
+                        <th className="px-3 py-2 text-left font-semibold">Crachá Cobrador</th>
+                        <th className="px-3 py-2 text-left font-semibold">Cobrador Original</th>
+                        <th className="px-3 py-2 text-left font-semibold">Crachá Cobrador Original</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -420,12 +530,30 @@ export const ControleHorariosPage: React.FC = () => {
                           <td className="px-3 py-2">{it.horaChegada}</td>
                           <td className="px-3 py-2">{it.nomeMotoristaEditado || it.nomeMotoristaGlobus}</td>
                           <td className="px-3 py-2">{it.crachaMotoristaEditado || it.crachaMotoristaGlobus}</td>
+                          <td className="px-3 py-2">
+                            {(it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus)
+                              ? it.nomeMotoristaGlobus
+                              : ''}
+                          </td>
+                          <td className="px-3 py-2">
+                            {(it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus)
+                              ? it.crachaMotoristaGlobus
+                              : ''}
+                          </td>
                           <td className="px-3 py-2">{it.numeroCarro}</td>
                           <td className="px-3 py-2">{it.nomeCobradorEditado || it.nomeCobradorGlobus || 'SEM COBRADOR'}</td>
+                          <td className="px-3 py-2">{it.crachaCobradorEditado || it.crachaCobradorGlobus}</td>
+                          <td className="px-3 py-2">
+                            {(it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus)
+                              ? it.nomeCobradorGlobus
+                              : ''}
+                          </td>
+                          <td className="px-3 py-2">
+                            {(it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus)
+                              ? it.crachaCobradorGlobus
+                              : ''}
+                          </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
               </div>
             </div>
