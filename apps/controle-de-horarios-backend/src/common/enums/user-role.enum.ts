@@ -5,7 +5,9 @@ export enum UserRole {
   DIRETOR = 'diretor',
   GERENTE = 'gerente',
   ANALISTA = 'analista',
-  OPERADOR = 'operador'
+  OPERADOR = 'operador',
+  ENCARREGADO = 'encarregado',
+  FUNCIONARIO = 'funcionario'
 }
 
 export const UserRoleLabels = {
@@ -13,7 +15,9 @@ export const UserRoleLabels = {
   [UserRole.DIRETOR]: 'Diretor',
   [UserRole.GERENTE]: 'Gerente',
   [UserRole.ANALISTA]: 'Analista',
-  [UserRole.OPERADOR]: 'Operador'
+  [UserRole.OPERADOR]: 'Operador',
+  [UserRole.ENCARREGADO]: 'Encarregado',
+  [UserRole.FUNCIONARIO]: 'Funcionário'
 };
 
 export const UserRoleHierarchy = {
@@ -21,7 +25,10 @@ export const UserRoleHierarchy = {
   [UserRole.DIRETOR]: 4,
   [UserRole.GERENTE]: 3,
   [UserRole.ANALISTA]: 2,
-  [UserRole.OPERADOR]: 1
+  [UserRole.OPERADOR]: 1,
+  [UserRole.ENCARREGADO]: 1.5, // Assuming 'Encarregado' is between Operador and Analista
+  [UserRole.FUNCIONARIO]: 0.5 // Assuming 'Funcionário' is the lowest role
+
 };
 
 /**
