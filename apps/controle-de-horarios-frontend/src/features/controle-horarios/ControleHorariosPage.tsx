@@ -134,27 +134,30 @@ export const ControleHorariosPage: React.FC = () => {
         const isLateNoVehicle = hm !== null && hm < nowMinutes && !hasVehicle;
         const rowClass = isLateNoVehicle ? 'row-danger' : hasEdits ? 'row-warning' : 'row-ok';
 
-        const motoristaNome = it.nomeMotoristaEditado || it.nomeMotoristaGlobus || '';
-        const motoristaCracha = it.crachaMotoristaEditado || it.crachaMotoristaGlobus || '';
-        const cobradorNome = it.nomeCobradorEditado || it.nomeCobradorGlobus || '';
-        const cobradorCracha = it.crachaCobradorEditado || it.crachaCobradorGlobus || '';
+        const motoristaNomeAtual = it.nomeMotoristaEditado || it.nomeMotoristaGlobus || '';
+        const motoristaCrachaAtual = it.crachaMotoristaEditado || it.crachaMotoristaGlobus || '';
+        const cobradorNomeAtual = it.nomeCobradorEditado || it.nomeCobradorGlobus || '';
+        const cobradorCrachaAtual = it.crachaCobradorEditado || it.crachaCobradorGlobus || '';
 
-        const motoristaDisplay = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus)
-          ? `${safe(motoristaNome)} <span class="text-xs text-gray-500">(Original: ${safe(it.nomeMotoristaGlobus)})</span>`
-          : safe(motoristaNome);
-        const motoristaCrachaDisplay = (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus)
-          ? `${safe(motoristaCracha)} <span class="text-xs text-gray-500">(Original: ${safe(it.crachaMotoristaGlobus)})</span>`
-          : safe(motoristaCracha);
+        const isMotoristaSubstituted = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus);
+        const isCobradorSubstituted = (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) || (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus);
 
-        const cobradorDisplay = (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) || (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus)
-          ? `${safe(cobradorNome)} <span class="text-xs text-gray-500">(Original: ${safe(it.nomeCobradorGlobus)})</span>`
-          : safe(cobradorNome);
-        const cobradorCrachaDisplay = (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus)
-          ? `${safe(cobradorCracha)} <span class="text-xs text-gray-500">(Original: ${safe(it.crachaCobradorGlobus)})</span>`
-          : safe(cobradorCracha);
+        const motoristaDisplayHtml = isMotoristaSubstituted
+          ? `<div>${safe(motoristaNomeAtual)} <span class="text-xs text-gray-500">(Substituto)</span></div><div class="text-xs text-gray-500">Original: ${safe(it.nomeMotoristaGlobus)}</div>`
+          : `<div>${safe(motoristaNomeAtual)}</div>`;
+        const motoristaCrachaDisplayHtml = isMotoristaSubstituted
+          ? `<div>${safe(motoristaCrachaAtual)} <span class="text-xs text-gray-500">(Substituto)</span></div><div class="text-xs text-gray-500">Original: ${safe(it.crachaMotoristaGlobus)}</div>`
+          : `<div>${safe(motoristaCrachaAtual)}</div>`;
 
-        const cobradorCell = cobradorNome
-          ? `<div>${cobradorDisplay}</div><div>${cobradorCrachaDisplay}</div>`
+        const cobradorDisplayHtml = isCobradorSubstituted
+          ? `<div>${safe(cobradorNomeAtual)} <span class="text-xs text-gray-500">(Substituto)</span></div><div class="text-xs text-gray-500">Original: ${safe(it.nomeCobradorGlobus)}</div>`
+          : `<div>${safe(cobradorNomeAtual)}</div>`;
+        const cobradorCrachaDisplayHtml = isCobradorSubstituted
+          ? `<div>${safe(cobradorCrachaAtual)} <span class="text-xs text-gray-500">(Substituto)</span></div><div class="text-xs text-gray-500">Original: ${safe(it.crachaCobradorGlobus)}</div>`
+          : `<div>${safe(cobradorCrachaAtual)}</div>`;
+
+        const cobradorCell = cobradorNomeAtual
+          ? `${cobradorDisplayHtml}${cobradorCrachaDisplayHtml}`
           : '<span class="badge badge-no-cobrador">SEM COBRADOR</span>';
 
         return `
@@ -164,8 +167,8 @@ export const ControleHorariosPage: React.FC = () => {
           <td>${safe(it.codServicoNumero ?? it.cod_servico_numero ?? '')}</td>
           <td>${safe(it.horaSaida)}</td>
           <td>${safe(it.horaChegada)}</td>
-          <td><div>${motoristaDisplay}</div></td>
-          <td><div>${motoristaCrachaDisplay}</div></td>
+          <td>${motoristaDisplayHtml}</td>
+          <td>${motoristaCrachaDisplayHtml}</td>
           <td>${safe(it.numeroCarro)}</td>
           <td>${cobradorCell}</td>
         </tr>`;
@@ -528,32 +531,35 @@ export const ControleHorariosPage: React.FC = () => {
                           <td className="px-3 py-2">{it.codServicoNumero ?? it.cod_servico_numero}</td>
                           <td className="px-3 py-2">{it.horaSaida}</td>
                           <td className="px-3 py-2">{it.horaChegada}</td>
-                          <td className="px-3 py-2">{it.nomeMotoristaEditado || it.nomeMotoristaGlobus}</td>
-                          <td className="px-3 py-2">{it.crachaMotoristaEditado || it.crachaMotoristaGlobus}</td>
                           <td className="px-3 py-2">
-                            {(it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus)
-                              ? it.nomeMotoristaGlobus
-                              : ''}
+                            {it.nomeMotoristaEditado || it.nomeMotoristaGlobus}
+                            {(it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) && (
+                              <div className="text-xs text-gray-500">Original: {it.nomeMotoristaGlobus}</div>
+                            )}
                           </td>
                           <td className="px-3 py-2">
-                            {(it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus)
-                              ? it.crachaMotoristaGlobus
-                              : ''}
+                            {it.crachaMotoristaEditado || it.crachaMotoristaGlobus}
+                            {(it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus) && (
+                              <div className="text-xs text-gray-500">Original: {it.crachaMotoristaGlobus}</div>
+                            )}
                           </td>
                           <td className="px-3 py-2">{it.numeroCarro}</td>
-                          <td className="px-3 py-2">{it.nomeCobradorEditado || it.nomeCobradorGlobus || 'SEM COBRADOR'}</td>
-                          <td className="px-3 py-2">{it.crachaCobradorEditado || it.crachaCobradorGlobus}</td>
                           <td className="px-3 py-2">
-                            {(it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus)
-                              ? it.nomeCobradorGlobus
-                              : ''}
+                            {it.nomeCobradorEditado || it.nomeCobradorGlobus || 'SEM COBRADOR'}
+                            {(it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) && (
+                              <div className="text-xs text-gray-500">Original: {it.nomeCobradorGlobus}</div>
+                            )}
                           </td>
                           <td className="px-3 py-2">
-                            {(it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus)
-                              ? it.crachaCobradorGlobus
-                              : ''}
+                            {it.crachaCobradorEditado || it.crachaCobradorGlobus}
+                            {(it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus) && (
+                              <div className="text-xs text-gray-500">Original: {it.crachaCobradorGlobus}</div>
+                            )}
                           </td>
                         </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
