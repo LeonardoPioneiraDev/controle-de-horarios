@@ -35,41 +35,52 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
   const prefix = useMemo(() => `[${new Date().toLocaleString('pt-BR')}] `, []);
 
   useEffect(() => {
-    let calculatedObservacoes = observacoesOriginal;
+    let currentRawContent = observacoesOriginal;
+    let existingTimestamp = '';
+    let existingCrachaSignature = '';
 
-    // Ensure prefix is always there initially
-    if (!calculatedObservacoes.startsWith(prefix)) {
-      calculatedObservacoes = prefix + calculatedObservacoes;
+    // 1. Try to extract existing timestamp
+    const timestampRegex = /^\[\d{1,2}\/\d{1,2}\/\d{4}, \d{1,2}:\d{1,2}:\d{1,2}\]\s*/;
+    const matchTimestamp = currentRawContent.match(timestampRegex);
+    if (matchTimestamp) {
+      existingTimestamp = matchTimestamp[0];
+      currentRawContent = currentRawContent.substring(existingTimestamp.length);
     }
 
+    // 2. Try to extract existing Crachá Original signature
+    const crachaSignatureRegex = /^Crachá Original: \d+\.\s*/;
+    const matchCrachaSignature = currentRawContent.match(crachaSignatureRegex);
+    if (matchCrachaSignature) {
+      existingCrachaSignature = matchCrachaSignature[0];
+      currentRawContent = currentRawContent.substring(existingCrachaSignature.length);
+    }
+
+    // Trim any leading/trailing spaces from the actual user content
+    currentRawContent = currentRawContent.trim();
+
+    // 3. Determine if a substitution is being made
     const isSubstitutionBeingMade = tempNome.trim() !== '' || tempCracha.trim() !== '';
     const isOriginalCrachaAvailable = crachaOriginal && crachaOriginal.trim() !== '';
-    const crachaSignature = `Crachá Original: ${crachaOriginal}`;
+    const newCrachaSignature = `Crachá Original: ${crachaOriginal}`;
 
-    // Remove existing signature if present, to re-add it correctly or remove if no longer needed
-    // This regex handles cases where the signature might be followed by a dot and space, or just a space, or nothing.
-    let contentWithoutSignature = calculatedObservacoes.replace(new RegExp(`\\s*${crachaSignature}\\.?\\s*`), ' ').trim();
-    // Ensure there's only one space between prefix and content if signature was removed from the middle
-    contentWithoutSignature = contentWithoutSignature.replace(/\s\s+/g, ' ');
-
+    // 4. Build the final observacoes string
+    let finalObservacoes = prefix; // Always start with the current timestamp
 
     if (isSubstitutionBeingMade && isOriginalCrachaAvailable) {
-      // Add signature after prefix, but before other content
-      const contentAfterPrefix = contentWithoutSignature.startsWith(prefix) ? contentWithoutSignature.substring(prefix.length) : contentWithoutSignature;
-      const separator = contentAfterPrefix.trim() !== '' ? ". " : "";
-      calculatedObservacoes = prefix + crachaSignature + separator + contentAfterPrefix.trim();
+      finalObservacoes += newCrachaSignature;
+      if (currentRawContent !== '') {
+        finalObservacoes += ". " + currentRawContent;
+      }
     } else {
-      // If no substitution, ensure signature is removed
-      calculatedObservacoes = contentWithoutSignature;
-      // If after removing signature, it only contains the prefix, ensure it's just the prefix
-      if (calculatedObservacoes.trim() === prefix.trim()) {
-        calculatedObservacoes = prefix;
+      // If no substitution, just append the raw content
+      if (currentRawContent !== '') {
+        finalObservacoes += currentRawContent;
       }
     }
 
     // Only update if the value is actually different to prevent unnecessary re-renders
-    if (calculatedObservacoes !== tempObservacoes) {
-      setTempObservacoes(calculatedObservacoes);
+    if (finalObservacoes !== tempObservacoes) {
+      setTempObservacoes(finalObservacoes);
     }
 
   }, [tempNome, tempCracha, crachaOriginal, observacoesOriginal, prefix]);
