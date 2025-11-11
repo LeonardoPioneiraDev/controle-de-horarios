@@ -467,14 +467,10 @@ export const Viagens: React.FC = () => {
 
     const handleFilterChange = (key: keyof FiltrosViagem, value: any) => {
         setFiltros(prev => ({ ...prev, [key]: value, page: 1 }));
-        // Explicitly call loadInitialData to re-fetch data with new filters
-        loadInitialData();
     };
 
     const clearFilters = () => {
         setFiltros(initialFilters);
-        // Explicitly call loadInitialData to re-fetch data with cleared filters
-        loadInitialData();
     };
 
     return (

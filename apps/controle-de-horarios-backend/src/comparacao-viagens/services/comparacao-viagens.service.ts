@@ -518,6 +518,9 @@ export class ComparacaoViagensService {
     totalTransdata?: number;
     totalGlobus?: number;
   }): Promise<string> {
+    // Deleta o histórico existente para a mesma data de referência para evitar duplicatas
+    await this.historicoRepository.delete({ dataReferencia: params.dataReferencia });
+
     const h = new HistoricoComparacaoViagens();
     h.dataReferencia = params.dataReferencia;
     h.totalComparacoes = params.resultado.totalComparacoes || 0;
@@ -554,10 +557,10 @@ export class ComparacaoViagensService {
       qb.andWhere('h.dataReferencia = :data', { data: query.data });
     }
     if (query.dataInicial) {
-      qb.andWhere('h.createdAt >= :di', { di: new Date(`${query.dataInicial}T00:00:00`) });
+      qb.andWhere('h.dataReferencia >= :di', { di: query.dataInicial });
     }
     if (query.dataFinal) {
-      qb.andWhere('h.createdAt <= :df', { df: new Date(`${query.dataFinal}T23:59:59`) });
+      qb.andWhere('h.dataReferencia <= :df', { df: query.dataFinal });
     }
     if (query.executedByEmail) {
       qb.andWhere('h.executedByEmail ILIKE :email', { email: `%${query.executedByEmail}%` });
@@ -568,7 +571,7 @@ export class ComparacaoViagensService {
 
     const total = await qb.getCount();
     const items = await qb
-      .orderBy('h.createdAt', 'DESC')
+      .orderBy('h.dataReferencia', 'DESC')
       .limit(limit)
       .offset((page - 1) * limit)
       .getMany();

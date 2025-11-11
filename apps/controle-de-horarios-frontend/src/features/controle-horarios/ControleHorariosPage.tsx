@@ -167,10 +167,15 @@ export const ControleHorariosPage: React.FC = () => {
           <td>${safe(it.codServicoNumero ?? it.cod_servico_numero ?? '')}</td>
           <td>${safe(it.horaSaida)}</td>
           <td>${safe(it.horaChegada)}</td>
-          <td>${motoristaDisplayHtml}</td>
-          <td>${motoristaCrachaDisplayHtml}</td>
+          <td>${safe(motoristaNomeAtual)}</td>
+          <td>${safe(motoristaCrachaAtual)}</td>
+          <td>${safe(it.nomeMotoristaGlobus)}</td>
+          <td>${safe(it.crachaMotoristaGlobus)}</td>
           <td>${safe(it.numeroCarro)}</td>
-          <td>${cobradorCell}</td>
+          <td>${safe(cobradorNomeAtual)}</td>
+          <td>${safe(cobradorCrachaAtual)}</td>
+          <td>${safe(it.nomeCobradorGlobus)}</td>
+          <td>${safe(it.crachaCobradorGlobus)}</td>
         </tr>`;
       })
       .join('');
@@ -215,15 +220,20 @@ export const ControleHorariosPage: React.FC = () => {
           <th>Serviço</th>
           <th>Saída</th>
           <th>Chegada</th>
-          <th>Motorista</th>
-          <th>Crachá</th>
+          <th>Motorista (Atual)</th>
+          <th>Crachá Motorista (Atual)</th>
+          <th>Motorista (Original)</th>
+          <th>Crachá Motorista (Original)</th>
           <th>Carro</th>
-          <th>Cobrador</th>
+          <th>Cobrador (Atual)</th>
+          <th>Crachá Cobrador (Atual)</th>
+          <th>Cobrador (Original)</th>
+          <th>Crachá Cobrador (Original)</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>
       <tfoot>
-        <tr><td colspan="9">Registros: ${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</td></tr>
+        <tr><td colspan="14">Registros: ${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</td></tr>
       </tfoot>
     </table>
   </body></html>`;
@@ -447,7 +457,7 @@ export const ControleHorariosPage: React.FC = () => {
                 scaleFilterLabel={
                   (filtros as any).cod_servico_numero && (filtros as any).cracha_funcionario
                     ? `Serviço ${(filtros as any).cod_servico_numero} • Crachá ${(filtros as any).cracha_funcionario}`
-                    : undefined
+                    : null
                 }
                 onClearScaleFilter={limparFiltros}
               />
@@ -531,31 +541,15 @@ export const ControleHorariosPage: React.FC = () => {
                           <td className="px-3 py-2">{it.codServicoNumero ?? it.cod_servico_numero}</td>
                           <td className="px-3 py-2">{it.horaSaida}</td>
                           <td className="px-3 py-2">{it.horaChegada}</td>
-                          <td className="px-3 py-2">
-                            {it.nomeMotoristaEditado || it.nomeMotoristaGlobus}
-                            {(it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) && (
-                              <div className="text-xs text-gray-500">Original: {it.nomeMotoristaGlobus}</div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2">
-                            {it.crachaMotoristaEditado || it.crachaMotoristaGlobus}
-                            {(it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus) && (
-                              <div className="text-xs text-gray-500">Original: {it.crachaMotoristaGlobus}</div>
-                            )}
-                          </td>
+                          <td className="px-3 py-2">{it.nomeMotoristaEditado || it.nomeMotoristaGlobus}</td>
+                          <td className="px-3 py-2">{it.crachaMotoristaEditado || it.crachaMotoristaGlobus}</td>
+                          <td className="px-3 py-2">{it.nomeMotoristaGlobus}</td>
+                          <td className="px-3 py-2">{it.crachaMotoristaGlobus}</td>
                           <td className="px-3 py-2">{it.numeroCarro}</td>
-                          <td className="px-3 py-2">
-                            {it.nomeCobradorEditado || it.nomeCobradorGlobus || 'SEM COBRADOR'}
-                            {(it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) && (
-                              <div className="text-xs text-gray-500">Original: {it.nomeCobradorGlobus}</div>
-                            )}
-                          </td>
-                          <td className="px-3 py-2">
-                            {it.crachaCobradorEditado || it.crachaCobradorGlobus}
-                            {(it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus) && (
-                              <div className="text-xs text-gray-500">Original: {it.crachaCobradorGlobus}</div>
-                            )}
-                          </td>
+                          <td className="px-3 py-2">{it.nomeCobradorEditado || it.nomeCobradorGlobus || 'SEM COBRADOR'}</td>
+                          <td className="px-3 py-2">{it.crachaCobradorEditado || it.crachaCobradorGlobus}</td>
+                          <td className="px-3 py-2">{it.nomeCobradorGlobus}</td>
+                          <td className="px-3 py-2">{it.crachaCobradorGlobus}</td>
                         </tr>
                       ))}
                     </tbody>

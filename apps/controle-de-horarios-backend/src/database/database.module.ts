@@ -23,8 +23,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         maxQueryExecutionTime: parseInt(configService.get('SLOW_QUERY_THRESHOLD', '1000')),
         extra: {
           max: parseInt(configService.get('DATABASE_MAX_CONNECTIONS', '10')),
-          connectionTimeoutMillis: parseInt(configService.get('DATABASE_CONNECTION_TIMEOUT', '18000000')),
-          query_timeout: parseInt(configService.get('DATABASE_QUERY_TIMEOUT', '18000000')),
+          connectionTimeoutMillis: parseInt(configService.get('DATABASE_CONNECTION_TIMEOUT', '28000000')),
+          query_timeout: parseInt(configService.get('DATABASE_QUERY_TIMEOUT', '28000000')),
         },
       }),
       inject: [ConfigService],

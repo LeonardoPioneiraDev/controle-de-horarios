@@ -79,6 +79,9 @@ export interface FiltrosViagem {
   nomeLinha?: string;             // Busca no NomeLinha
   horarioInicio?: string;         // Filtro por horário início
   horarioFim?: string;            // Filtro por horário fim
+  prefixoRealizado?: string;    // NOVO
+  nomeMotorista?: string;         // NOVO
+  somenteAtrasados?: boolean;     // NOVO
   page?: number;
   limit?: number;
 };

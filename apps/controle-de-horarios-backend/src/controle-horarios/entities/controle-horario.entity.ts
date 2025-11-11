@@ -18,10 +18,10 @@ export class ControleHorario {
   @Column({ type: 'integer', nullable: true })
   cod_local_terminal_sec: number;
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
+  @Column({ type: 'varchar', length: 20, nullable: false, default: '' })
   codigo_linha: string;
 
-  @Column({ type: 'varchar', length: 200, nullable: true })
+  @Column({ type: 'varchar', length: 200, nullable: false, default: '' })
   nome_linha: string;
 
   @Column({ type: 'integer', nullable: true })

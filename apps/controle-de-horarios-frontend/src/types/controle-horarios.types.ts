@@ -373,22 +373,24 @@ export interface OpcoesControleHorariosDto {
   locaisDestino: string[];
 }
 
+export interface StatusControleHorariosData {
+  existeNoBanco: boolean;
+  totalRegistros: number;
+  ultimaAtualizacao: Date | null;
+  setoresDisponiveis: string[];
+  linhasDisponiveis: number;
+  atividadesDisponiveis: string[];
+  tiposDiaDisponiveis: string[];
+  existeViagensGlobus?: boolean;
+  totalViagensGlobus?: number;
+  viagensEditadas?: number;
+  percentualEditado?: number;
+}
+
 export interface StatusControleHorariosDto {
   success: boolean;
   message: string;
-  data: {
-    existeNoBanco: boolean;
-    totalRegistros: number;
-    ultimaAtualizacao: Date | null;
-    setoresDisponiveis: string[];
-    linhasDisponiveis: number;
-    atividadesDisponiveis: string[];
-    tiposDiaDisponiveis: string[];
-    existeViagensGlobus?: boolean;
-    totalViagensGlobus?: number;
-    viagensEditadas?: number;
-    percentualEditado?: number;
-  };
+  data: StatusControleHorariosData;
 }
 
 export interface SalvarControleHorariosDto {

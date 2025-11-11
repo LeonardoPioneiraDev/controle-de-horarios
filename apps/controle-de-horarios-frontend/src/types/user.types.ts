@@ -7,7 +7,6 @@ export enum UserRole {
   DIRETOR = 'diretor',
   ADMINISTRADOR = 'administrador',
   // Aliases legados para compatibilidade
-  ADMIN = 'administrador',
   FUNCIONARIO = 'funcionario',
 }
 

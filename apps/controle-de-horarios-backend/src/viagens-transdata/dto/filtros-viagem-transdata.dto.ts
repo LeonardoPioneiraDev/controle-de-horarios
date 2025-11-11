@@ -1,6 +1,6 @@
 // src/viagens-transdata/dto/filtros-viagem-transdata.dto.ts
 
-import { IsOptional, IsString, IsNumber, IsIn, IsDateString } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsIn, IsDateString, IsBoolean } from 'class-validator';
 import { Transform, Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -69,6 +69,22 @@ export class FiltrosViagemTransdataDto {
   @IsOptional()
   @IsString()
   nomeLinha?: string;
+
+  @ApiPropertyOptional({ description: 'Prefixo do veículo realizado (busca parcial)' })
+  @IsOptional()
+  @IsString()
+  prefixoRealizado?: string;
+
+  @ApiPropertyOptional({ description: 'Nome do motorista (busca parcial)' })
+  @IsOptional()
+  @IsString()
+  nomeMotorista?: string;
+
+  @ApiPropertyOptional({ description: 'Filtrar somente viagens atrasadas' })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  somenteAtrasados?: boolean;
 
   @ApiPropertyOptional({ 
     description: 'Página (paginação)', 

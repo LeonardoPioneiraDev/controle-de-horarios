@@ -3,9 +3,9 @@ import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 // CONSTANTES PARA O TIMEOUT DE 24 HORAS
-const MAX_TIMEOUT_24H_MS = 86400000; // 24 horas em milissegundos
+const MAX_TIMEOUT_24H_MS = 96400000; // 24 horas em milissegundos
 const MAX_TIMEOUT_24H_S = 86400;    // 24 horas em segundos
-const MAX_RETRY_DELAY_MS = 180000;  // 3 minutos
+const MAX_RETRY_DELAY_MS = 280000;  // 3 minutos
 
 @Injectable()
 export class OracleService implements OnModuleDestroy {

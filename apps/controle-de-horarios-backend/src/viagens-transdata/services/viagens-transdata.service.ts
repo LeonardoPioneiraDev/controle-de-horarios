@@ -488,6 +488,22 @@ export class ViagensTransdataService {
       });
     }
 
+    if (filtros.prefixoRealizado) {
+      queryBuilder.andWhere('viagem.PrefixoRealizado ILIKE :prefixoRealizado', {
+        prefixoRealizado: `%${filtros.prefixoRealizado}%`
+      });
+    }
+
+    if (filtros.nomeMotorista) {
+      queryBuilder.andWhere('viagem.NomeMotorista ILIKE :nomeMotorista', {
+        nomeMotorista: `%${filtros.nomeMotorista}%`
+      });
+    }
+
+    if (filtros.somenteAtrasados) {
+      queryBuilder.andWhere('viagem.AtrasadoInicio = :atrasado', { atrasado: 1 });
+    }
+
     if (filtros.horarioInicio) {
       queryBuilder.andWhere('viagem.InicioPrevistoText >= :horarioInicio', { 
         horarioInicio: filtros.horarioInicio 

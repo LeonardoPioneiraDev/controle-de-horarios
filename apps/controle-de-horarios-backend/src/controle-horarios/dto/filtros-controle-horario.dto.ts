@@ -191,4 +191,9 @@ export class FiltrosControleHorarioDto {
   @IsOptional()
   @IsString()
   sentido_texto?: string;
+
+  @ApiPropertyOptional({ description: 'Período do dia (MANHÃ, TARDE, NOITE, MADRUGADA)' })
+  @IsOptional()
+  @IsString()
+  periodo_do_dia?: string;
 }

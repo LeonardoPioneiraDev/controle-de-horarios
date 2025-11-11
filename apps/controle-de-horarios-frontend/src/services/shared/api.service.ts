@@ -33,7 +33,7 @@ export class BaseApiService {
     const baseOrigin = resolveBaseOrigin();
     const originWithSlash = baseOrigin.endsWith('/') ? baseOrigin : `${baseOrigin}/`;
     this.baseURL = new URL('api/', originWithSlash).toString().replace(/\/$/, '');
-    this.timeout = 500000;
+    this.timeout = 12000000;
     this.debug = true; // process.env.NODE_ENV !== 'production';
 
     this.api = axios.create({
@@ -231,7 +231,15 @@ export const makeAuthenticatedRequest = async (
     tokenLength: token.length,
   });
 
-  const response = await fetch(url, mergedOptions);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 segundos de timeout
+
+  const response = await fetch(url, {
+    ...mergedOptions,
+    signal: controller.signal,
+  });
+
+  clearTimeout(timeoutId);
 
   if (!response.ok) {
     if (response.status === 401) {

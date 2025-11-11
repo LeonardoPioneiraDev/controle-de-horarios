@@ -39,7 +39,7 @@ const backendInfo = useMemo(() => {
     <>
       <div
         ref={sidebarRef}
-        className={`hidden custom-md:flex flex-col shrink-0 border-r border-yellow-400/20 bg-black/60 backdrop-blur ${isSidebarExpanded ? 'custom-md:w-64' : 'custom-md:w-20'}`}
+        className={`hidden custom-md:flex flex-col shrink-0 border-r border-yellow-400/20 bg-black/60 backdrop-blur ${isSidebarExpanded ? 'custom-md:w-72' : 'custom-md:w-20'}`}
       >
         <div className="flex h-full flex-col">
           {/* Logo and Toggle Button */}

@@ -33,6 +33,12 @@ export interface ControleHorarioItem {
   crachaCobradorGlobus: string; // Crachá do cobrador no Globus
   chapaFuncCobradorGlobus: string; // Chapa/DM-TU do cobrador no Globus
   totalHorarios: number; // Total de horários para aquela linha/setor (informação analítica do Globus)
+  sentidoTexto?: string; // Texto do sentido da viagem (IDA, VOLTA, CIRCULAR)
+  periodoDoDia?: string; // Período do dia da viagem (MANHÃ, TARDE, NOITE, MADRUGADA)
+  nomeMotorista?: string; // Nome do motorista (prioriza editado, senão globus)
+  nomeCobrador?: string; // Nome do cobrador (prioriza editado, senão globus)
+  local_origem_viagem?: string; // Local de origem da viagem
+  setor_principal_linha?: string; // Setor principal da linha
 
   // CAMPOS EDITÁVEIS PELO USUÁRIO (podem ser nulos se não editados)
   numeroCarro: string | null; // Número do carro editado

@@ -53,7 +53,7 @@ function App() {
             <Route
               path="users"
               element={
-                <ProtectedRoute allowedRoles={[UserRole.ADMINISTRADOR, UserRole.ADMIN]}>
+                <ProtectedRoute allowedRoles={[UserRole.ADMINISTRADOR]}>
                   <Users />
                 </ProtectedRoute>
               }
@@ -61,7 +61,7 @@ function App() {
             <Route
               path="users/new"
               element={
-                <ProtectedRoute allowedRoles={[UserRole.ADMINISTRADOR, UserRole.ADMIN]}>
+                <ProtectedRoute allowedRoles={[UserRole.ADMINISTRADOR]}>
                   <UserCreate />
                 </ProtectedRoute>
               }
@@ -69,7 +69,7 @@ function App() {
             <Route
               path="users/:id/edit"
               element={
-                <ProtectedRoute allowedRoles={[UserRole.ADMINISTRADOR, UserRole.ADMIN]}>
+                <ProtectedRoute allowedRoles={[UserRole.ADMINISTRADOR]}>
                   <UserEdit />
                 </ProtectedRoute>
               }

@@ -63,7 +63,7 @@ export class TransdataApiService {
 
   constructor(private configService: ConfigService) {
     this.baseUrl = 'https://its00078.itstransdata.com/ITS-InfoExport_CA06FCF3-D34E-4567-B069-153EA5085D80/api/Data';
-    this.timeout = this.configService.get<number>('TRANSDATA_TIMEOUT', 30000);
+    this.timeout = this.configService.get<number>('TRANSDATA_TIMEOUT', 90000);
     this.retryAttempts = this.configService.get<number>('TRANSDATA_RETRY_ATTEMPTS', 3);
     this.retryDelay = this.configService.get<number>('TRANSDATA_RETRY_DELAY', 2000);
 
@@ -145,7 +145,7 @@ export class TransdataApiService {
       const dataFormatada = this.formatarDataParaApi(hoje);
       
       await this.httpClient.get(`/cumprimentoservico?dia=${dataFormatada}`, {
-        timeout: 10000 // Timeout menor para teste
+        timeout: 20000 // Timeout menor para teste
       });
       
       const responseTime = Date.now() - startTime;

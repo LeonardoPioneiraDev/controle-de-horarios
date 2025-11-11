@@ -26,13 +26,15 @@ export class ViagensTransdataService extends BaseApiService {
     
     // ✅ Mapear filtros para os campos corretos da API
     if (filtros.sentido) params.append('sentido', filtros.sentido);
-    if (filtros.codigoLinha) params.append('codigoLinha', filtros.codigoLinha);
-    if (filtros.numeroServico) params.append('servico', filtros.numeroServico.toString()); // ✅ Corrigido: 'servico' não 'numeroServico'
+    if (filtros.numeroServico) params.append('servico', filtros.numeroServico.toString());
     if (filtros.statusCumprimento) params.append('statusCumprimento', filtros.statusCumprimento);
     if (filtros.pontoFinal) params.append('pontoFinal', filtros.pontoFinal);
     if (filtros.nomeLinha) params.append('nomeLinha', filtros.nomeLinha);
     if (filtros.horarioInicio) params.append('horarioInicio', filtros.horarioInicio);
     if (filtros.horarioFim) params.append('horarioFim', filtros.horarioFim);
+    if (filtros.prefixoRealizado) params.append('prefixoRealizado', filtros.prefixoRealizado);
+    if (filtros.nomeMotorista) params.append('nomeMotorista', filtros.nomeMotorista);
+    if (filtros.somenteAtrasados !== undefined) params.append('somenteAtrasados', filtros.somenteAtrasados.toString());
     if (filtros.page) params.append('page', filtros.page.toString());
     if (filtros.limit) params.append('limit', filtros.limit.toString());
 

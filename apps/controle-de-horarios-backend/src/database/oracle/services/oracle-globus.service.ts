@@ -88,8 +88,8 @@ export class OracleGlobusService {
         user: this.configService.get<string>('oracle.user'),
         password: this.configService.get<string>('oracle.password'),
         connectString: this.configService.get<string>('oracle.connectString'),
-        connectTimeout: 300, // 5 minutos
-        callTimeout: 1800000, // 30 minutos
+        connectTimeout: 9000, // 5 minutos
+        callTimeout: 2800000, // 30 minutos
       };
 
       this.connection = await oracledb.getConnection(connectionConfig);

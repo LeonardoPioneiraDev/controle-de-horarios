@@ -123,4 +123,14 @@ export const controleHorariosService = {
     );
     return response;
   },
+
+  async excluirControleHorariosPorData(
+    dataReferencia: string,
+  ): Promise<any> {
+    const response = await makeAuthenticatedRequest(
+      `/controle-horarios/${dataReferencia}`,
+      { method: 'DELETE' }
+    );
+    return response;
+  },
 };

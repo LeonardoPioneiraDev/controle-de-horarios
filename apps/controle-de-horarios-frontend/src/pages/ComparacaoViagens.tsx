@@ -546,7 +546,7 @@ export const ComparacaoViagens: React.FC = () => {
 
   // Seleciona estatísticas efetivas: prefere HISTÓRICO; se ausente, usa API
   const getEffectiveStats = (): ResultadoComparacao | null => {
-    const match = historico.find((h) => h.dataReferencia === dataReferencia) || historico[0];
+    const match = historico.find((h) => h.dataReferencia === dataReferencia);
     if (match) {
       const pct = typeof match.percentualCompatibilidade === 'string'
         ? parseFloat(match.percentualCompatibilidade)

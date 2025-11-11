@@ -61,4 +61,5 @@ export interface FiltrosViagemGlobus {
   pagina?: number;
   incluir_estatisticas?: boolean; // Adicionado
   salvar_local?: boolean; // Adicionado
+  periodo_do_dia?: string; // Adicionado
 }

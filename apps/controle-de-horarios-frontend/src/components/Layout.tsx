@@ -55,8 +55,8 @@ export const Layout: React.FC = () => {
           handleLogout={handleLogout}
         />
 
-        <main className={`flex-1 overflow-y-auto p-4 bg-primary-800 custom-md:ml-0  `}>
-                      <div className="mx-auto max-w-[1600px] w-full rounded-lg shadow-md bg-primary-700 p-4">            <Outlet />
+        <main className={`flex-1 overflow-y-auto p-4 bg-primary-800 custom-md:ml-0 `}>
+                      <div className="mx-auto max-w-[1800px] w-full rounded-lg shadow-md bg-primary-700 p-4">            <Outlet />
           </div>
         </main>
       </div>

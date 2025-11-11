@@ -92,7 +92,7 @@ export class ViagensGlobusService {
     novas: number;
     atualizadas: number;
     erros: number;
-    desativadas: number; // ✅ CORRIGIDO: Propriedade adicionada
+    desativadas: number;
   }> {
     this.logger.log(`🔄 Sincronizando viagens Globus para ${dataViagem}`);
 
@@ -100,8 +100,13 @@ export class ViagensGlobusService {
       // ✅ VERIFICAR SE ORACLE ESTÁ HABILITADO
       if (!this.oracleService.isEnabled()) {
         this.logger.warn('⚠️ Oracle está desabilitado');
-        return { sincronizadas: 0, novas: 0, atualizadas: 0, erros: 1, desativadas: 0 }; // ✅ CORRIGIDO
+        return { sincronizadas: 0, novas: 0, atualizadas: 0, erros: 1, desativadas: 0 };
       }
+
+      // 1. DELETAR VIAGENS EXISTENTES PARA A DATA
+      this.logger.log(`🗑️ Apagando viagens existentes para a data ${dataViagem}...`);
+      const deleteResult = await this.viagemGlobusRepository.delete({ dataReferencia: dataViagem });
+      this.logger.log(`✅ ${deleteResult.affected || 0} viagens apagadas para ${dataViagem}.`);
 
       // ✅ QUERY ORACLE OTIMIZADA
       const sqlQuery = `
@@ -131,7 +136,7 @@ export class ViagensGlobusService {
           S.COD_SERVDIARIA AS COD_SERVICO_COMPLETO,
           REGEXP_SUBSTR(S.COD_SERVDIARIA, '[[:digit:]]+') AS COD_SERVICO_NUMERO,
           
-          -- Informações da Tripulação (NOVOS CAMPOS)
+          -- Informações da Tripulação (NOVOS CAMPO)
           S.COD_MOTORISTA,
           FM.NOMECOMPLETOFUNC AS NOME_MOTORISTA, -- <--- Adicionado o nome do Motorista
           S.COD_COBRADOR,
@@ -167,7 +172,7 @@ export class ViagensGlobusService {
             L.CODIGOLINHA,
             H.FLG_SENTIDO,
             H.HOR_SAIDA
-      `;
+      `;;
 
       // ✅ USAR MÉTODO PARA QUERIES PESADAS
       const dadosOracle = await this.oracleService.executeHeavyQuery(sqlQuery);
@@ -176,87 +181,40 @@ export class ViagensGlobusService {
 
       if (dadosOracle.length === 0) {
         this.logger.warn(`⚠️ Nenhum dado encontrado no Oracle para ${dataViagem}`);
-        return { sincronizadas: 0, novas: 0, atualizadas: 0, erros: 0, desativadas: 0 }; // ✅ CORRIGIDO
+        // Se não há dados no Oracle, e já apagamos os dados locais, o resultado é 0 para tudo.
+        return { sincronizadas: 0, novas: 0, atualizadas: 0, erros: 0, desativadas: 0 };
       }
 
-      let novas = 0;
-      let atualizadas = 0;
       let erros = 0;
-      const processedHashes: string[] = [];
+      const viagensParaSalvar: Partial<ViagemGlobus>[] = [];
 
-      // ✅ PROCESSAR DADOS EM LOTES
-      const BATCH_SIZE = 100;
-      for (let i = 0; i < dadosOracle.length; i += BATCH_SIZE) {
-        const lote = dadosOracle.slice(i, i + BATCH_SIZE);
-        
-        for (const item of lote) {
-          try {
-            const viagemProcessada = this.processarDadosOracle(item, dataViagem);
-            
-            // ✅ VERIFICAR SE JÁ EXISTE
-            const viagemExistente = await this.viagemGlobusRepository.findOne({
-              where: { hashDados: viagemProcessada.hashDados }
-            });
-
-            if (viagemExistente) {
-              // ✅ ATUALIZAR
-              await this.viagemGlobusRepository.update(
-                { id: viagemExistente.id },
-                { ...viagemProcessada, updatedAt: new Date(), isAtivo: true } // Ensure isAtivo is true on update
-              );
-              atualizadas++;
-              processedHashes.push(viagemProcessada.hashDados);
-            } else {
-              // ✅ INSERIR NOVA
-              const novaViagem = await this.viagemGlobusRepository.save({ 
-                ...viagemProcessada, 
-                createdAt: new Date(), 
-                updatedAt: new Date(),
-                isAtivo: true
-              });
-              novas++;
-              processedHashes.push(novaViagem.hashDados);
-            }
-          } catch (error: any) {
-            this.logger.error(`❌ Erro ao processar item: ${error.message}`);
-            erros++;
-          }
-        }
-
-        // ✅ LOG DE PROGRESSO
-        if (i % (BATCH_SIZE * 10) === 0) {
-          this.logger.log(`📊 Processados ${i + BATCH_SIZE}/${dadosOracle.length} registros...`);
+      // ✅ PROCESSAR E PREPARAR PARA INSERÇÃO EM LOTE
+      for (const item of dadosOracle) {
+        try {
+          const viagemProcessada = this.processarDadosOracle(item, dataViagem);
+          viagensParaSalvar.push({
+            ...viagemProcessada,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            isAtivo: true, // Sempre ativo ao sincronizar
+          });
+        } catch (error: any) {
+          this.logger.error(`❌ Erro ao processar item: ${error.message}`);
+          erros++;
         }
       }
 
-      // ✅ DESATIVAR VIAGENS REMOVIDAS DO ORACLE
-      const viagensAtivasLocais = await this.viagemGlobusRepository.find({
-        where: {
-          dataReferencia: dataViagem,
-          isAtivo: true
-        },
-        select: ['id', 'hashDados']
-      });
-
-      const hashesParaDesativar = viagensAtivasLocais
-        .filter(v => !processedHashes.includes(v.hashDados))
-        .map(v => v.hashDados);
-
-      let desativadas = 0;
-      if (hashesParaDesativar.length > 0) {
-        const updateResult = await this.viagemGlobusRepository.update(
-          { dataReferencia: dataViagem, hashDados: In(hashesParaDesativar) }, // ✅ CORRIGIDO: In importado
-          { isAtivo: false, updatedAt: new Date() }
-        );
-        desativadas = updateResult.affected || 0;
-        this.logger.log(`🗑️ Desativadas ${desativadas} viagens que não estão mais no Oracle Globus.`);
+      // ✅ SALVAR EM LOTE DE FORMA EFICIENTE
+      if (viagensParaSalvar.length > 0) {
+        await this.viagemGlobusRepository.save(viagensParaSalvar, { chunk: 200 });
       }
 
-      const sincronizadas = novas + atualizadas;
+      const novas = viagensParaSalvar.length;
+      const sincronizadas = novas;
       
-      this.logger.log(`✅ Sincronização Globus concluída: ${sincronizadas} total (${novas} novas, ${atualizadas} atualizadas, ${desativadas} desativadas, ${erros} erros)`);
+      this.logger.log(`✅ Sincronização Globus concluída: ${sincronizadas} total (${novas} novas, 0 atualizadas, 0 desativadas, ${erros} erros)`);
 
-      return { sincronizadas, novas, atualizadas, erros, desativadas };
+      return { sincronizadas, novas, atualizadas: 0, erros, desativadas: 0 };
 
     } catch (error: any) {
       this.logger.error(`❌ Erro na sincronização Globus: ${error.message}`);

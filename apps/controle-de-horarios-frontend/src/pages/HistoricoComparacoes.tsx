@@ -3,8 +3,6 @@ import { comparacaoViagensService } from '../services/comparacao/comparacao.serv
 import { HistoricoComparacaoResumo } from '../types/comparacao.types';
 import { TrendingUp, Calendar, FileText, X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 
-type TimeGroup = 'dia' | 'semana' | 'mes';
-
 const startOfWeek = (d: Date) => {
   const date = new Date(d);
   const day = date.getDay();
@@ -184,61 +182,106 @@ export const HistoricoComparacoes: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState<number>(1);
-  const [limit] = useState<number>(10);
+  const [limit, setLimit] = useState<number>(31);
   const [totalItems, setTotalItems] = useState<number>(0);
   const [dataInicial, setDataInicial] = useState<string>(() => startOfMonth(new Date()).toISOString().slice(0,10));
   const [dataFinal, setDataFinal] = useState<string>(() => endOfMonth(new Date()).toISOString().slice(0,10));
-  const [timeGroup, setTimeGroup] = useState<TimeGroup>('mes');
 
   const [isReportModalOpen, setReportModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<HistoricoComparacaoResumo | null>(null);
 
-  const [chartItems, setChartItems] = useState<HistoricoComparacaoResumo[]>([]);
-  const [loadingChart, setLoadingChart] = useState<boolean>(false);
+  const [fetchTrigger, setFetchTrigger] = useState(0);
 
-  const fetchData = useCallback(async (pageToFetch = page) => {
+  const [sortConfig, setSortConfig] = useState<{ key: keyof HistoricoComparacaoResumo | null; direction: 'ascending' | 'descending' }>({ key: 'dataReferencia', direction: 'descending' });
+
+  useEffect(() => {
+    const initialDate = new Date(dataInicial);
+    const finalDate = new Date(dataFinal);
+
+    const startOfSelectedMonth = startOfMonth(initialDate);
+    const endOfSelectedMonth = endOfMonth(initialDate);
+
+    const isFullMonth =
+      initialDate.toISOString().slice(0, 10) === startOfSelectedMonth.toISOString().slice(0, 10) &&
+      finalDate.toISOString().slice(0, 10) === endOfSelectedMonth.toISOString().slice(0, 10) &&
+      initialDate.getMonth() === finalDate.getMonth() &&
+      initialDate.getFullYear() === finalDate.getFullYear();
+
+    if (isFullMonth) {
+      setLimit(31);
+    } else {
+      setLimit(31);
+    }
+  }, [dataInicial, dataFinal]);
+
+  useEffect(() => {
     setLoading(true);
     setError(null);
-    try {
-      const { items: fetchedItems, total } = await comparacaoViagensService.listarHistorico({
-        page: pageToFetch,
+    comparacaoViagensService.listarHistorico({
+        page,
         limit,
         dataInicial,
         dataFinal,
+    })
+    .then(({ items: fetchedItems, total }) => {
+        setItems(fetchedItems);
+        setTotalItems(total);
+    })
+    .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Falha ao carregar histórico.';
+        setError(message);
+    })
+    .finally(() => {
+        setLoading(false);
+    });
+  }, [page, limit, dataInicial, dataFinal, fetchTrigger]);
+
+  const sortedItems = useMemo(() => {
+    let sortableItems = [...items];
+    if (sortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const valA = a[sortConfig.key!];
+        const valB = b[sortConfig.key!];
+
+        let comparison = 0;
+        if (sortConfig.key === 'dataReferencia') {
+          comparison = new Date(valA as string).getTime() - new Date(valB as string).getTime();
+        } else {
+          const numA = Number(valA);
+          const numB = Number(valB);
+          if (!isNaN(numA) && !isNaN(numB)) {
+            comparison = numA - numB;
+          } else {
+            comparison = String(valA).localeCompare(String(valB));
+          }
+        }
+        
+        return sortConfig.direction === 'descending' ? -comparison : comparison;
       });
-      setItems(fetchedItems);
-      setTotalItems(total);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Falha ao carregar histórico.';
-      setError(message);
-    } finally {
-      setLoading(false);
     }
-  }, [page, limit, dataInicial, dataFinal]);
+    return sortableItems;
+  }, [items, sortConfig]);
 
-  const fetchChartData = useCallback(async () => {
-    setLoadingChart(true);
-    try {
-      const { items: fetched } = await comparacaoViagensService.listarHistorico({
-        page: 1,
-        limit: 1000,
-        dataInicial,
-        dataFinal,
-      });
-      setChartItems(fetched);
-    } finally {
-      setLoadingChart(false);
+  const requestSort = (key: keyof HistoricoComparacaoResumo) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    } else if (sortConfig.key === key && sortConfig.direction === 'descending') {
+      // Optional: cycle back to ascending or remove sort
+      direction = 'ascending';
     }
-  }, [dataInicial, dataFinal]);
+    setSortConfig({ key, direction });
+  };
 
-  useEffect(() => {
-    fetchData(1);
-    fetchChartData();
-  }, [dataInicial, dataFinal]);
-
-  useEffect(() => {
-    fetchData();
-  }, [page]);
+  const SortableHeader: React.FC<{ title: string; sortKey: keyof HistoricoComparacaoResumo; className?: string }> = ({ title, sortKey, className }) => {
+    const isSorted = sortConfig.key === sortKey;
+    const icon = isSorted ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : '';
+    return (
+      <th className={`py-3 px-4 cursor-pointer ${className || ''}`} onClick={() => requestSort(sortKey)}>
+        {title} <span className="text-yellow-500">{icon}</span>
+      </th>
+    );
+  };
 
   const handleViewReport = (item: HistoricoComparacaoResumo) => {
     setSelectedItem(item);
@@ -249,96 +292,6 @@ export const HistoricoComparacoes: React.FC = () => {
     if (newPage > 0 && newPage <= Math.ceil(totalItems / limit)) {
       setPage(newPage);
     }
-  };
-
-  const groupedChartData = useMemo(() => {
-    const buckets = new Map<string, { label: string; compativeis: number; divergentes: number }>();
-    const parse = (s?: string) => {
-      if (!s) return null;
-      const iso = s.includes('T') ? s : s.replace(' ', 'T');
-      const d = new Date(iso);
-      return isNaN(d.getTime()) ? null : d;
-    };
-    const fmt = (d: Date, g: TimeGroup) => {
-      const y = d.getFullYear();
-      const m = (d.getMonth() + 1).toString().padStart(2, '0');
-      const day = d.getDate().toString().padStart(2, '0');
-      if (g === 'dia') return `${y}-${m}-${day}`;
-      if (g === 'semana') {
-        const monday = startOfWeek(d);
-        const m2 = (monday.getMonth() + 1).toString().padStart(2, '0');
-        const d2 = monday.getDate().toString().padStart(2, '0');
-        return `${monday.getFullYear()}-${m2}-${d2}`; // label = monday date
-      }
-      return `${y}-${m}`;
-    };
-    for (const it of chartItems) {
-      const dt = parse(it.createdAt || it.dataReferencia);
-      if (!dt) continue;
-      const key = fmt(dt, timeGroup);
-      if (!buckets.has(key)) buckets.set(key, { label: key, compativeis: 0, divergentes: 0 });
-      const agg = buckets.get(key)!;
-      agg.compativeis += Number(it.compativeis || 0);
-      agg.divergentes += Number(it.divergentes || 0);
-    }
-    return Array.from(buckets.values()).sort((a, b) => a.label.localeCompare(b.label));
-  }, [chartItems, timeGroup]);
-
-  const Chart: React.FC = () => {
-    if (!groupedChartData.length) {
-      return <div className="text-sm text-gray-400">Sem dados para o período selecionado.</div>;
-    }
-    const width = 800;
-    const height = 260;
-    const padding = 36;
-    const maxY = Math.max(1, ...groupedChartData.map(v => Math.max(v.compativeis, v.divergentes)));
-    const pointsFor = (key: 'compativeis' | 'divergentes') => {
-      const n = groupedChartData.length;
-      return groupedChartData.map((v, i) => {
-        const x = padding + (i * (width - 2 * padding)) / Math.max(1, n - 1);
-        const y = height - padding - (v[key] / maxY) * (height - 2 * padding);
-        return `${x},${y}`;
-      }).join(' ');
-    };
-
-    return (
-      <div className="w-full overflow-x-auto">
-        <svg width={width} height={height} className="min-w-[640px]">
-          <rect x={0} y={0} width={width} height={height} fill="transparent" />
-          {Array.from({ length: 5 }, (_, i) => {
-            const t = Math.round((i * maxY) / 4);
-            const y = padding + (1 - (t / maxY)) * (height - 2 * padding);
-            return (
-              <g key={i}>
-                <line x1={padding} y1={y} x2={width - padding} y2={y} stroke="#2d2d2d" strokeDasharray="4 4" />
-                <text x={padding - 6} y={y + 3} fontSize={10} textAnchor="end" fill="#9ca3af">{t}</text>
-              </g>
-            );
-          })}
-          <line x1={padding} y1={height - padding} x2={width - padding} y2={height - padding} stroke="#444" />
-          <line x1={padding} y1={padding} x2={padding} y2={height - padding} stroke="#444" />
-          <polyline fill="none" stroke="#22c55e" strokeWidth={2} points={pointsFor('compativeis')} />
-          <polyline fill="none" stroke="#ef4444" strokeWidth={2} points={pointsFor('divergentes')} />
-          {groupedChartData.map((v, i) => {
-            const n = groupedChartData.length;
-            const x = padding + (i * (width - 2 * padding)) / Math.max(1, n - 1);
-            const yA = height - padding - (v.compativeis / maxY) * (height - 2 * padding);
-            const yB = height - padding - (v.divergentes / maxY) * (height - 2 * padding);
-            return (
-              <g key={v.label}>
-                <circle cx={x} cy={yA} r={3} fill="#22c55e" />
-                <circle cx={x} cy={yB} r={3} fill="#ef4444" />
-                <text x={x} y={height - padding + 14} fontSize={10} textAnchor="middle" fill="#9ca3af">{v.label}</text>
-              </g>
-            );
-          })}
-        </svg>
-        <div className="flex gap-4 mt-2 text-xs text-gray-300">
-          <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full bg-green-500" /> Compatíveis</div>
-          <div className="flex items-center gap-2"><span className="inline-block w-3 h-3 rounded-full bg-red-500" /> Divergentes</div>
-        </div>
-      </div>
-    );
   };
 
   const renderContent = () => {
@@ -357,30 +310,22 @@ export const HistoricoComparacoes: React.FC = () => {
         <table className="min-w-full text-sm">
           <thead className="text-left text-gray-400">
             <tr className="border-b border-yellow-700/20">
-              
-              <th className="py-3 px-4">Data Ref.</th>
-              
-            
-              
-              <th className="py-3 px-4 text-center">Linhas</th>
-              <th className="py-3 px-4 text-center">Total</th>
-              <th className="py-3 px-4 text-center">Compatíveis</th>
-              <th className="py-3 px-4 text-center">Divergentes</th>
-              <th className="py-3 px-4 text-center">Apenas TD</th>
-              <th className="py-3 px-4 text-center">Apenas GB</th>
-              <th className="py-3 px-4 text-center">Horário Dif.</th>
-              <th className="py-3 px-4 text-center">% Compat.</th>
+              <SortableHeader title="Data Ref." sortKey="dataReferencia" />
+              <SortableHeader title="Linhas" sortKey="linhasAnalisadas" className="text-center" />
+              <SortableHeader title="Total" sortKey="totalComparacoes" className="text-center" />
+              <SortableHeader title="Compatíveis" sortKey="compativeis" className="text-center" />
+              <SortableHeader title="Divergentes" sortKey="divergentes" className="text-center" />
+              <SortableHeader title="Apenas TD" sortKey="apenasTransdata" className="text-center" />
+              <SortableHeader title="Apenas GB" sortKey="apenasGlobus" className="text-center" />
+              <SortableHeader title="Horário Dif." sortKey="horarioDivergente" className="text-center" />
+              <SortableHeader title="% Compat." sortKey="percentualCompatibilidade" className="text-center" />
               <th className="py-3 px-4">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-800">
-            {items.map((h) => (
+            {sortedItems.map((h) => (
               <tr key={h.id} className="hover:bg-neutral-800/50">
-                
                 <td className="py-3 px-4">{h.dataReferencia}</td>
-               
-                
-                
                 <td className="py-3 px-4 text-center">{h.linhasAnalisadas}</td>
                 <td className="py-3 px-4 text-center font-semibold text-blue-300">{h.totalComparacoes}</td>
                 <td className="py-3 px-4 text-center font-semibold text-green-400">{h.compativeis}</td>
@@ -403,14 +348,12 @@ export const HistoricoComparacoes: React.FC = () => {
 
     const mobileView = (
       <div className="block md:hidden space-y-4">
-        {items.map((h) => (
+        {sortedItems.map((h) => (
           <div key={h.id} className="bg-neutral-800/50 rounded-lg p-4 border border-neutral-700">
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-sm text-gray-400">Data Ref: <span className="font-bold text-white">{h.dataReferencia}</span></p>
                 <p className="text-xs text-gray-500">Executado: {h.createdAt ? new Date(h.createdAt).toLocaleString() : ''}</p>
-                
-               
               </div>
               <button onClick={() => handleViewReport(h)} className="bg-yellow-600 text-black px-3 py-1 rounded-md text-xs font-bold hover:bg-yellow-500">
                 Relatório
@@ -489,13 +432,25 @@ export const HistoricoComparacoes: React.FC = () => {
 
           <div className="flex items-end gap-2">
             <button
-              onClick={() => { setPage(1); fetchData(1); fetchChartData(); }}
+              onClick={() => {
+                if (page !== 1) {
+                  setPage(1);
+                } else {
+                  setFetchTrigger(t => t + 1);
+                }
+              }}
               className="inline-flex items-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-sm font-bold text-black hover:bg-yellow-500 transition-colors"
             >
               Filtrar
             </button>
             <button
-              onClick={() => { const di = startOfMonth(new Date()); const df = endOfMonth(new Date()); setDataInicial(di.toISOString().slice(0,10)); setDataFinal(df.toISOString().slice(0,10)); setPage(1); fetchData(1); fetchChartData(); }}
+              onClick={() => {
+                const di = startOfMonth(new Date());
+                const df = endOfMonth(new Date());
+                setPage(1);
+                setDataInicial(di.toISOString().slice(0, 10));
+                setDataFinal(df.toISOString().slice(0, 10));
+              }}
               className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium border border-neutral-700 text-gray-300 hover:bg-neutral-800 transition-colors"
             >
               Mês atual
@@ -506,24 +461,6 @@ export const HistoricoComparacoes: React.FC = () => {
 
       <main className="bg-gray-900/50 border border-yellow-700/30 rounded-xl shadow-lg shadow-yellow-700/10 overflow-hidden">
         {renderContent()}
-        <div className="p-4 border-t border-neutral-800">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-300">Agrupar gráfico por:</span>
-              <select value={timeGroup} onChange={(e) => setTimeGroup(e.target.value as TimeGroup)} className="bg-neutral-800 border border-neutral-700 text-sm rounded-md px-2 py-1">
-                <option value="dia">Dia</option>
-                <option value="semana">Semana</option>
-                <option value="mes">Mês</option>
-              </select>
-            </div>
-            <div className="text-xs text-gray-400">
-              {loadingChart ? 'Carregando gráfico...' : `${groupedChartData.length} pontos`}
-            </div>
-          </div>
-          <div className="mt-3">
-            <Chart />
-          </div>
-        </div>
       </main>
 
       {items.length > 0 && (
