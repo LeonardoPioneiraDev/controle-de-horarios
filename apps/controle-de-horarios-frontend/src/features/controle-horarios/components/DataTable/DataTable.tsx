@@ -64,18 +64,17 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
     const newCrachaSignature = `Crachá Original: ${crachaOriginal}`;
 
     // 4. Build the final observacoes string
-    let finalObservacoes = prefix; // Always start with the current timestamp
+    let finalObservacoes = ''; // Start empty
 
     if (isSubstitutionBeingMade && isOriginalCrachaAvailable) {
+      finalObservacoes += prefix; // Add prefix ONLY if substitution is active
       finalObservacoes += newCrachaSignature;
       if (currentRawContent !== '') {
         finalObservacoes += ". " + currentRawContent;
       }
     } else {
-      // If no substitution, just append the raw content
-      if (currentRawContent !== '') {
-        finalObservacoes += currentRawContent;
-      }
+      // No substitution, keep only the original clean content (without prefix or signature)
+      finalObservacoes = currentRawContent; // This is the user's original text
     }
 
     // Only update if the value is actually different to prevent unnecessary re-renders
