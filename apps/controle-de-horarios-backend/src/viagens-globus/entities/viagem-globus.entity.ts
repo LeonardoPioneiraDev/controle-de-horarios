@@ -50,17 +50,29 @@ export class ViagemGlobus {
   @Column({ name: 'cod_servico_numero', type: 'varchar', length: 20, nullable: true })
   codServicoNumero: string;
 
-  @Column({ name: 'cod_motorista', type: 'integer', nullable: true })
-  codMotorista: number;
+  @Column({ name: 'prefixo_veiculo', type: 'varchar', length: 20, nullable: true })
+  prefixoVeiculo: string;
+
+  @Column({ name: 'cracha_motorista_globus', type: 'integer', nullable: true })
+  crachaMotoristaGlobus: number;
 
   @Column({ name: 'nome_motorista', type: 'varchar', length: 100, nullable: true })
   nomeMotorista: string;
 
-  @Column({ name: 'cod_cobrador', type: 'integer', nullable: true })
-  codCobrador: number;
+  @Column({ name: 'cracha_cobrador_globus', type: 'integer', nullable: true })
+  crachaCobradorGlobus: number;
 
   @Column({ name: 'nome_cobrador', type: 'varchar', length: 100, nullable: true })
   nomeCobrador: string;
+
+  @Column({ name: 'cod_local_destino_linha', type: 'integer', nullable: true })
+  codLocalDestinoLinha: number;
+
+  @Column({ name: 'local_destino_linha', type: 'varchar', length: 100, nullable: true })
+  localDestinoLinha: string;
+
+  @Column({ name: 'desc_tipo_dia', type: 'varchar', length: 50, nullable: true })
+  descTipoDia: string;
 
   @Column({ name: 'total_horarios', type: 'integer', default: 0 })
   totalHorarios: number;

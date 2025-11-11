@@ -9,6 +9,7 @@ import {
   EstatisticasControleHorariosDto,
   UpdateMultipleControleHorariosDto,
 } from '../../../types/controle-horarios.types';
+import { toast } from 'react-toastify';
 
 interface UsuarioAtual { id: string; nome: string; email: string; perfil: string }
 
@@ -29,7 +30,11 @@ export const useControleHorarios = () => {
     return { id: '1', nome: 'Usuário', email: 'usuario@exemplo.com', perfil: 'OPERADOR' };
   };
 
-  const [dataReferencia, setDataReferencia] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [dataReferencia, setDataReferencia] = useState<string>(() => {
+    const usuario = obterUsuarioAtual();
+    const savedDataReferencia = localStorage.getItem(`filtros_controle_horarios_${usuario.id}_dataReferencia`);
+    return savedDataReferencia || new Date().toISOString().split('T')[0];
+  });
   const [controleHorarios, setControleHorarios] = useState<ControleHorarioItem[]>([]);
   const [controleHorariosOriginais, setControleHorariosOriginais] = useState<ControleHorarioItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -37,6 +42,15 @@ export const useControleHorarios = () => {
   const [temAlteracoesPendentes, setTemAlteracoesPendentes] = useState(false);
 
   const [filtros, setFiltros] = useState<FiltrosControleHorarios>(() => {
+    const usuario = obterUsuarioAtual();
+    const savedFiltros = localStorage.getItem(`filtros_controle_horarios_${usuario.id}_filtros`);
+    if (savedFiltros) {
+      try {
+        return JSON.parse(savedFiltros);
+      } catch (e) {
+        console.error("Failed to parse saved filters from localStorage", e);
+      }
+    }
     const initialLimit = window.innerWidth <= 1208 ? 8 : 50;
     return {
       limite: initialLimit,
@@ -45,8 +59,19 @@ export const useControleHorarios = () => {
   });
 
   // Filtros locais (não enviados ao backend)
-  const [tipoLocal, setTipoLocal] = useState<'R' | 'S' | undefined>(undefined);
-  const [statusEdicaoLocal, setStatusEdicaoLocal] = useState<'todos' | 'editados' | 'nao_editados'>('todos');
+  const [tipoLocal, setTipoLocal] = useState<'R' | 'S' | undefined>(() => {
+    const usuario = obterUsuarioAtual();
+    const savedTipoLocal = localStorage.getItem(`filtros_controle_horarios_${usuario.id}_tipoLocal`);
+    return savedTipoLocal === 'R' || savedTipoLocal === 'S' ? savedTipoLocal : undefined;
+  });
+  const [statusEdicaoLocal, setStatusEdicaoLocal] = useState<'todos' | 'editados' | 'nao_editados'>(() => {
+    const usuario = obterUsuarioAtual();
+    const savedStatusEdicaoLocal = localStorage.getItem(`filtros_controle_horarios_${usuario.id}_statusEdicaoLocal`);
+    if (savedStatusEdicaoLocal === 'editados' || savedStatusEdicaoLocal === 'nao_editados') {
+      return savedStatusEdicaoLocal;
+    }
+    return 'todos';
+  });
 
   const [opcoesFiltros, setOpcoesFiltros] = useState<OpcoesControleHorariosDto>({
     setores: [], linhas: [], servicos: [], atividades: [], tiposDia: [], sentidos: [], motoristas: [], locaisOrigem: [], locaisDestino: [],
@@ -319,6 +344,20 @@ export const useControleHorarios = () => {
     }
   }, []);
 
+  const salvarFiltrosManualmente = useCallback(() => {
+    console.log('salvarFiltrosManualmente: Saving filters...', { dataReferencia, filtros, tipoLocal, statusEdicaoLocal });
+    const usuario = obterUsuarioAtual();
+    localStorage.setItem(`filtros_controle_horarios_${usuario.id}_dataReferencia`, dataReferencia);
+    localStorage.setItem(`filtros_controle_horarios_${usuario.id}_filtros`, JSON.stringify(filtros));
+    if (tipoLocal) {
+      localStorage.setItem(`filtros_controle_horarios_${usuario.id}_tipoLocal`, tipoLocal);
+    } else {
+      localStorage.removeItem(`filtros_controle_horarios_${usuario.id}_tipoLocal`);
+    }
+    localStorage.setItem(`filtros_controle_horarios_${usuario.id}_statusEdicaoLocal`, statusEdicaoLocal);
+    toast.success('Filtros salvos com sucesso!');
+  }, [dataReferencia, filtros, tipoLocal, statusEdicaoLocal]);
+
   const contarAlteracoesPendentes = useCallback(() => {
     const origById = new Map(controleHorariosOriginais.map((o) => [o.id, o]));
     return controleHorarios.filter((item) => {
@@ -404,5 +443,6 @@ export const useControleHorarios = () => {
     contarAlteracoesPendentes,
     tipoLocal, setTipoLocal,
     statusEdicaoLocal, setStatusEdicaoLocal,
+    salvarFiltrosManualmente,
   } as const;
 };

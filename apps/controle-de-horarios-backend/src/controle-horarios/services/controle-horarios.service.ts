@@ -146,11 +146,7 @@ export class ControleHorariosService {
       });
     }
 
-    if (filtros?.sentido) {
-      queryBuilder.andWhere('controle.flg_sentido = :sentido', {
-        sentido: filtros.sentido,
-      });
-    }
+
 
     if (filtros?.setor_principal_linha) {
       queryBuilder.andWhere('controle.setor_principal_linha = :setor_principal_linha', {
@@ -487,21 +483,26 @@ export class ControleHorariosService {
     controle.setor_principal_linha = item.SETOR_PRINCIPAL_LINHA || '';
     controle.cod_local_terminal_sec = item.COD_LOCAL_TERMINAL_SEC || 0;
     controle.codigo_linha = item.CODIGOLINHA || '';
+    if (!item.CODIGOLINHA) {
+      this.logger.warn(`CODIGOLINHA is missing for item: ${JSON.stringify(item)}`);
+    }
     controle.nome_linha = item.NOMELINHA || '';
+    if (!item.NOMELINHA) {
+      this.logger.warn(`NOMELINHA is missing for item: ${JSON.stringify(item)}`);
+    }
     controle.cod_destino_linha = item.COD_DESTINO_LINHA || null;
     controle.local_destino_linha = item.LOCAL_DESTINO_LINHA || null;
     controle.flg_sentido = item.FLG_SENTIDO || null;
     controle.data_viagem = item.DATA_VIAGEM ? new Date(item.DATA_VIAGEM) : null;
     controle.desc_tipodia = item.DESC_TIPODIA || null;
     controle.hor_saida = horSaida;
+    if (!horSaida) {
+      this.logger.warn(`HOR_SAIDA is missing or invalid for item: ${JSON.stringify(item)}`);
+    }
     controle.hor_chegada = horChegada;
-    controle.cod_origem_viagem = item.COD_ORIGEM_VIAGEM || null;
-    controle.local_origem_viagem = item.LOCAL_ORIGEM_VIAGEM || null;
-    controle.cod_servico_completo = item.COD_SERVICO_COMPLETO || null;
-    controle.cod_servico_numero = item.COD_SERVICO_NUMERO || null;
-    controle.cod_atividade = item.COD_ATIVIDADE || null;
-    controle.nome_atividade = item.NOME_ATIVIDADE || null;
-    controle.flg_tipo = item.FLG_TIPO || null;
+    if (!horChegada) {
+      this.logger.warn(`HOR_CHEGADA is missing or invalid for item: ${JSON.stringify(item)}`);
+    }
     controle.cod_motorista = item.COD_MOTORISTA || null;
     controle.nome_motorista = item.NOME_MOTORISTA || null;
     controle.cracha_motorista = item.CRACHA_MOTORISTA || null;

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { viagensGlobusService } from '../services/viagens-globus/viagens-globus.service';
 import { controleHorariosService } from '../services/controleHorariosService';
 import { ViagemGlobus, FiltrosViagemGlobus, StatusDadosGlobus } from '../types/viagens-globus.types';
-import { ControleHorarioItem } from '../types/controle-horarios.types';
+import { ControleHorarioItem, ControleHorario } from '../types/controle-horarios.types';
 import { toast } from 'react-toastify';
 import {
   Bus,
@@ -182,8 +182,8 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
           <Label htmlFor="sentido">Sentido</Label>
           <select
             id="sentido"
-            value={filters.sentido || ''}
-            onChange={(e) => onFilterChange('sentido', e.target.value || undefined)}
+            value={filters.sentido_texto || ''}
+            onChange={(e) => onFilterChange('sentido_texto', e.target.value || undefined)}
             className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="">Todos</option>
@@ -199,7 +199,24 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
             type="text"
             value={filters.nomeMotorista || ''}
             onChange={(e) => onFilterChange('nomeMotorista', e.target.value || undefined)}
-            placeholder="Buscar por nome..."
+          />
+        </div>
+        <div>
+          <Label htmlFor="horarioInicio">Horário Início</Label>
+          <Input
+            id="horarioInicio"
+            type="time"
+            value={filters.horarioInicio || ''}
+            onChange={(e) => onFilterChange('horarioInicio', e.target.value || undefined)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="horarioFim">Horário Fim</Label>
+          <Input
+            id="horarioFim"
+            type="time"
+            value={filters.horarioFim || ''}
+            onChange={(e) => onFilterChange('horarioFim', e.target.value || undefined)}
           />
         </div>
       </div>
@@ -213,7 +230,7 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
 );
 
 const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorarioItem[]; loading: boolean; formatTime: (time: Date | string) => string }) => {
-    const getSentidoColor = (sentido: string) => {
+    const getSentidoColor = (sentido: string | undefined) => {
         switch (sentido) {
         case 'IDA':
             return 'text-blue-400 bg-blue-900/50 border-blue-500/30';
@@ -226,7 +243,7 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
         }
     };
 
-    const getPeriodoColor = (periodo: string) => {
+    const getPeriodoColor = (periodo: string | undefined) => {
         switch (periodo) {
         case 'MANHÃ':
             return 'text-yellow-400 bg-yellow-900/50 border-yellow-500/30';
@@ -284,7 +301,7 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
             <table className="min-w-full divide-y divide-yellow-400/20">
                 <thead>
                 <tr>
-                    {['Setor', 'Linha', 'Sentido', 'Horário Saída', 'Horário Chegada', 'Motorista', 'Local Origem', 'Período'].map(header => (
+                    {['Setor', 'Linha', 'Serviço', 'Sentido', 'Horário Saída', 'Horário Chegada', 'Motorista', 'Cobrador', 'Carro', 'Local Origem', 'Local Destino', 'Tipo Dia', 'Período'].map(header => (
                     <th key={header} className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         {header}
                     </th>
@@ -292,21 +309,18 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
                 </tr>
                 </thead>
                 <tbody className="divide-y divide-yellow-400/20">
-                {viagens.map((viagem: ControleHorarioItem) => (
-                    <tr key={viagem.viagemGlobusId} className="hover:bg-white/5 transition-colors">
+                {viagens.map((viagem: ControleHorarioItem, index: number) => (
+                    <tr key={viagem.viagemGlobusId || index} className="hover:bg-white/5 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${getSetorColor(viagem.setor_principal_linha)}`}>
                                 {viagem.setor_principal_linha}
                             </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-200">
-                            <div>
-                                <div className="font-medium text-yellow-400">{viagem.codigoLinha}</div>
-                                <div className="text-xs text-gray-400 max-w-xs truncate" title={viagem.nomeLinha}>
-                                {viagem.nomeLinha}
-                                </div>
-                            </div>
+                            <div className="font-medium">{viagem.codigoLinha}</div>
+                            <div className="text-xs text-gray-400">{viagem.nomeLinha}</div>
                         </td>
+                        <td className="px-6 py-4 text-sm text-gray-200">{viagem.codServicoNumero ?? viagem.cod_servico_numero ?? '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${getSentidoColor(viagem.sentido_texto)}`}>
                                 {viagem.sentido_texto}
@@ -332,10 +346,9 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
                                         <User className="h-4 w-4 mr-1.5 text-gray-500" />
                                         <span className="font-medium">{viagem.nome_motorista}</span>
                                     </div>
-                                    {viagem.nome_cobrador && (
+                                    {viagem.crachaMotoristaGlobus && (
                                     <div className="flex items-center text-xs text-gray-500 mt-1">
-                                        <UsersIcon className="h-3 w-3 mr-1.5" />
-                                        <span>Cobrador: {viagem.nome_cobrador}</span>
+                                        <span>Crachá: {viagem.crachaMotoristaGlobus}</span>
                                     </div>
                                     )}
                                 </>
@@ -345,6 +358,26 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
                             </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-300">
+                            <div>
+                                {viagem.nome_cobrador ? (
+                                <>
+                                    <div className="flex items-center">
+                                        <UsersIcon className="h-4 w-4 mr-1.5 text-gray-500" />
+                                        <span className="font-medium">{viagem.nome_cobrador}</span>
+                                    </div>
+                                    {viagem.crachaCobradorGlobus && (
+                                    <div className="flex items-center text-xs text-gray-500 mt-1">
+                                        <span>Crachá: {viagem.crachaCobradorGlobus}</span>
+                                    </div>
+                                    )}
+                                </>
+                                ) : (
+                                <span className="text-gray-500">-</span>
+                                )}
+                            </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-300">{viagem.numeroCarro || '-'}</td>
+                        <td className="px-6 py-4 text-sm text-gray-300">
                             <div className="flex items-center">
                                 <MapPin className="h-4 w-4 mr-1.5 text-gray-500" />
                                 <span className="max-w-xs truncate" title={viagem.local_origem_viagem}>
@@ -352,6 +385,15 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
                                 </span>
                             </div>
                         </td>
+                        <td className="px-6 py-4 text-sm text-gray-300">
+                            <div className="flex items-center">
+                                <MapPin className="h-4 w-4 mr-1.5 text-gray-500" />
+                                <span className="max-w-xs truncate" title={viagem.localDestinoLinha}>
+                                {viagem.localDestinoLinha || '-'}
+                                </span>
+                            </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-200">{viagem.descTipoDia || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full border ${getPeriodoColor(viagem.periodo_do_dia)}`}>
                                 {viagem.periodo_do_dia}
@@ -365,8 +407,8 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
 
         {/* Layout de Cards para telas pequenas (abaixo de md) */}
         <div className="md:hidden space-y-4">
-            {viagens.map((viagem: ControleHorarioItem) => (
-                <div key={viagem.viagemGlobusId} className="bg-neutral-800/50 p-4 rounded-lg border border-yellow-400/20">
+            {viagens.map((viagem: ControleHorarioItem, index: number) => (
+                <div key={viagem.viagemGlobusId || index} className="bg-neutral-800/50 p-4 rounded-lg border border-yellow-400/20">
                     {/* Card Header */}
                     <div className="flex justify-between items-start gap-2">
                         <h3 className="font-bold text-gray-100 text-base leading-tight">
@@ -496,12 +538,42 @@ const NoDataGlobus = ({ onSync, synchronizing, onTestOracle, testingOracle, isAd
   </GlowingCard>
 );
 
+const mapToControleHorarioItem = (item: ControleHorario): ControleHorarioItem => {
+  return {
+    ...item,
+    setorPrincipalLinha: item.setor_principal_linha,
+    codigoLinha: item.codigo_linha,
+    nomeLinha: item.nome_linha,
+    horaSaida: item.hor_saida instanceof Date ? item.hor_saida.toISOString() : item.hor_saida,
+    horaChegada: item.hor_chegada instanceof Date ? item.hor_chegada.toISOString() : item.hor_chegada,
+    nomeMotoristaGlobus: item.nome_motorista || '',
+    crachaMotoristaGlobus: item.cracha_motorista_globus || 0,
+    nomeCobradorGlobus: item.nome_cobrador || '',
+    crachaCobradorGlobus: item.cracha_cobrador_globus || 0,
+    codServicoNumero: item.cod_servico_numero || '',
+    descTipoDia: item.desc_tipodia || '',
+    localDestinoLinha: item.local_destino_linha || '',
+    numeroCarro: item.prefixo_veiculo || '',
+    nomeMotoristaEditado: item.motorista_substituto_nome || '',
+    crachaMotoristaEditado: item.motorista_substituto_cracha || '',
+    nomeCobradorEditado: item.cobrador_substituto_nome || '',
+    crachaCobradorEditado: item.cracha_cobrador || '',
+    observacoes: item.observacoes_edicao || '',
+    informacaoRecolhe: '', // Assuming this is not directly from ControleHorario
+    jaFoiEditado: !!item.observacoes_edicao, // Example logic
+    viagemGlobusId: item.id,
+    duracaoMinutos: 0,
+    usuarioEdicao: item.editado_por_nome || '',
+    usuarioEmail: item.editado_por_email || '',
+  };
+};
+
 const initialFilters: FiltrosViagemGlobus = {
   pagina: 1,
   limite: 100,
   setor_principal_linha: undefined,
   codigo_linha: undefined,
-  sentido: undefined,
+  sentido_texto: undefined,
   nome_motorista: undefined,
 };
 
@@ -530,13 +602,15 @@ export const ViagensGlobus: React.FC = () => {
       setStatusDados(status);
 
       if (status.existeNoBanco) {
+        console.log('loadInitialData: Current filters before service call:', filtros);
         const [controleHorariosResponse, setoresResponse, linhasResponse] = await Promise.all([
           controleHorariosService.buscarControleHorarios(selectedDate, filtros),
           viagensGlobusService.getSetores(selectedDate),
           viagensGlobusService.getLinhas(selectedDate),
         ]);
 
-        let lista = controleHorariosResponse?.data || [];
+        let lista: ControleHorario[] = controleHorariosResponse?.data || [];
+        console.log('loadInitialData: Raw data from service (controleHorariosResponse.data):', lista);
 
         if ((lista.length === 0) && (status.totalRegistros > 0)) {
           try {
@@ -548,7 +622,9 @@ export const ViagensGlobus: React.FC = () => {
           }
         }
 
-        setViagens(lista);
+        const mappedViagens = lista.map(mapToControleHorarioItem);
+        console.log('loadInitialData: Mapped data (mappedViagens):', mappedViagens);
+        setViagens(mappedViagens);
         setSetores(setoresResponse);
         setLinhas(linhasResponse);
       } else {
@@ -608,19 +684,45 @@ export const ViagensGlobus: React.FC = () => {
   };
 
   const handleFilterChange = (key: keyof FiltrosViagemGlobus, value: any) => {
-    setFiltros(prev => ({ ...prev, [key]: value, pagina: 1 }));
+    let newFilters: FiltrosViagemGlobus;
+    if (key === 'codigo_linha' && value !== undefined) {
+      newFilters = { ...filtros, [key]: [value], pagina: 1 };
+    } else if (key === 'codigo_linha' && value === undefined) {
+      newFilters = { ...filtros, [key]: undefined, pagina: 1 };
+    }
+    else {
+      newFilters = { ...filtros, [key]: value, pagina: 1 };
+    }
+    console.log('handleFilterChange: New filters after update:', newFilters);
+    setFiltros(newFilters);
   };
 
   const clearFilters = () => {
     setFiltros(initialFilters);
   };
 
-  const formatTime = (time: Date | string) => {
+  const formatTime = (time: Date | string | undefined | null) => {
     if (!time) return '-';
+
+    let dateObj: Date;
     if (time instanceof Date) {
-      return time.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      dateObj = time;
+    } else { // Assume string
+      // Try parsing as a full date string first
+      dateObj = new Date(time);
+      // If it's an invalid date, it might be just "HH:MM:SS"
+      if (isNaN(dateObj.getTime())) {
+        // Create a dummy date to parse the time part
+        const [hours, minutes] = String(time).split(':').map(Number);
+        if (!isNaN(hours) && !isNaN(minutes)) {
+          dateObj = new Date(); // Use current date
+          dateObj.setHours(hours, minutes, 0, 0);
+        } else {
+          return '-'; // Cannot parse time
+        }
+      }
     }
-    return time.substring(0, 5);
+    return dateObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   };
 
   return (

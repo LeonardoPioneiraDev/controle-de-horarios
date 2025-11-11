@@ -10,13 +10,16 @@ export class ViagensGlobusService extends BaseApiService {
   async getViagens(data: string, filtros: FiltrosViagemGlobus = {}): Promise<ResponsePaginada<ViagemGlobus>> {
     const params = new URLSearchParams();
     if (filtros.setor_principal_linha) params.append('setor_principal_linha', filtros.setor_principal_linha);
-    if (filtros.codigo_linha) params.append('codigo_linha', filtros.codigo_linha.join(','));
+    if (filtros.codigo_linha && filtros.codigo_linha.length > 0) params.append('codigo_linha', filtros.codigo_linha.join(','));
     if (filtros.nome_linha) params.append('nome_linha', filtros.nome_linha);
-    if (filtros.sentido) params.append('sentido', filtros.sentido);
+    if (filtros.sentido_texto) params.append('sentido_texto', filtros.sentido_texto);
     if (filtros.local_origem_viagem) params.append('local_origem_viagem', filtros.local_origem_viagem);
     if (filtros.cod_servico_numero) params.append('cod_servico_numero', filtros.cod_servico_numero);
     if (filtros.nome_motorista) params.append('nome_motorista', filtros.nome_motorista);
     if (filtros.nome_cobrador) params.append('nome_cobrador', filtros.nome_cobrador);
+    if (filtros.horarioInicio) params.append('horarioInicio', filtros.horarioInicio);
+    if (filtros.horarioFim) params.append('horarioFim', filtros.horarioFim);
+    if (filtros.periodo_do_dia) params.append('periodo_do_dia', filtros.periodo_do_dia);
     if (filtros.limite) params.append('limite', filtros.limite.toString());
     if (filtros.pagina) params.append('pagina', filtros.pagina.toString());
     if (filtros.incluir_estatisticas !== undefined) params.append('incluir_estatisticas', filtros.incluir_estatisticas.toString());

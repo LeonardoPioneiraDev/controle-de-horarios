@@ -130,17 +130,25 @@ export class ViagensGlobusService {
           
           -- Local de Origem da Viagem (NOVO CAMPO CHAVE!)
           H.COD_LOCALIDADE AS COD_ORIGEM_VIAGEM,
-          LC.DESC_LOCALIDADE AS LOCAL_ORIGEM_VIAGEM, -- <--- Adicionado o nome do local de saída
+          LC.DESC_LOCALIDADE AS LOCAL_ORIGEM_VIAGEM,
+          
+          -- Local de Destino da Linha (NOVO CAMPO)
+          L.COD_LOCAL_DESTINO_LINHA,
+          LD.DESC_LOCALIDADE AS LOCAL_DESTINO_LINHA,
 
           -- Informações do Serviço (Viagem)
           S.COD_SERVDIARIA AS COD_SERVICO_COMPLETO,
           REGEXP_SUBSTR(S.COD_SERVDIARIA, '[[:digit:]]+') AS COD_SERVICO_NUMERO,
+          S.PREFIXO_VEICULO, -- <--- Adicionado o prefixo do veículo (Carro)
           
-          -- Informações da Tripulação (NOVOS CAMPO)
-          S.COD_MOTORISTA,
-          FM.NOMECOMPLETOFUNC AS NOME_MOTORISTA, -- <--- Adicionado o nome do Motorista
-          S.COD_COBRADOR,
-          FC.NOMECOMPLETOFUNC AS NOME_COBRADOR,  -- <--- Adicionado o nome do Cobrador
+          -- Informações da Tripulação
+          S.COD_MOTORISTA AS CRACHA_MOTORISTA, -- <--- Renomeado para Crachá
+          FM.NOMECOMPLETOFUNC AS NOME_MOTORISTA,
+          S.COD_COBRADOR AS CRACHA_COBRADOR,    -- <--- Renomeado para Crachá
+          FC.NOMECOMPLETOFUNC AS NOME_COBRADOR,
+          
+          -- Tipo de Dia (NOVO CAMPO)
+          TD.DESCRICAO AS DESC_TIPO_DIA,
 
           -- Informação Analítica
           COUNT(H.HOR_SAIDA) OVER (
@@ -155,9 +163,11 @@ export class ViagensGlobusService {
             JOIN BGM_CADLINHAS L ON DECODE(H.CODINTLINHA, NULL, D.COD_INTLINHA, H.CODINTLINHA) = L.CODINTLINHA
             
             -- JUNÇÕES ADICIONADAS
-            LEFT JOIN T_ESC_LOCALIDADE LC ON H.COD_LOCALIDADE = LC.COD_LOCALIDADE -- Tabela de Localidade
-            LEFT JOIN FLP_FUNCIONARIOS FM ON S.COD_MOTORISTA = FM.CODINTFUNC        -- Tabela para o Motorista
-            LEFT JOIN FLP_FUNCIONARIOS FC ON S.COD_COBRADOR = FC.CODINTFUNC         -- Tabela para o Cobrador
+            LEFT JOIN T_ESC_LOCALIDADE LC ON H.COD_LOCALIDADE = LC.COD_LOCALIDADE
+            LEFT JOIN T_ESC_LOCALIDADE LD ON L.COD_LOCAL_DESTINO_LINHA = LD.COD_LOCALIDADE -- Tabela para o Local de Destino
+            LEFT JOIN FLP_FUNCIONARIOS FM ON S.COD_MOTORISTA = FM.CODINTFUNC
+            LEFT JOIN FLP_FUNCIONARIOS FC ON S.COD_COBRADOR = FC.CODINTFUNC
+            LEFT JOIN T_ESC_TIPODIAS TD ON D.COD_TIPODIA = TD.COD_TIPODIA -- Tabela para o Tipo de Dia
             
         WHERE
             H.COD_ATIVIDADE = 2
@@ -256,17 +266,21 @@ export class ViagensGlobusService {
       localOrigemViagem: item.LOCAL_ORIGEM_VIAGEM || null,
       codServicoCompleto: item.COD_SERVICO_COMPLETO || null,
       codServicoNumero: item.COD_SERVICO_NUMERO || null,
-      codMotorista: item.COD_MOTORISTA || null,
+      prefixoVeiculo: item.PREFIXO_VEICULO || null,
+      crachaMotoristaGlobus: item.CRACHA_MOTORISTA || null,
       nomeMotorista: item.NOME_MOTORISTA || null,
-      codCobrador: item.COD_COBRADOR || null,
+      crachaCobradorGlobus: item.CRACHA_COBRADOR || null,
       nomeCobrador: item.NOME_COBRADOR || null,
+      codLocalDestinoLinha: item.COD_LOCAL_DESTINO_LINHA || null,
+      localDestinoLinha: item.LOCAL_DESTINO_LINHA || null,
+      descTipoDia: item.DESC_TIPO_DIA || null,
       totalHorarios: item.TOTAL_HORARIOS || 0,
       duracaoMinutos,
       dataReferencia,
       hashDados,
       sentidoTexto,
       periodoDoDia,
-      temCobrador: !!(item.COD_COBRADOR && item.NOME_COBRADOR),
+      temCobrador: !!(item.CRACHA_COBRADOR && item.NOME_COBRADOR),
       origemDados: 'ORACLE_GLOBUS'
     };
   }
