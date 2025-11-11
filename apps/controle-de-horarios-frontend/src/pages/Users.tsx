@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { usersService } from '../services/api';
 import { User, CreateUserRequest, UpdateUserRequest, UserRole, UserStatus } from '../types';
 import { UserModal } from '../components/UserModal';
+import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Users as UsersIcon, 
@@ -34,6 +35,9 @@ export const Users: React.FC = () => {
   const [modalLoading, setModalLoading] = useState(false);
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
+  
+  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
   
   // Dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -107,22 +111,29 @@ export const Users: React.FC = () => {
     setOpenDropdown(null);
   };
 
-  const handleDeleteUser = async (user: User) => {
+  const handleDeleteUser = (user: User) => {
     if (!isAdmin) {
       alert('Apenas administradores podem excluir usuários');
       return;
     }
+    setUserToDelete(user);
+    setOpenDeleteConfirm(true);
+    setOpenDropdown(null);
+  };
 
-    if (!window.confirm(`Tem certeza que deseja excluir o usuário ${user.firstName} ${user.lastName}?`)) {
-      return;
-    }
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
 
     try {
-      await usersService.deleteUser(user.id);
+      await usersService.deleteUser(userToDelete.id);
       await loadUsers();
-      setOpenDropdown(null);
+      setActionSuccess('Usuário excluído com sucesso.');
+      setTimeout(() => setActionSuccess(''), 4000);
     } catch (err: any) {
       setActionError(err.response?.data?.message || 'Erro ao excluir usuário');
+    } finally {
+      setOpenDeleteConfirm(false);
+      setUserToDelete(null);
     }
   };
 
@@ -184,6 +195,7 @@ export const Users: React.FC = () => {
       gerente: 'role-badge role-gerente',
       analista: 'role-badge role-analista',
       operador: 'role-badge role-operador',
+      encarregado: 'role-badge role-encarregado',
       funcionario: 'role-badge role-funcionario'
     };
     
@@ -193,6 +205,7 @@ export const Users: React.FC = () => {
       gerente: 'Gerente',
       analista: 'Analista',
       operador: 'Operador',
+      encarregado: 'Encarregado',
       funcionario: 'Funcionário'
     };
     
@@ -326,6 +339,7 @@ export const Users: React.FC = () => {
               <option value="gerente">Gerente</option>
               <option value="analista">Analista</option>
               <option value="operador">Operador</option>
+              <option value="encarregado">Encarregado</option>
               <option value="funcionario">Funcionário</option>
             </select>
           </div>
@@ -375,7 +389,7 @@ export const Users: React.FC = () => {
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-primary-500 text-white rounded-full flex items-center justify-center text-sm font-medium">
+                      <div className="w-10 h-10 bg-primary-500 text-red rounded-full flex items-center justify-center text-sm font-medium">
                         {user.firstName.charAt(0)}{user.lastName.charAt(0)}
                       </div>
                       <div className="ml-4">
@@ -463,6 +477,22 @@ export const Users: React.FC = () => {
           loading={modalLoading}
         />
       )}
+
+      <ConfirmDialog
+        open={openDeleteConfirm}
+        onOpenChange={setOpenDeleteConfirm}
+        variant="danger"
+        title="Confirmar exclusão de usuário?"
+        description={
+          <span>
+            Você tem certeza que deseja excluir o usuário <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong>?
+            Esta ação não pode ser desfeita.
+          </span>
+        }
+        confirmText="Sim, excluir"
+        cancelText="Cancelar"
+        onConfirm={confirmDeleteUser}
+      />
     </div>
   );
 };

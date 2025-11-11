@@ -14,7 +14,9 @@ import {
     CheckCircle,
     XCircle,
     ChevronDown,
-    Loader2
+    Loader2,
+    User,
+    Truck,
 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -142,91 +144,23 @@ const DateAndStatus = ({ date, onDateChange, status }: any) => (
     </GlowingCard>
 );
 
-// Componente para a seção de filtros
 const FilterSection = ({ filters, onFilterChange, onClearFilters, services }: any) => (
     <GlowingCard>
         <CardContent className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 custom-md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <div>
-                    <Label htmlFor="nomeLinha">Nome da Linha</Label>
-                    <Input
-                        id="nomeLinha"
-                        type="text"
-                        value={filters.nomeLinha || ''}
-                        onChange={(e) => onFilterChange('nomeLinha', e.target.value || undefined)}
-                        placeholder="Buscar por nome..."
-                    />
-                </div>
-                <div>
-                    <Label htmlFor="numeroServico">Número do Serviço</Label>
-                    <select
-                        id="numeroServico"
-                        value={filters.numeroServico || ''}
-                        onChange={(e) => onFilterChange('numeroServico', e.target.value ? parseInt(e.target.value) : undefined)}
-                        className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <option value="">Todos os serviços</option>
-                        {services.map((service: number) => <option key={service} value={service}>{service}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <Label htmlFor="sentido">Sentido</Label>
-                     <select
-                        id="sentido"
-                        value={filters.sentido || ''}
-                        onChange={(e) => onFilterChange('sentido', e.target.value || undefined)}
-                        className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <option value="">Todos</option>
-                        <option value="IDA">Ida</option>
-                        <option value="VOLTA">Volta</option>
-                    </select>
-                </div>
-                <div>
-                    <Label htmlFor="statusCumprimento">Status</Label>
-                     <select
-                        id="statusCumprimento"
-                        value={filters.statusCumprimento || ''}
-                        onChange={(e) => onFilterChange('statusCumprimento', e.target.value || undefined)}
-                        className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <option value="">Todos</option>
-                        <option value="CUMPRIDA">Cumprida</option>
-                        <option value="NAO_CUMPRIDA">Não Cumprida</option>
-                        <option value="PARCIALMENTE_CUMPRIDA">Parcial</option>
-                        <option value="PENDENTE">Pendente</option>
-                    </select>
-                </div>
-                <div>
-                    <Label htmlFor="pontoFinal">Ponto Final</Label>
-                    <select
-                        id="pontoFinal"
-                        value={filters.pontoFinal || ''}
-                        onChange={(e) => onFilterChange('pontoFinal', e.target.value || undefined)}
-                        className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        <option value="">Todos</option>
-                        <option value="Manual">Manual</option>
-                        <option value="Automático">Automático</option>
-                    </select>
-                </div>
-                <div>
-                    <Label htmlFor="horarioInicio">Horário Início (a partir de)</Label>
-                    <Input
-                        id="horarioInicio"
-                        type="time"
-                        value={filters.horarioInicio || ''}
-                        onChange={(e) => onFilterChange('horarioInicio', e.target.value || undefined)}
-                    />
-                </div>
-                <div>
-                    <Label htmlFor="horarioFim">Horário Fim (até)</Label>
-                    <Input
-                        id="horarioFim"
-                        type="time"
-                        value={filters.horarioFim || ''}
-                        onChange={(e) => onFilterChange('horarioFim', e.target.value || undefined)}
-                    />
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <InputFilter id="nomeLinha" label="Nome da Linha" type="text" value={filters.nomeLinha} onChange={onFilterChange} placeholder="Buscar por nome..." />
+                <SelectFilter id="numeroServico" label="Número do Serviço" value={filters.numeroServico} onChange={onFilterChange} options={services.map((s: number) => ({ value: s, label: s }))} placeholder="Todos os serviços" />
+                <SelectFilter id="sentido" label="Sentido" value={filters.sentido} onChange={onFilterChange} options={[{ value: 'IDA', label: 'Ida' }, { value: 'VOLTA', label: 'Volta' }]} placeholder="Todos" />
+                <SelectFilter id="statusCumprimento" label="Status" value={filters.statusCumprimento} onChange={onFilterChange} options={[{ value: 'CUMPRIDA', label: 'Cumprida' }, { value: 'NAO_CUMPRIDA', label: 'Não Cumprida' }, { value: 'PARCIALMENTE_CUMPRIDA', label: 'Parcial' }, { value: 'PENDENTE', label: 'Pendente' }]} placeholder="Todos" />
+                <InputFilter id="prefixoRealizado" label="Prefixo do Veículo" type="text" value={filters.prefixoRealizado} onChange={onFilterChange} placeholder="Ex: 12345" />
+                <InputFilter id="nomeMotorista" label="Nome do Motorista" type="text" value={filters.nomeMotorista} onChange={onFilterChange} placeholder="Buscar por nome..." />
+                <InputFilter id="horarioInicio" label="Horário Início (a partir de)" type="time" value={filters.horarioInicio} onChange={onFilterChange} />
+                <InputFilter id="horarioFim" label="Horário Fim (até)" type="time" value={filters.horarioFim} onChange={onFilterChange} />
+                <div className="flex items-end">
+                    <div className="flex items-center h-10">
+                        <input id="somenteAtrasados" type="checkbox" checked={filters.somenteAtrasados || false} onChange={(e) => onFilterChange('somenteAtrasados', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500" />
+                        <Label htmlFor="somenteAtrasados" className="ml-2 text-sm text-gray-300">Somente Atrasados</Label>
+                    </div>
                 </div>
             </div>
             <div className="mt-4 flex justify-end">
@@ -238,8 +172,67 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, services }: an
     </GlowingCard>
 );
 
+const InputFilter = ({ id, label, ...props }: any) => (
+    <div>
+        <Label htmlFor={id}>{label}</Label>
+        <Input id={id} name={id} onChange={(e) => props.onChange(id, e.target.value || undefined)} {...props} />
+    </div>
+);
+
+const SelectFilter = ({ id, label, value, onChange, options, placeholder }: any) => (
+    <div>
+        <Label htmlFor={id}>{label}</Label>
+        <select id={id} name={id} value={value || ''} onChange={(e) => onChange(id, e.target.value || undefined)} className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
+            <option value="">{placeholder}</option>
+            {options.map((opt: any) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+        </select>
+    </div>
+);
+
 // Componente para a tabela de viagens (agora responsivo)
-const ViagensTable = ({ viagens, loading, onFormatTime, onGetStatusIcon, onGetStatusText, onGetStatusColor }: any) => {
+const ViagensTable = ({ viagens, loading }: { viagens: ViagemTransdata[], loading: boolean }) => {
+    const getStatusPill = (status: string) => {
+        const styles: { [key: string]: string } = {
+            CUMPRIDA: 'bg-green-900/50 text-green-300 border-green-500/30',
+            NAO_CUMPRIDA: 'bg-red-900/50 text-red-300 border-red-500/30',
+            PARCIALMENTE_CUMPRIDA: 'bg-yellow-900/50 text-yellow-300 border-yellow-500/30',
+            PENDENTE: 'bg-gray-700/50 text-gray-400 border-gray-500/30',
+        };
+        const text: { [key: string]: string } = {
+            CUMPRIDA: 'Cumprida',
+            NAO_CUMPRIDA: 'Não Cumprida',
+            PARCIALMENTE_CUMPRIDA: 'Parcial',
+            PENDENTE: 'Pendente',
+        };
+        return (
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[status] || styles.PENDENTE}`}>
+                {text[status] || status}
+            </span>
+        );
+    };
+
+    const parseTime = (timeStr: string | undefined): Date | null => {
+        if (!timeStr) return null;
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        if (isNaN(hours) || isNaN(minutes)) return null;
+        const date = new Date();
+        date.setHours(hours, minutes, 0, 0);
+        return date;
+    };
+
+    const calculateDiff = (previstoStr: string | undefined, realizadoStr: string | undefined) => {
+        const previsto = parseTime(previstoStr);
+        const realizado = parseTime(realizadoStr);
+        if (!previsto || !realizado) return { text: '-', color: 'text-gray-400' };
+
+        const diffMinutes = (realizado.getTime() - previsto.getTime()) / (1000 * 60);
+
+        if (diffMinutes > 5) return { text: `+${diffMinutes}m`, color: 'text-red-400 font-semibold' };
+        if (diffMinutes < -2) return { text: `${diffMinutes}m`, color: 'text-blue-400 font-semibold' };
+        if (diffMinutes > 0) return { text: `+${diffMinutes}m`, color: 'text-yellow-400' };
+        return { text: 'No Horário', color: 'text-green-400' };
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -263,103 +256,104 @@ const ViagensTable = ({ viagens, loading, onFormatTime, onGetStatusIcon, onGetSt
 
     return (
         <div>
-            {/* Layout de Tabela para telas grandes (md e acima) */}
+            {/* Desktop Table */}
             <div className="hidden md:block overflow-x-auto">
-                <table className="min-w-full divide-y divide-yellow-400/20">
+                <table className="min-w-full">
                     <thead>
-                        <tr>
-                            {['Nome da Linha', 'Serviço', 'Sentido', 'Previsto', 'Realizado', 'Ponto Final', 'Status'].map(header => (
-                                <th key={header} className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        <tr className="border-b border-yellow-400/20">
+                            {['Linha / Serviço', 'Status', 'Sentido', 'Horários (Saída)', 'Veículo / Motorista'].map(header => (
+                                <th key={header} className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                                     {header}
                                 </th>
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-yellow-400/20">
-                        {viagens.map((viagem: ViagemTransdata) => (
-                            <tr key={viagem.id} className="hover:bg-white/5 transition-colors">
-                                <td className="px-6 py-4 text-sm text-gray-200 max-w-xs truncate" title={viagem.NomeLinha}>{viagem.NomeLinha || '-'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{viagem.Servico || '-'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">{viagem.SentidoText || '-'}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 flex items-center">
-                                    <Clock className="h-4 w-4 mr-1.5 text-gray-500" />
-                                    {onFormatTime(viagem.InicioPrevistoText)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 flex items-center">
-                                    <Clock className="h-4 w-4 mr-1.5 text-gray-500" />
-                                    {onFormatTime(viagem.InicioRealizadoText)}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400 flex items-center">
-                                    <MapPin className="h-4 w-4 mr-1.5 text-gray-500" />
-                                    {viagem.PontoFinal || '-'}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="flex items-center">
-                                        {onGetStatusIcon(viagem.statusCumprimento)}
-                                        <span className={`ml-2 text-sm font-medium ${onGetStatusColor(viagem.statusCumprimento)}`}>
-                                            {onGetStatusText(viagem.statusCumprimento)}
-                                        </span>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                    <tbody className="divide-y divide-neutral-800">
+                        {viagens.map((v: ViagemTransdata) => {
+                            const diff = calculateDiff(v.InicioPrevistoText, v.InicioRealizadoText);
+                            const [linhaNumero, ...linhaNomeParts] = (v.NomeLinha || '').split(' - ');
+                            const linhaNome = linhaNomeParts.join(' - ');
+
+                            return (
+                                <tr key={v.id} className="hover:bg-neutral-800/50 transition-colors">
+                                    <td className="px-4 py-3 text-sm">
+                                        <div className="font-medium text-gray-200 flex items-center">
+                                            <span className="font-bold text-yellow-400 mr-2">{linhaNumero}</span>
+                                            <span className="truncate max-w-xs" title={linhaNome}>{linhaNome || '-'}</span>
+                                        </div>
+                                        <div className="text-xs text-gray-400 mt-1">
+                                            Serviço: {v.Servico || '-'}
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm">{getStatusPill(v.statusCumprimento)}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-400">{v.SentidoText || '-'}</td>
+                                    <td className="px-4 py-3 text-sm">
+                                        <div className="flex items-center">
+                                            <span className="text-gray-500 w-16">Previsto:</span>
+                                            <span className="text-gray-300">{v.InicioPrevistoText || '-'}</span>
+                                        </div>
+                                        <div className="flex items-center">
+                                            <span className="text-gray-500 w-16">Realizado:</span>
+                                            <span className="text-gray-100 font-medium">{v.InicioRealizadoText || '-'}</span>
+                                        </div>
+                                        <div className={`flex items-center ${diff.color}`}>
+                                            <span className="text-gray-500 w-16">Diferença:</span>
+                                            <span className="font-semibold">{diff.text}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm">
+                                        <div className="flex items-center text-gray-300">
+                                            <Truck className="h-4 w-4 mr-2 text-gray-500" />
+                                            Prefixo: <span className="font-medium ml-1">{v.PrefixoRealizado || '-'}</span>
+                                        </div>
+                                        <div className="flex items-center text-gray-400 mt-1 truncate max-w-[200px]" title={v.NomeMotorista}>
+                                            <User className="h-4 w-4 mr-2 text-gray-500" />
+                                            <span className="truncate">{v.NomeMotorista || '-'}</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             </div>
 
-            {/* Layout de Cards para telas pequenas (abaixo de md) */}
+            {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-                {viagens.map((viagem: ViagemTransdata) => (
-                    <div key={viagem.id} className="bg-neutral-800/50 p-4 rounded-lg border border-yellow-400/20">
-                        {/* Card Header */}
-                        <div className="flex justify-between items-start gap-4">
-                            <h3 className="font-bold text-gray-100 text-base leading-tight">{viagem.NomeLinha}</h3>
-                            <div className="flex-shrink-0 flex items-center">
-                                {onGetStatusIcon(viagem.statusCumprimento)}
-                                <span className={`ml-2 text-sm font-medium ${onGetStatusColor(viagem.statusCumprimento)}`}>
-                                    {onGetStatusText(viagem.statusCumprimento)}
-                                </span>
+                {viagens.map((v: ViagemTransdata) => {
+                    const diff = calculateDiff(v.InicioPrevistoText, v.InicioRealizadoText);
+                    return (
+                        <div key={v.id} className="bg-neutral-800/50 p-4 rounded-lg border border-yellow-400/20">
+                            <div className="flex justify-between items-start gap-4">
+                                <h3 className="font-bold text-gray-100 text-base leading-tight">{v.NomeLinha}</h3>
+                                {getStatusPill(v.statusCumprimento)}
+                            </div>
+                            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm border-t border-neutral-700 pt-3">
+                                <InfoItem label="Serviço" value={v.Servico} />
+                                <InfoItem label="Sentido" value={v.SentidoText} />
+                                <InfoItem label="Prefixo" value={v.PrefixoRealizado} />
+                                <InfoItem label="Motorista" value={v.NomeMotorista} />
+                                <InfoItem label="Previsto" value={v.InicioPrevistoText} />
+                                <InfoItem label="Realizado" value={v.InicioRealizadoText} />
+                                <div className="col-span-2">
+                                    <p className="text-gray-400">Diferença</p>
+                                    <p className={`font-medium ${diff.color}`}>{diff.text}</p>
+                                </div>
                             </div>
                         </div>
-
-                        {/* Card Body */}
-                        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-                            <div>
-                                <p className="text-gray-400">Serviço</p>
-                                <p className="text-gray-200 font-medium">{viagem.Servico}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-400">Sentido</p>
-                                <p className="text-gray-200 font-medium">{viagem.SentidoText}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-400">Previsto</p>
-                                <p className="text-gray-200 font-medium flex items-center">
-                                    <Clock size={14} className="mr-1.5 text-gray-500" />
-                                    {onFormatTime(viagem.InicioPrevistoText)}
-                                </p>
-                            </div>
-                            <div>
-                                <p className="text-gray-400">Realizado</p>
-                                <p className="text-gray-200 font-medium flex items-center">
-                                    <Clock size={14} className="mr-1.5 text-gray-500" />
-                                    {onFormatTime(viagem.InicioRealizadoText)}
-                                </p>
-                            </div>
-                            <div className="col-span-2">
-                                <p className="text-gray-400">Ponto Final</p>
-                                <p className="text-gray-200 font-medium flex items-center">
-                                    <MapPin size={14} className="mr-1.5 text-gray-500" />
-                                    {viagem.PontoFinal || '-'}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
 };
+
+const InfoItem = ({ label, value }: { label: string, value: any }) => (
+    <div>
+        <p className="text-gray-400">{label}</p>
+        <p className="text-gray-200 font-medium truncate">{value || '-'}</p>
+    </div>
+);
 
 // Componente para quando não há dados disponíveis
 const NoData = ({ onSync, synchronizing }: any) => (
@@ -395,6 +389,9 @@ const initialFilters: FiltrosViagem = {
     pontoFinal: undefined,
     horarioInicio: undefined,
     horarioFim: undefined,
+    prefixoRealizado: undefined,
+    nomeMotorista: undefined,
+    somenteAtrasados: false,
 };
 
 export const Viagens: React.FC = () => {
@@ -470,45 +467,14 @@ export const Viagens: React.FC = () => {
 
     const handleFilterChange = (key: keyof FiltrosViagem, value: any) => {
         setFiltros(prev => ({ ...prev, [key]: value, page: 1 }));
+        // Explicitly call loadInitialData to re-fetch data with new filters
+        loadInitialData();
     };
 
     const clearFilters = () => {
         setFiltros(initialFilters);
-    };
-
-    // Funções auxiliares (Helpers)
-    const getStatusIcon = (status: string) => {
-        const icons: { [key: string]: JSX.Element } = {
-            'CUMPRIDA': <CheckCircle className="h-4 w-4 text-green-400" />,
-            'NAO_CUMPRIDA': <XCircle className="h-4 w-4 text-red-400" />,
-            'PARCIALMENTE_CUMPRIDA': <AlertCircle className="h-4 w-4 text-yellow-400" />,
-        };
-        return icons[status] || <AlertCircle className="h-4 w-4 text-gray-500" />;
-    };
-
-    const formatTime = (time: string) => {
-        if (!time) return '-';
-        return time.substring(0, 5);
-    };
-
-    const getStatusText = (status: string) => {
-        const texts: { [key: string]: string } = {
-            'CUMPRIDA': 'Cumprida',
-            'NAO_CUMPRIDA': 'Não Cumprida',
-            'PARCIALMENTE_CUMPRIDA': 'Parcial',
-            'PENDENTE': 'Pendente',
-        };
-        return texts[status] || status || '-';
-    };
-
-    const getStatusColor = (status: string) => {
-        const colors: { [key: string]: string } = {
-            'CUMPRIDA': 'text-green-400',
-            'NAO_CUMPRIDA': 'text-red-400',
-            'PARCIALMENTE_CUMPRIDA': 'text-yellow-400',
-            'PENDENTE': 'text-gray-400',
-        };
-        return colors[status] || 'text-gray-400';
+        // Explicitly call loadInitialData to re-fetch data with cleared filters
+        loadInitialData();
     };
 
     return (
@@ -563,10 +529,6 @@ export const Viagens: React.FC = () => {
                             <ViagensTable
                                 viagens={viagens}
                                 loading={loading}
-                                onFormatTime={formatTime}
-                                onGetStatusIcon={getStatusIcon}
-                                onGetStatusText={getStatusText}
-                                onGetStatusColor={getStatusColor}
                             />
                         </CardContent>
                     </GlowingCard>

@@ -182,6 +182,12 @@ export class ControleHorariosService {
       });
     }
 
+    if (filtros?.periodo_do_dia) {
+      queryBuilder.andWhere('controle.periodo_do_dia = :periodo_do_dia', {
+        periodo_do_dia: filtros.periodo_do_dia,
+      });
+    }
+
     if (filtros?.cod_atividade) {
       queryBuilder.andWhere('controle.cod_atividade = :cod_atividade', {
         cod_atividade: filtros.cod_atividade,
@@ -371,8 +377,8 @@ export class ControleHorariosService {
                 WHEN 'SÁB' THEN 'SABADO'
                 ELSE 'DIAS UTEIS'
             END AS DESC_TIPODIA,
-            H.HOR_SAIDA,
-            H.HOR_CHEGADA,
+            TO_CHAR(H.HOR_SAIDA, 'HH24:MI:SS') AS HOR_SAIDA,
+            TO_CHAR(H.HOR_CHEGADA, 'HH24:MI:SS') AS HOR_CHEGADA,
             H.COD_LOCALIDADE AS COD_ORIGEM_VIAGEM,
             LCO.DESC_LOCALIDADE AS LOCAL_ORIGEM_VIAGEM,
             S.COD_SERVDIARIA AS COD_SERVICO_COMPLETO,
@@ -470,18 +476,18 @@ export class ControleHorariosService {
   }
 
   private processarDadosOracle(item: any, dataReferencia: string): Partial<ControleHorario> {
-    const horSaida = this.processarHorarioOracle(item.HOR_SAIDA);
-    const horChegada = this.processarHorarioOracle(item.HOR_CHEGADA);
+    const horSaida = this.processarHorarioOracle(item.HOR_SAIDA, dataReferencia);
+    const horChegada = this.processarHorarioOracle(item.HOR_CHEGADA, dataReferencia);
 
     const sentidoTexto = this.determinarSentidoTexto(item.FLG_SENTIDO);
     const periodoDoDia = this.determinarPeriodoDoDia(horSaida);
 
     const controle = new ControleHorario();
 
-    controle.setor_principal_linha = item.SETOR_PRINCIPAL_LINHA || null;
-    controle.cod_local_terminal_sec = item.COD_LOCAL_TERMINAL_SEC || null;
-    controle.codigo_linha = item.CODIGOLINHA || null;
-    controle.nome_linha = item.NOMELINHA || null;
+    controle.setor_principal_linha = item.SETOR_PRINCIPAL_LINHA || '';
+    controle.cod_local_terminal_sec = item.COD_LOCAL_TERMINAL_SEC || 0;
+    controle.codigo_linha = item.CODIGOLINHA || '';
+    controle.nome_linha = item.NOMELINHA || '';
     controle.cod_destino_linha = item.COD_DESTINO_LINHA || null;
     controle.local_destino_linha = item.LOCAL_DESTINO_LINHA || null;
     controle.flg_sentido = item.FLG_SENTIDO || null;
@@ -530,22 +536,43 @@ export class ControleHorariosService {
     return controle;
   }
 
-  private processarHorarioOracle(horarioOracle: any): Date | null {
+  private processarHorarioOracle(horarioOracle: any, dataReferencia: string): Date | null {
     if (!horarioOracle) return null;
 
+    // Parse dataReferencia to get year, month, day
+    const dateParts = dataReferencia.split('-').map(Number);
+    const year = dateParts[0];
+    // Month is 0-indexed in JavaScript Date
+    const month = dateParts[1] - 1;
+    const day = dateParts[2];
+
+    // Lida com o formato de string 'HH:MI:SS' vindo do TO_CHAR
+    if (typeof horarioOracle === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(horarioOracle)) {
+      try {
+        const [hours, minutes, seconds] = horarioOracle.split(':').map(Number);
+        // Construct a Date object in UTC to avoid local timezone shifts during creation
+        // This will ensure the internal representation is exactly what we want
+        return new Date(year, month, day, hours, minutes, seconds);
+      } catch (error) {
+        this.logger.error(`Erro ao processar string de horário: ${horarioOracle}`, error);
+        return null;
+      }
+    }
+
+    // Lógica original para lidar com objetos Date do Oracle (less likely given TO_CHAR in query)
     try {
       const data = new Date(horarioOracle);
-      const hoje = new Date();
-      const novaData = new Date(
-        hoje.getFullYear(),
-        hoje.getMonth(),
-        hoje.getDate(),
-        data.getHours(),
-        data.getMinutes(),
-        data.getSeconds(),
-      );
-      return novaData;
+      if (isNaN(data.getTime())) {
+        this.logger.warn(`Data inválida recebida do Oracle: ${horarioOracle}`);
+        return null;
+      }
+      // If it's already a Date object, we still want to ensure it's treated as a local time
+      // and combined with the dataReferencia.
+      // This part might need more context if Oracle is returning actual Date objects with timezone info.
+      // For now, assuming it's a time component that needs to be combined with dataReferencia.
+      return new Date(Date.UTC(year, month, day, data.getHours(), data.getMinutes(), data.getSeconds()));
     } catch (error) {
+      this.logger.error(`Erro ao processar data do Oracle: ${horarioOracle}`, error);
       return null;
     }
   }
