@@ -1,43 +1,88 @@
 // src/features/controle-horarios/components/DataTable/DataTable.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList, Navigation, ArrowDown, Play, Square, Users, Car, Bus, Calendar, Activity } from 'lucide-react';
-import { ControleHorarioItem, StatusControleHorariosDto, EstatisticasControleHorariosDto } from '@/types/controle-horarios.types';
+import { toast } from 'react-toastify';
+import { ControleHorarioItem, StatusControleHorariosData, StatusControleHorariosDto, EstatisticasControleHorariosDto } from '@/types/controle-horarios.types';
 
-interface DataTableProps {
-  controleHorarios: ControleHorarioItem[];
-  controleHorariosOriginais: ControleHorarioItem[];
-  onInputChange: (viagemId: string, field: keyof ControleHorarioItem, value: string | number | boolean) => void;
-  loading: boolean;
-  error: string | null;
-  onRetry: () => void;
-  statusDados: StatusControleHorariosDto['data'];
-  estatisticas: EstatisticasControleHorariosDto;
-  temAlteracoesPendentes: boolean;
-  contarAlteracoesPendentes: () => number;
-  onApplyScaleFilter?: (params: { servico: string; cracha: string; tipo: 'motorista' | 'cobrador' }) => void;
-  scaleFilterActive?: boolean;
-  scaleFilterLabel?: string;
-  onClearScaleFilter?: () => void;
-  canSave?: boolean;
-}
+// ... other code ...
 
 interface PersonOptionsModalProps {
   item: ControleHorarioItem;
   personType: 'motorista' | 'cobrador';
   onClose: () => void;
-  onApplyScaleFilter?: (params: { servico: string; cracha: string; tipo: 'motorista' | 'cobrador' }) => void;
+  onApplyScaleFilter: (filter: { servico: string; cracha: string; tipo: 'motorista' | 'cobrador' }) => void;
   onSave: (data: { nome: string; cracha: string; observacoes: string; numeroCarro: string }) => void;
 }
 
-const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personType, onClose, onApplyScaleFilter, onSave }) => {
+const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
+  item,
+  personType,
+  onClose,
+  onApplyScaleFilter,
+  onSave,
+}) => {
   const isMotorista = personType === 'motorista';
+  const nomeOriginal = isMotorista ? item.nomeMotoristaGlobus : item.nomeCobradorGlobus;
   const crachaOriginal = isMotorista ? item.crachaMotoristaGlobus : item.crachaCobradorGlobus;
+  const numeroCarroOriginal = item.numeroCarro || '';
+  const observacoesOriginal = item.observacoes || '';
+
   const [tempNome, setTempNome] = useState(isMotorista ? item.nomeMotoristaEditado || '' : item.nomeCobradorEditado || '');
   const [tempCracha, setTempCracha] = useState(isMotorista ? item.crachaMotoristaEditado || '' : item.crachaCobradorEditado || '');
-  const [tempObservacoes, setTempObservacoes] = useState((item as any).observacoes || '');
-  const [tempNumeroCarro, setTempNumeroCarro] = useState(item.numeroCarro || '');
+  const [tempObservacoes, setTempObservacoes] = useState(observacoesOriginal);
+  const [tempNumeroCarro, setTempNumeroCarro] = useState(numeroCarroOriginal);
+
+  const prefix = useMemo(() => `[${new Date().toLocaleString('pt-BR')}] `, []);
+
+  useEffect(() => {
+    let calculatedObservacoes = observacoesOriginal;
+
+    // Ensure prefix is always there initially
+    if (!calculatedObservacoes.startsWith(prefix)) {
+      calculatedObservacoes = prefix + calculatedObservacoes;
+    }
+
+    const isSubstitutionBeingMade = tempNome.trim() !== '' || tempCracha.trim() !== '';
+    const isOriginalCrachaAvailable = crachaOriginal && crachaOriginal.trim() !== '';
+    const crachaSignature = `Crachá Original: ${crachaOriginal}`;
+
+    // Remove existing signature if present, to re-add it correctly or remove if no longer needed
+    // This regex handles cases where the signature might be followed by a dot and space, or just a space, or nothing.
+    let contentWithoutSignature = calculatedObservacoes.replace(new RegExp(`\\s*${crachaSignature}\\.?\\s*`), ' ').trim();
+    // Ensure there's only one space between prefix and content if signature was removed from the middle
+    contentWithoutSignature = contentWithoutSignature.replace(/\s\s+/g, ' ');
+
+
+    if (isSubstitutionBeingMade && isOriginalCrachaAvailable) {
+      // Add signature after prefix, but before other content
+      const contentAfterPrefix = contentWithoutSignature.startsWith(prefix) ? contentWithoutSignature.substring(prefix.length) : contentWithoutSignature;
+      const separator = contentAfterPrefix.trim() !== '' ? ". " : "";
+      calculatedObservacoes = prefix + crachaSignature + separator + contentAfterPrefix.trim();
+    } else {
+      // If no substitution, ensure signature is removed
+      calculatedObservacoes = contentWithoutSignature;
+      // If after removing signature, it only contains the prefix, ensure it's just the prefix
+      if (calculatedObservacoes.trim() === prefix.trim()) {
+        calculatedObservacoes = prefix;
+      }
+    }
+
+    // Only update if the value is actually different to prevent unnecessary re-renders
+    if (calculatedObservacoes !== tempObservacoes) {
+      setTempObservacoes(calculatedObservacoes);
+    }
+
+  }, [tempNome, tempCracha, crachaOriginal, observacoesOriginal, prefix]);
 
   const handleSave = () => {
+    const isSubstitutionMade = tempNome.trim() !== '' || tempCracha.trim() !== '';
+    const isObservacoesEmpty = tempObservacoes.trim() === '' || tempObservacoes.trim() === prefix.trim();
+
+    if (isSubstitutionMade && isObservacoesEmpty) {
+      toast.error('É obrigatório adicionar uma observação ao realizar uma substituição.');
+      return; // Prevent saving
+    }
+
     onSave({ nome: tempNome, cracha: tempCracha, observacoes: tempObservacoes, numeroCarro: tempNumeroCarro });
     onClose();
   };
@@ -51,16 +96,19 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({ item, personTyp
           <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
           <div className="relative rounded-xl border border-yellow-400/20 bg-neutral-900 text-gray-100 shadow-2xl">
             <div className="px-6 py-4 border-b border-yellow-400/20">
-              <div className="flex items-center space-y-2">
-                {/* Título com ícone */}
-                <div className="flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-yellow-400" />
-                  <h3 className="text-lg font-semibold text-yellow-400">Opções do {isMotorista ? 'Motorista' : 'Cobrador'}</h3>
-                </div>
+              <div className="flex items-center">
+                <Users className="h-5 w-5 mr-2 text-yellow-400" />
+                <h3 className="text-lg font-semibold text-yellow-400">Opções do {isMotorista ? 'Motorista' : 'Cobrador'}</h3>
               </div>
-              <div className="flex items-center mt-2">
-                <Activity className="h-4 w-4 mr-2 text-blue-400" />
-                <p className="text-sm text-gray-400">Crachá Original: <span className="font-semibold text-gray-200">{crachaOriginal || 'Não informado'}</span></p>
+              <div className="mt-2 space-y-1 text-sm">
+                <div className="flex items-center">
+                  <Users className="h-4 w-4 mr-2 text-gray-400" />
+                  <p className="text-gray-400">Original: <span className="font-semibold text-gray-200">{nomeOriginal || 'Não informado'}</span></p>
+                </div>
+                <div className="flex items-center">
+                  <Activity className="h-4 w-4 mr-2 text-blue-400" />
+                  <p className="text-gray-400">Crachá: <span className="font-semibold text-gray-200">{crachaOriginal || 'Não informado'}</span></p>
+                </div>
               </div>
             </div>
             <div className="px-6 py-5 space-y-4">
@@ -324,6 +372,24 @@ const ConfirmPersonPropagationModal: React.FC<{
   );
 };
 
+interface DataTableProps {
+  controleHorarios: ControleHorarioItem[];
+  controleHorariosOriginais: ControleHorarioItem[];
+  onInputChange: (id: string, field: keyof ControleHorarioItem, value: any) => void;
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  statusDados: StatusControleHorariosData;
+  estatisticas: EstatisticasControleHorariosDto;
+  temAlteracoesPendentes: boolean;
+  contarAlteracoesPendentes: () => number;
+  onApplyScaleFilter: (filter: { servico: string; cracha: string; tipo: 'motorista' | 'cobrador' }) => void;
+  scaleFilterActive: boolean;
+  scaleFilterLabel: string | null;
+  onClearScaleFilter: () => void;
+  canSave: boolean;
+}
+
 export const DataTable: React.FC<DataTableProps> = ({
   controleHorarios,
   controleHorariosOriginais,
@@ -455,6 +521,33 @@ export const DataTable: React.FC<DataTableProps> = ({
     }
   }, [onInputChange, controleHorariosOriginais, setPendingPerson]);
 
+  const sortedVisibleItems = useMemo(() => {
+    const items = [...visibleItems];
+    const MIDNIGHT_CUTOFF_HOUR = 4; // 04:00
+
+    const normMinutes = (item: ControleHorarioItem) => {
+      const d = (item as any).hor_saida; // Use the original ISO date string for reliable parsing
+      const dt = d ? new Date(d) : null;
+      if (!dt || isNaN(dt.getTime())) return sortOrder === 'asc' ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
+      
+      const m = dt.getHours() * 60 + dt.getMinutes();
+      return dt.getHours() < MIDNIGHT_CUTOFF_HOUR ? m + 24 * 60 : m;
+    };
+
+    items.sort((a, b) => {
+      const timeA = normMinutes(a);
+      const timeB = normMinutes(b);
+      
+      if (sortOrder === 'asc') {
+        return timeA - timeB;
+      } else {
+        return timeB - timeA;
+      }
+    });
+
+    return items;
+  }, [visibleItems, sortOrder]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
@@ -499,7 +592,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             <AlertCircle className="h-5 w-5 mr-2 text-gray-500" />
             <h3 className="text-lg font-medium text-gray-900">Nenhuma viagem encontrada</h3>
           </div>
-          {!statusDados.existeViagensGlobus && (
+          {!statusDados.existeNoBanco && (
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-2 text-gray-400" />
               <p className="text-sm text-gray-500">Verifique se existem dados do Globus para esta data.</p>
@@ -511,19 +604,6 @@ export const DataTable: React.FC<DataTableProps> = ({
   }
 
   const descTipoDia = controleHorarios.length > 0 ? (controleHorarios[0] as any).desc_tipodia : '';
-
-  const sortedVisibleItems = [...visibleItems].sort((a, b) => {
-    const saidaA = (a as any).hor_saida || (a as any).horaSaida;
-    const saidaB = (b as any).hor_saida || (b as any).horaSaida;
-    const timeA = saidaA ? new Date(saidaA).getTime() : 0;
-    const timeB = saidaB ? new Date(saidaB).getTime() : 0;
-
-    if (sortOrder === 'asc') {
-      return timeA - timeB;
-    } else {
-      return timeB - timeA;
-    }
-  });
 
   return (
     <div className="w-full">
@@ -659,9 +739,9 @@ export const DataTable: React.FC<DataTableProps> = ({
                       
                       {/* Duração/Até - Centralizado */}
                       <div className="flex items-center justify-center">
-                        <Clock className="h-4 w-4 text-blue-400 mr-1" />
+                        
                         <span className="text-xs text-blue-300 font-medium">até</span>
-                        <Clock className="h-4 w-4 text-blue-400 ml-1" />
+                        
                       </div>
                       
                       {/* Horário de Chegada */}
@@ -696,9 +776,9 @@ export const DataTable: React.FC<DataTableProps> = ({
                           
                           {/* Sentido - Centralizado */}
                           <div className="flex items-center justify-center">
-                            <ArrowDown className="h-4 w-4 text-blue-400 mr-1" />
+                            
                             <span className="text-xs text-blue-300 font-medium">{(item as any).sentido_texto || ''}</span>
-                            <ArrowDown className="h-4 w-4 text-blue-400 ml-1" />
+                           
                           </div>
                           
                           {/* Destino */}
@@ -777,12 +857,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                           onClick={(e) => {
                             e.stopPropagation();
                             const servico = (item as any).cod_servico_numero || '';
-                            const cracha = (item as any).crachaMotoristaGlobus || (item as any).crachaMotoristaEditado || '';
+                            const cracha = (item as any).crachaMotoristaGlobus || '';
                             if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'motorista' });
                           }}
-                          title="Ver escala deste motorista"
+                          title="Ver escala do motorista original"
                         >
-                          {(item as any).crachaMotoristaEditado || (item as any).crachaMotoristaGlobus || 'N/A'}
+                          {(item as any).crachaMotoristaGlobus || 'N/A'}
                         </button>
                       </div>
                       {isMobileOrTablet && item.numeroCarro ? (
@@ -797,16 +877,16 @@ export const DataTable: React.FC<DataTableProps> = ({
                         </div>
                       )}
                       <div className="mt-0.5 leading-tight ml-6">
+                        <div className="flex items-center">
+                          <Activity className="h-3 w-3 mr-1 text-gray-400" />
+                          <div className="text-[11px] text-green-400">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
+                        </div>
                         {((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') && (
                           <div className="flex items-center">
                             <Users className="h-3 w-3 mr-1 text-yellow-400" />
-                            <div className="text-xs font-semibold text-yellow-500">Atual: {(item as any).nomeMotoristaEditado}</div>
+                            <div className="text-xs font-semibold text-yellow-500">Substituto: {(item as any).nomeMotoristaEditado} ({(item as any).crachaMotoristaEditado})</div>
                           </div>
                         )}
-                        <div className="flex items-center">
-                          <Activity className="h-3 w-3 mr-1 text-gray-400" />
-                          <div className="text-[11px] text-green-400"> {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
-                        </div>
                       </div>
                       <button
                         type="button"
@@ -814,10 +894,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           const servico = (item as any).cod_servico_numero || '';
-                          const cracha = (item as any).crachaMotoristaGlobus || (item as any).crachaMotoristaEditado || '';
+                          const cracha = (item as any).crachaMotoristaGlobus || '';
                           if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'motorista' });
                         }}
-                        title="Ver escala com o motorista atual"
+                        title="Ver escala com o motorista original"
                       >
                         <ClipboardList className="h-3.5 w-3.5 mr-1" /> Ver escala
                       </button>
@@ -833,38 +913,38 @@ export const DataTable: React.FC<DataTableProps> = ({
                           onClick={(e) => {
                             e.stopPropagation();
                             const servico = (item as any).cod_servico_numero || '';
-                            const cracha = (item as any).crachaCobradorGlobus || (item as any).crachaCobradorEditado || '';
+                            const cracha = (item as any).crachaCobradorGlobus || '';
                             if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'cobrador' });
                           }}
-                          title="Ver escala deste cobrador"
+                          title="Ver escala do cobrador original"
                         >
-                          {(item as any).crachaCobradorEditado || (item as any).crachaCobradorGlobus || 'N/A'}
+                          {(item as any).crachaCobradorGlobus || 'N/A'}
                         </button>
                       </div>
                       
                       <div className="mt-0.5 leading-tight ml-6">
-                        {((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') && (
-                          <div className="flex items-center">
-                            <Users className="h-3 w-3 mr-1 text-yellow-400" />
-                            <div className="text-xs font-semibold text-yellow-500">Atual: {(item as any).nomeCobradorEditado}</div>
-                          </div>
-                        )}
                         <div className="flex items-center">
                           <Activity className="h-3 w-3 mr-1 text-gray-400" />
                           <div className="text-[11px] text-gray-200">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
                         </div>
+                        {((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') && (
+                          <div className="flex items-center">
+                            <Users className="h-3 w-3 mr-1 text-yellow-400" />
+                            <div className="text-xs font-semibold text-yellow-500">Substituto: {(item as any).nomeCobradorEditado} ({(item as any).crachaCobradorEditado})</div>
+                          </div>
+                        )}
                       </div>
-                      {!!(item.crachaCobradorGlobus || item.crachaCobradorEditado) && (
+                      {!!(item.crachaCobradorGlobus) && (
                         <button
                           type="button"
                           className="mt-1 text-[11px] text-blue-500 hover:underline flex items-center ml-6"
                           onClick={(e) => {
                             e.stopPropagation();
                             const servico = (item as any).cod_servico_numero || '';
-                            const cracha = (item as any).crachaCobradorGlobus || (item as any).crachaCobradorEditado || '';
+                            const cracha = (item as any).crachaCobradorGlobus || '';
                             if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'cobrador' });
                           }}
-                          title="Ver escala com o cobrador atual"
+                          title="Ver escala com o cobrador original"
                         >
                           <ClipboardList className="h-3.5 w-3.5 mr-1" /> Ver escala
                         </button>
@@ -936,7 +1016,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           allIdsToUpdate.forEach(id => {
             onInputChange(id, personType === 'motorista' ? 'nomeMotoristaEditado' : 'nomeCobradorEditado', nome);
             onInputChange(id, personType === 'motorista' ? 'crachaMotoristaEditado' : 'crachaCobradorEditado', cracha);
-            onInputChange(id, 'observacoes' as any, observacoes);
+            onInputChange(id, 'observacoes', observacoes);
             onInputChange(id, 'numeroCarro', numeroCarro); // Added numeroCarro update
           });
 
