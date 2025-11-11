@@ -50,7 +50,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
     // 2. Remove ALL existing Crachá Original signatures
     // Use a global regex to remove all occurrences of "Crachá Original: [digits]."
     // This regex is more specific to the exact pattern and handles surrounding spaces.
-    const crachaSignaturePattern = /(Crachá Original: \d+\.)\s*/g;
+    const crachaSignaturePattern = /(Crachá Original: \d+)\.?\s*/g;
     currentRawContent = currentRawContent.replace(crachaSignaturePattern, '').trim(); // Replace with empty string, then trim
     currentRawContent = currentRawContent.replace(/\s\s+/g, ' ').trim(); // Clean up any multiple spaces
 
