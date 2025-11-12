@@ -328,6 +328,36 @@ export class ControleHorariosService {
         .addOrderBy('controle.hor_saida', 'ASC');
     }
 
+    // Sanitiza e aplica ordenação segura (override da anterior)
+    if (filtros?.ordenar_por && filtros?.ordem) {
+      const allowedOrderColumns = new Set<string>([
+        'setor_principal_linha',
+        'codigo_linha',
+        'nome_linha',
+        'flg_sentido',
+        'data_viagem',
+        'desc_tipodia',
+        'hor_saida',
+        'hor_chegada',
+        'local_origem_viagem',
+        'cod_servico_numero',
+        'nome_motorista',
+        'nome_cobrador',
+        'cod_atividade',
+        'nome_atividade',
+        'periodo_do_dia',
+      ]);
+      const candidate = String(filtros.ordenar_por).trim();
+      if (allowedOrderColumns.has(candidate)) {
+        queryBuilder.orderBy(`controle.${candidate}` as any, filtros.ordem);
+      } else {
+        queryBuilder
+          .orderBy('controle.setor_principal_linha', 'ASC')
+          .addOrderBy('controle.codigo_linha', 'ASC')
+          .addOrderBy('controle.hor_saida', 'ASC');
+      }
+    }
+
     const horarios = await queryBuilder.getMany();
 
     this.logger.log(`✅ Encontrados ${horarios.length} registros no PostgreSQL`);
@@ -446,12 +476,21 @@ export class ControleHorariosService {
         const lote = dadosOracle.slice(i, i + BATCH_SIZE);
         const loteProcessado = lote.map(item => this.processarDadosOracle(item, dataReferencia));
         
+        // Filter out duplicates based on hash_dados within the current batch
+        const uniqueLoteProcessado = Array.from(new Map(loteProcessado.map(item => [item.hash_dados, item])).values());
+
         try {
-          await this.controleHorarioRepository.save(loteProcessado);
-          novas += lote.length;
+          await this.controleHorarioRepository.upsert(
+            uniqueLoteProcessado, // Use the unique list here
+            {
+              conflictPaths: ['hash_dados'],
+              skipUpdateIfNoValuesChanged: true,
+            },
+          );
+          novas += uniqueLoteProcessado.length; // Count unique items
         } catch (error: any) {
-          this.logger.error(`❌ Erro ao salvar lote: ${error.message}`);
-          erros += lote.length;
+          this.logger.error(`❌ Erro ao salvar/atualizar lote (upsert): ${error.message}`);
+          erros += uniqueLoteProcessado.length; // Count unique items that caused error
         }
 
         if (i % (BATCH_SIZE * 10) === 0) {
@@ -492,6 +531,9 @@ export class ControleHorariosService {
     }
     controle.cod_destino_linha = item.COD_DESTINO_LINHA || null;
     controle.local_destino_linha = item.LOCAL_DESTINO_LINHA || null;
+    // Origem da viagem
+    controle.cod_origem_viagem = item.COD_ORIGEM_VIAGEM ?? null;
+    controle.local_origem_viagem = item.LOCAL_ORIGEM_VIAGEM || null;
     controle.flg_sentido = item.FLG_SENTIDO || null;
     controle.data_viagem = item.DATA_VIAGEM ? new Date(item.DATA_VIAGEM) : null;
     controle.desc_tipodia = item.DESC_TIPODIA || null;
@@ -503,6 +545,12 @@ export class ControleHorariosService {
     if (!horChegada) {
       this.logger.warn(`HOR_CHEGADA is missing or invalid for item: ${JSON.stringify(item)}`);
     }
+    // Serviço
+    controle.cod_servico_completo = item.COD_SERVICO_COMPLETO || null;
+    controle.cod_servico_numero = (item.COD_SERVICO_NUMERO !== undefined && item.COD_SERVICO_NUMERO !== null)
+      ? String(item.COD_SERVICO_NUMERO)
+      : null;
+
     controle.cod_motorista = item.COD_MOTORISTA || null;
     controle.nome_motorista = item.NOME_MOTORISTA || null;
     controle.cracha_motorista = item.CRACHA_MOTORISTA || null;
@@ -511,6 +559,11 @@ export class ControleHorariosService {
     controle.nome_cobrador = item.NOME_COBRADOR || null;
     controle.cracha_cobrador = item.CRACHA_COBRADOR || null;
     controle.chapa_func_cobrador = item.CHAPAFUNC_COBRADOR || null;
+
+    // Atividade
+    controle.cod_atividade = item.COD_ATIVIDADE ?? null;
+    controle.nome_atividade = item.NOME_ATIVIDADE || null;
+    controle.flg_tipo = item.FLG_TIPO || null;
     controle.total_horarios = item.TOTAL_HORARIOS || null;
 
     // Novos campos - inicialmente nulos ou vazios, pois vêm da edição do frontend
@@ -724,14 +777,14 @@ export class ControleHorariosService {
   async obterTiposDiaUnicos(dataReferencia: string): Promise<string[]> {
     const result = await this.controleHorarioRepository
       .createQueryBuilder('controle')
-      .select('controle.desc_tipodia')
+      .select('controle.desc_tipodia', 'descTipodia')
       .where('controle.data_referencia = :dataReferencia', { dataReferencia })
       .andWhere('controle.is_ativo = :isAtivo', { isAtivo: true })
       .andWhere('controle.desc_tipodia IS NOT NULL')
       .orderBy('controle.desc_tipodia', 'ASC')
       .getRawMany();
 
-    return [...new Set(result.map((r) => r.controle_desc_tipodia))];
+    return [...new Set(result.map((r: any) => r.descTipodia))];
   }
 
   async testarConexaoOracle(): Promise<{
