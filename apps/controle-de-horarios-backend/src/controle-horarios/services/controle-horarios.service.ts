@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ControleHorario } from '../entities/controle-horario.entity';
@@ -16,7 +18,39 @@ export class ControleHorariosService {
     @InjectRepository(ControleHorario)
     private readonly controleHorarioRepository: Repository<ControleHorario>,
     private readonly oracleService: OracleService,
+    private readonly configService: ConfigService,
   ) {}
+
+  // Executa diariamente às 17:00 (horário do servidor) a sincronização do dia seguinte
+  @Cron('0 17 * * *', { timeZone: 'America/Sao_Paulo' })
+  async agendarSincronizacaoDiaSeguinte(): Promise<void> {
+    try {
+      const enabled = this.configService.get<string>('ENABLE_AUTO_SYNC');
+      if (enabled && enabled !== 'true') {
+        this.logger.log('⏱️ Auto-sync desabilitado por configuração (ENABLE_AUTO_SYNC!=true).');
+        return;
+      }
+
+      // Calcula a data de amanhã (YYYY-MM-DD) em horário local
+      const hoje = new Date();
+      const amanha = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
+      const yyyy = amanha.getFullYear();
+      const mm = String(amanha.getMonth() + 1).padStart(2, '0');
+      const dd = String(amanha.getDate()).padStart(2, '0');
+      const dataReferencia = `${yyyy}-${mm}-${dd}`;
+
+      this.logger.log(`⏱️ Iniciando sincronização automática das 17h para ${dataReferencia}`);
+      const inicio = Date.now();
+      const resultado = await this.sincronizarControleHorariosPorData(dataReferencia);
+      const duracao = Date.now() - inicio;
+
+      this.logger.log(
+        `✅ Auto-sync concluído para ${dataReferencia}: ${resultado.sincronizadas} sincronizadas (novas=${resultado.novas}, atualizadas=${resultado.atualizadas}, desativadas=${resultado.desativadas}, erros=${resultado.erros}) em ${duracao}ms`,
+      );
+    } catch (error: any) {
+      this.logger.error(`❌ Falha no auto-sync diário às 17h: ${error.message}`);
+    }
+  }
 
   async updateMultipleControleHorarios(
     updates: SingleControleHorarioUpdateDto[],

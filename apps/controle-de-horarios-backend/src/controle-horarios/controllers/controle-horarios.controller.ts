@@ -84,7 +84,7 @@ export class ControleHorariosController {
   }
 
   @Post('sincronizar/:data')
-  @Roles(UserRole.ANALISTA)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Sincronizar controle de horários manualmente' })
   async sincronizarControleHorarios(@Param('data') data: string) {

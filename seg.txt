@@ -1,0 +1,10 @@
+    };
+  }
+
+  @Post('sincronizar/:data')
+  @Roles(UserRole.ANALISTA)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Sincronizar controle de horários manualmente' })
+  async sincronizarControleHorarios(@Param('data') data: string) {
+    this.logger.log(`?? Iniciando sincronização manual para ${data}`);
+
