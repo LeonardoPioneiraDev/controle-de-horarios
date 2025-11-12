@@ -65,6 +65,72 @@ export class ViagensGlobusService {
       });
     }
 
+    if (filtros?.codDestinoLinha) {
+      queryBuilder.andWhere('viagem.codDestinoLinha = :codDestinoLinha', {
+        codDestinoLinha: filtros.codDestinoLinha
+      });
+    }
+
+    if (filtros?.localDestinoLinha) {
+      queryBuilder.andWhere('viagem.localDestinoLinha ILIKE :localDestinoLinha', {
+        localDestinoLinha: `%${filtros.localDestinoLinha}%`
+      });
+    }
+
+    if (filtros?.descTipoDia) {
+      queryBuilder.andWhere('viagem.descTipoDia ILIKE :descTipoDia', {
+        descTipoDia: `%${filtros.descTipoDia}%`
+      });
+    }
+
+    if (filtros?.codAtividade) {
+      queryBuilder.andWhere('viagem.codAtividade = :codAtividade', {
+        codAtividade: filtros.codAtividade
+      });
+    }
+
+    if (filtros?.nomeAtividade) {
+      queryBuilder.andWhere('viagem.nomeAtividade ILIKE :nomeAtividade', {
+        nomeAtividade: `%${filtros.nomeAtividade}%`
+      });
+    }
+
+    if (filtros?.flgTipo) {
+      queryBuilder.andWhere('viagem.flgTipo = :flgTipo', {
+        flgTipo: filtros.flgTipo
+      });
+    }
+
+    if (filtros?.codMotoristaGlobus) {
+      queryBuilder.andWhere('viagem.codMotoristaGlobus = :codMotoristaGlobus', {
+        codMotoristaGlobus: filtros.codMotoristaGlobus
+      });
+    }
+
+    if (filtros?.chapaFuncMotorista) {
+      queryBuilder.andWhere('viagem.chapaFuncMotorista ILIKE :chapaFuncMotorista', {
+        chapaFuncMotorista: `%${filtros.chapaFuncMotorista}%`
+      });
+    }
+
+    if (filtros?.codCobradorGlobus) {
+      queryBuilder.andWhere('viagem.codCobradorGlobus = :codCobradorGlobus', {
+        codCobradorGlobus: filtros.codCobradorGlobus
+      });
+    }
+
+    if (filtros?.chapaFuncCobrador) {
+      queryBuilder.andWhere('viagem.chapaFuncCobrador ILIKE :chapaFuncCobrador', {
+        chapaFuncCobrador: `%${filtros.chapaFuncCobrador}%`
+      });
+    }
+
+    if (filtros?.prefixoVeiculo) {
+      queryBuilder.andWhere('viagem.prefixoVeiculo ILIKE :prefixoVeiculo', {
+        prefixoVeiculo: `%${filtros.prefixoVeiculo}%`
+      });
+    }
+
     // ✅ PAGINAÇÃO
     if (filtros?.limite) {
       queryBuilder.limit(filtros.limite);
@@ -110,78 +176,101 @@ export class ViagensGlobusService {
 
       // ✅ QUERY ORACLE OTIMIZADA
       const sqlQuery = `
-        SELECT
-          -- Informações da Linha e Setor Principal
-          CASE
-              WHEN L.COD_LOCAL_TERMINAL_SEC = 7000 THEN 'GAMA'
-              WHEN L.COD_LOCAL_TERMINAL_SEC = 6000 THEN 'SANTA MARIA'
-              WHEN L.COD_LOCAL_TERMINAL_SEC = 8000 THEN 'PARANOÁ'
-              WHEN L.COD_LOCAL_TERMINAL_SEC = 9000 THEN 'SÃO SEBASTIÃO'
-          END AS SETOR_PRINCIPAL_LINHA,
-          L.COD_LOCAL_TERMINAL_SEC,
-          L.CODIGOLINHA,
-          L.NOMELINHA,
+        SELECT    -- Informações da Linha e Setor Principal    CASE        WHEN L.COD_LOCAL_TERMINAL_SEC = 7000 THEN 'GAMA'
+        WHEN L.COD_LOCAL_TERMINAL_SEC = 6000 THEN 'SANTA MARIA'
+        WHEN L.COD_LOCAL_TERMINAL_SEC = 8000 THEN 'PARANOÁ'
+        WHEN L.COD_LOCAL_TERMINAL_SEC = 9000 THEN 'SÃO SEBASTIÃO'
+    END AS SETOR_PRINCIPAL_LINHA,
+    L.COD_LOCAL_TERMINAL_SEC,
+    L.CODIGOLINHA,
+    L.NOMELINHA,
+    L.DESTINOLINHA AS COD_DESTINO_LINHA, -- O código do destino da linha
+    NLD.DESC_LOCALIDADE AS LOCAL_DESTINO_LINHA, -- Adicionada a descrição do destino da linha
 
-          -- Informações da Viagem/Horário
-          H.FLG_SENTIDO,
-          TO_CHAR(D.DAT_ESCALA, 'DD-MON-YYYY') AS DATA_VIAGEM,
-          H.HOR_SAIDA,
-          H.HOR_CHEGADA,
-          
-          -- Local de Origem da Viagem (NOVO CAMPO CHAVE!)
-          H.COD_LOCALIDADE AS COD_ORIGEM_VIAGEM,
-          LC.DESC_LOCALIDADE AS LOCAL_ORIGEM_VIAGEM,
-          
-          -- Local de Destino da Linha (NOVO CAMPO)
-          L.COD_LOCAL_DESTINO_LINHA,
-          LD.DESC_LOCALIDADE AS LOCAL_DESTINO_LINHA,
+    -- Informações da Viagem/Horário
+    H.FLG_SENTIDO,
+    TO_CHAR(D.DAT_ESCALA, 'DD-MON-YYYY') AS DATA_VIAGEM,
+    -- Adiciona DESC_TIPODIA (baseado no dia da semana da DAT_ESCALA)
+    CASE TO_CHAR(D.DAT_ESCALA, 'DY', 'NLS_DATE_LANGUAGE=PORTUGUESE')
+        WHEN 'DOM' THEN 'DOMINGO'
+        WHEN 'SÁB' THEN 'SABADO'
+        ELSE 'DIAS UTEIS'
+    END AS DESC_TIPODIA,
 
-          -- Informações do Serviço (Viagem)
-          S.COD_SERVDIARIA AS COD_SERVICO_COMPLETO,
-          REGEXP_SUBSTR(S.COD_SERVDIARIA, '[[:digit:]]+') AS COD_SERVICO_NUMERO,
-          S.PREFIXO_VEICULO, -- <--- Adicionado o prefixo do veículo (Carro)
-          
-          -- Informações da Tripulação
-          S.COD_MOTORISTA AS CRACHA_MOTORISTA, -- <--- Renomeado para Crachá
-          FM.NOMECOMPLETOFUNC AS NOME_MOTORISTA,
-          S.COD_COBRADOR AS CRACHA_COBRADOR,    -- <--- Renomeado para Crachá
-          FC.NOMECOMPLETOFUNC AS NOME_COBRADOR,
-          
-          -- Tipo de Dia (NOVO CAMPO)
-          TD.DESCRICAO AS DESC_TIPO_DIA,
+    -- ** CORREÇÃO APLICADA AQUI **
+    -- Formata a hora de saída para mostrar apenas HH:MI:SS
+    TO_CHAR(H.HOR_SAIDA, 'HH24:MI:SS') AS HOR_SAIDA,
+    -- Formata a hora de chegada para mostrar apenas HH:MI:SS
+    TO_CHAR(H.HOR_CHEGADA, 'HH24:MI:SS') AS HOR_CHEGADA,
 
-          -- Informação Analítica
-          COUNT(H.HOR_SAIDA) OVER (
-              PARTITION BY L.COD_LOCAL_TERMINAL_SEC, L.CODIGOLINHA
-          ) AS TOTAL_HORARIOS
-        FROM
-            T_ESC_ESCALADIARIA D
-            JOIN T_ESC_SERVICODIARIA S ON D.DAT_ESCALA = S.DAT_ESCALA AND D.COD_INTESCALA = S.COD_INTESCALA
-            JOIN T_ESC_HORARIODIARIA H ON D.DAT_ESCALA = H.DAT_EScala AND D.COD_INTESCALA = H.COD_INTESCALA 
-                AND S.COD_SERVDIARIA = H.COD_INTSERVDIARIA 
-                AND H.COD_INTTURNO = S.COD_INTTURNO
-            JOIN BGM_CADLINHAS L ON DECODE(H.CODINTLINHA, NULL, D.COD_INTLINHA, H.CODINTLINHA) = L.CODINTLINHA
-            
-            -- JUNÇÕES ADICIONADAS
-            LEFT JOIN T_ESC_LOCALIDADE LC ON H.COD_LOCALIDADE = LC.COD_LOCALIDADE
-            LEFT JOIN T_ESC_LOCALIDADE LD ON L.COD_LOCAL_DESTINO_LINHA = LD.COD_LOCALIDADE -- Tabela para o Local de Destino
-            LEFT JOIN FLP_FUNCIONARIOS FM ON S.COD_MOTORISTA = FM.CODINTFUNC
-            LEFT JOIN FLP_FUNCIONARIOS FC ON S.COD_COBRADOR = FC.CODINTFUNC
-            LEFT JOIN T_ESC_TIPODIAS TD ON D.COD_TIPODIA = TD.COD_TIPODIA -- Tabela para o Tipo de Dia
-            
-        WHERE
-            H.COD_ATIVIDADE = 2
-            AND L.CODIGOEMPRESA = 4
-            AND UPPER(L.NOMELINHA) NOT LIKE '%DESPACHANTES%'
-            AND UPPER(L.NOMELINHA) NOT LIKE '%LINHA ESPECIAL%'
-            AND UPPER(L.NOMELINHA) NOT LIKE '%DUPLAS RESERVAS%'
-            AND L.COD_LOCAL_TERMINAL_SEC IN (6000, 7000, 8000, 9000)
-            AND TRUNC(D.DAT_ESCALA) = TO_DATE('${dataViagem}', 'YYYY-MM-DD')
-        ORDER BY
-            SETOR_PRINCIPAL_LINHA,
-            L.CODIGOLINHA,
-            H.FLG_SENTIDO,
-            H.HOR_SAIDA
+    -- Local de Origem da Viagem (AGORA É A ORIGEM DA VIAGEM/HORÁRIO)
+    H.COD_LOCALIDADE AS COD_ORIGEM_VIAGEM,
+    LCO.DESC_LOCALIDADE AS LOCAL_ORIGEM_VIAGEM, -- Nome do local de saída
+
+    -- Informações do Serviço (Viagem)
+    S.COD_SERVDIARIA AS COD_SERVICO_COMPLETO,
+    REGEXP_SUBSTR(S.COD_SERVDIARIA, '[[:digit:]]+') AS COD_SERVICO_NUMERO,
+
+    -- Informações da Atividade (NOVO CAMPO)
+    H.COD_ATIVIDADE, -- Código da Atividade
+    CASE H.COD_ATIVIDADE -- Descrição da Atividade
+        WHEN 2 THEN 'REGULAR'
+        WHEN 3 THEN 'ESPECIAL'
+        WHEN 4 THEN 'RENDIÇÃO'
+        WHEN 5 THEN 'RECOLHIMENTO'
+        WHEN 10 THEN 'RESERVA'
+        ELSE 'OUTROS'
+    END AS NOME_ATIVIDADE,
+
+    -- FLG_TIPO (inferida)
+    CASE H.COD_ATIVIDADE
+        WHEN 2 THEN 'R' -- Regular
+        ELSE 'S' -- Suplementar / Outros
+    END AS FLG_TIPO,
+
+    -- Informações da Tripulação (ADICIONADOS CRACHÁ E CHAPA/DM-TU)
+    S.COD_MOTORISTA,
+    FM.NOMECOMPLETOFUNC AS NOME_MOTORISTA,
+    FM.CODFUNC AS CRACHA_MOTORISTA, -- Crachá do Motorista
+    FM.CHAPAFUNC AS CHAPAFUNC_MOTORISTA, -- Chapa/DM-TU do Motorista
+    S.COD_COBRADOR,
+    FC.NOMECOMPLETOFUNC AS NOME_COBRADOR, -- Nome do Cobrador
+    FC.CODFUNC AS CRACHA_COBRADOR, -- Crachá do Cobrador
+    FC.CHAPAFUNC AS CHAPAFUNC_COBRADOR, -- Chapa/DM-TU do Cobrador
+
+    -- Informação Analítica
+    COUNT(H.HOR_SAIDA) OVER (
+        PARTITION BY L.COD_LOCAL_TERMINAL_SEC, L.CODIGOLINHA
+    ) AS TOTAL_HORARIOS
+FROM
+    T_ESC_ESCALADIARIA D
+    JOIN T_ESC_SERVICODIARIA S ON D.DAT_ESCALA = S.DAT_ESCALA AND D.COD_INTESCALA = S.COD_INTESCALA
+    JOIN T_ESC_HORARIODIARIA H ON D.DAT_ESCALA = H.DAT_ESCALA AND D.COD_INTESCALA = H.COD_INTESCALA
+        AND S.COD_SERVDIARIA = H.COD_INTSERVDIARIA
+        AND H.COD_INTTURNO = S.COD_INTTURNO
+    JOIN BGM_CADLINHAS L ON DECODE(H.CODINTLINHA, NULL, D.COD_INTLINHA, H.CODINTLINHA) = L.CODINTLINHA
+
+    -- JUNÇÕES ADICIONADAS
+    LEFT JOIN T_ESC_LOCALIDADE LCO ON H.COD_LOCALIDADE = LCO.COD_LOCALIDADE
+    LEFT JOIN T_ESC_LOCALIDADE NLD ON L.DESTINOLINHA = NLD.COD_LOCALIDADE
+
+    -- AS JUNÇÕES DE FUNCIONÁRIOS JÁ PERMITEM ACESSAR O CRACHÁ E CHAPA
+    LEFT JOIN FLP_FUNCIONARIOS FM ON S.COD_MOTORISTA = FM.CODINTFUNC
+    LEFT JOIN FLP_FUNCIONARIOS FC ON S.COD_COBRADOR = FC.CODINTFUNC
+
+WHERE
+    H.COD_ATIVIDADE IN (2, 3, 4, 5, 10)
+    AND L.CODIGOEMPRESA = 4
+    AND UPPER(L.NOMELINHA) NOT LIKE '%DESPACHANTES%'
+    AND UPPER(L.NOMELINHA) NOT LIKE '%LINHA ESPECIAL%'
+    AND UPPER(L.NOMELINHA) NOT LIKE '%DUPLAS RESERVAS%'
+    AND L.COD_LOCAL_TERMINAL_SEC IN (6000, 7000, 8000, 9000)
+    AND TRUNC(D.DAT_ESCALA) = TO_DATE('${dataViagem}', 'YYYY-MM-DD')
+ORDER BY
+    SETOR_PRINCIPAL_LINHA,
+    L.CODIGOLINHA,
+    H.FLG_SENTIDO,
+    HOR_SAIDA
       `;;
 
       // ✅ USAR MÉTODO PARA QUERIES PESADAS
@@ -233,9 +322,9 @@ export class ViagensGlobusService {
   }
 
   private processarDadosOracle(item: any, dataReferencia: string): Partial<ViagemGlobus> {
-    // ✅ PROCESSAR HORÁRIOS (ORACLE RETORNA COM DATA 1900)
-    const horSaida = this.processarHorarioOracle(item.HOR_SAIDA);
-    const horChegada = this.processarHorarioOracle(item.HOR_CHEGADA);
+    // ✅ PROCESSAR HORÁRIOS (AGORA SÃO STRINGS HH:MI:SS)
+    const horSaida = this.processarHorarioOracle(item.HOR_SAIDA, dataReferencia);
+    const horChegada = this.processarHorarioOracle(item.HOR_CHEGADA, dataReferencia);
     
     // ✅ CALCULAR DURAÇÃO EM MINUTOS
     const duracaoMinutos = horChegada && horSaida ? 
@@ -247,8 +336,8 @@ export class ViagensGlobusService {
     // ✅ DETERMINAR PERÍODO DO DIA
     const periodoDoDia = this.determinarPeriodoDoDia(horSaida);
 
-    // ✅ CRIAR HASH ÚNICO
-    const hashData = `${dataReferencia}-${item.COD_LOCAL_TERMINAL_SEC}-${item.CODIGOLINHA}-${item.FLG_SENTIDO}-${item.COD_SERVICO_COMPLETO}-${horSaida?.getTime() || 'null'}`;
+    // ✅ CRIAR HASH ÚNICO (INCLUINDO NOVOS CAMPOS RELEVANTES)
+    const hashData = `${dataReferencia}-${item.COD_LOCAL_TERMINAL_SEC}-${item.CODIGOLINHA}-${item.FLG_SENTIDO}-${item.COD_SERVICO_COMPLETO}-${item.COD_ATIVIDADE}-${item.COD_MOTORISTA}-${item.COD_COBRADOR}-${item.HOR_SAIDA}-${item.HOR_CHEGADA}`;
     const hashDados = createHash('sha256').update(hashData).digest('hex');
 
     return {
@@ -256,55 +345,59 @@ export class ViagensGlobusService {
       codLocalTerminalSec: item.COD_LOCAL_TERMINAL_SEC || 0,
       codigoLinha: item.CODIGOLINHA || 'N/A',
       nomeLinha: item.NOMELINHA || 'Linha não identificada',
+      codDestinoLinha: item.COD_DESTINO_LINHA || null,
+      localDestinoLinha: item.LOCAL_DESTINO_LINHA || null, // Usar o novo campo
       flgSentido: item.FLG_SENTIDO || 'C',
       dataViagem: new Date(dataReferencia),
       horSaida,
       horChegada,
-      horSaidaTime: horSaida ? horSaida.toTimeString().split(' ')[0] : null,
-      horChegadaTime: horChegada ? horChegada.toTimeString().split(' ')[0] : null,
+      horSaidaTime: item.HOR_SAIDA || null, // Agora vem como string formatada
+      horChegadaTime: item.HOR_CHEGADA || null, // Agora vem como string formatada
       codOrigemViagem: item.COD_ORIGEM_VIAGEM || null,
       localOrigemViagem: item.LOCAL_ORIGEM_VIAGEM || null,
       codServicoCompleto: item.COD_SERVICO_COMPLETO || null,
       codServicoNumero: item.COD_SERVICO_NUMERO || null,
+      codAtividade: item.COD_ATIVIDADE || null,
+      nomeAtividade: item.NOME_ATIVIDADE || null,
+      flgTipo: item.FLG_TIPO || null,
       prefixoVeiculo: item.PREFIXO_VEICULO || null,
+      codMotoristaGlobus: item.COD_MOTORISTA || null,
       crachaMotoristaGlobus: item.CRACHA_MOTORISTA || null,
+      chapaFuncMotorista: item.CHAPAFUNC_MOTORISTA || null,
       nomeMotorista: item.NOME_MOTORISTA || null,
+      codCobradorGlobus: item.COD_COBRADOR || null,
       crachaCobradorGlobus: item.CRACHA_COBRADOR || null,
+      chapaFuncCobrador: item.CHAPAFUNC_COBRADOR || null,
       nomeCobrador: item.NOME_COBRADOR || null,
-      codLocalDestinoLinha: item.COD_LOCAL_DESTINO_LINHA || null,
-      localDestinoLinha: item.LOCAL_DESTINO_LINHA || null,
-      descTipoDia: item.DESC_TIPO_DIA || null,
+      descTipoDia: item.DESC_TIPODIA || null, // Usar o novo campo
       totalHorarios: item.TOTAL_HORARIOS || 0,
       duracaoMinutos,
       dataReferencia,
       hashDados,
       sentidoTexto,
       periodoDoDia,
-      temCobrador: !!(item.CRACHA_COBRADOR && item.NOME_COBRADOR),
+      temCobrador: !!(item.COD_COBRADOR && item.NOME_COBRADOR), // Usar COD_COBRADOR
       origemDados: 'ORACLE_GLOBUS'
     };
   }
 
   // ✅ PROCESSAR HORÁRIO DO ORACLE (REMOVE DATA 1900)
-  private processarHorarioOracle(horarioOracle: any): Date | null {
+  private processarHorarioOracle(horarioOracle: string | null, dataReferencia: string): Date | null {
     if (!horarioOracle) return null;
 
     try {
-      const data = new Date(horarioOracle);
-      
-      // ✅ CRIAR NOVA DATA APENAS COM HORÁRIO (DATA ATUAL)
-      const hoje = new Date();
-      const novaData = new Date(
-        hoje.getFullYear(),
-        hoje.getMonth(),
-        hoje.getDate(),
-        data.getHours(),
-        data.getMinutes(),
-        data.getSeconds()
-      );
+      // dataReferencia is in 'YYYY-MM-DD' format
+      // horarioOracle is in 'HH:MI:SS' format
+      const dateTimeString = `${dataReferencia}T${horarioOracle}`;
+      const data = new Date(dateTimeString);
 
-      return novaData;
+      // Check if the date is valid
+      if (isNaN(data.getTime())) {
+        throw new Error('Invalid date/time format');
+      }
+      return data;
     } catch (error) {
+      this.logger.error(`Erro ao processar horário Oracle '${horarioOracle}' para data '${dataReferencia}': ${error.message}`);
       return null;
     }
   }

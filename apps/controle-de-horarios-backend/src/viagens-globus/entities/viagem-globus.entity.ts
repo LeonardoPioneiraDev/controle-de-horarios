@@ -20,6 +20,12 @@ export class ViagemGlobus {
   @Column({ name: 'nome_linha', type: 'varchar', length: 200 })
   nomeLinha: string;
 
+  @Column({ name: 'cod_destino_linha', type: 'integer', nullable: true })
+  codDestinoLinha: number;
+
+  @Column({ name: 'local_destino_linha', type: 'varchar', length: 100, nullable: true })
+  localDestinoLinha: string;
+
   @Column({ name: 'flg_sentido', type: 'varchar', length: 1 })
   flgSentido: string;
 
@@ -50,26 +56,44 @@ export class ViagemGlobus {
   @Column({ name: 'cod_servico_numero', type: 'varchar', length: 20, nullable: true })
   codServicoNumero: string;
 
+  @Column({ name: 'cod_atividade', type: 'integer', nullable: true })
+  codAtividade: number;
+
+  @Column({ name: 'nome_atividade', type: 'varchar', length: 50, nullable: true })
+  nomeAtividade: string;
+
+  @Column({ name: 'flg_tipo', type: 'varchar', length: 1, nullable: true })
+  flgTipo: string;
+
   @Column({ name: 'prefixo_veiculo', type: 'varchar', length: 20, nullable: true })
   prefixoVeiculo: string;
+
+  @Column({ name: 'cod_motorista_globus', type: 'integer', nullable: true })
+  codMotoristaGlobus: number;
 
   @Column({ name: 'cracha_motorista_globus', type: 'integer', nullable: true })
   crachaMotoristaGlobus: number;
 
+  @Column({ name: 'chapa_func_motorista', type: 'varchar', length: 20, nullable: true })
+  chapaFuncMotorista: string;
+
   @Column({ name: 'nome_motorista', type: 'varchar', length: 100, nullable: true })
   nomeMotorista: string;
 
+  @Column({ name: 'cod_cobrador_globus', type: 'integer', nullable: true })
+  codCobradorGlobus: number;
+
   @Column({ name: 'cracha_cobrador_globus', type: 'integer', nullable: true })
   crachaCobradorGlobus: number;
+
+  @Column({ name: 'chapa_func_cobrador', type: 'varchar', length: 20, nullable: true })
+  chapaFuncCobrador: string;
 
   @Column({ name: 'nome_cobrador', type: 'varchar', length: 100, nullable: true })
   nomeCobrador: string;
 
   @Column({ name: 'cod_local_destino_linha', type: 'integer', nullable: true })
   codLocalDestinoLinha: number;
-
-  @Column({ name: 'local_destino_linha', type: 'varchar', length: 100, nullable: true })
-  localDestinoLinha: string;
 
   @Column({ name: 'desc_tipo_dia', type: 'varchar', length: 50, nullable: true })
   descTipoDia: string;

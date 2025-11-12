@@ -60,6 +60,54 @@ export class FiltrosViagemGlobusDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  codDestinoLinha?: number;
+
+  @IsOptional()
+  @IsString()
+  localDestinoLinha?: string;
+
+  @IsOptional()
+  @IsString()
+  descTipoDia?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  codAtividade?: number;
+
+  @IsOptional()
+  @IsString()
+  nomeAtividade?: string;
+
+  @IsOptional()
+  @IsString()
+  flgTipo?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  codMotoristaGlobus?: number;
+
+  @IsOptional()
+  @IsString()
+  chapaFuncMotorista?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  codCobradorGlobus?: number;
+
+  @IsOptional()
+  @IsString()
+  chapaFuncCobrador?: string;
+
+  @IsOptional()
+  @IsString()
+  prefixoVeiculo?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   @Min(1)
   @Max(10000)
   limite?: number = 1000;

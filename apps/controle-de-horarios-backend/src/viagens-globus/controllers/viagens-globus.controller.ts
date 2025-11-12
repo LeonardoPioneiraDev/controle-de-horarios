@@ -45,28 +45,7 @@ export class ViagensGlobusController {
     const viagens = await this.viagensGlobusService.buscarViagensPorData(data, filtros);
     const executionTime = Date.now() - startTime;
 
-    // ✅ SE NÃO ENCONTROU DADOS, TENTAR SINCRONIZAR
-    if (viagens.length === 0 && filtros.salvarLocal !== false) {
-      this.logger.log(`📥 Nenhuma viagem encontrada, tentando sincronizar...`);
-      
-      try {
-        await this.viagensGlobusService.sincronizarViagensPorData(data);
-        const viagensAposSincronizacao = await this.viagensGlobusService.buscarViagensPorData(data, filtros);
-        
-        return {
-          success: true,
-          message: 'Viagens sincronizadas e encontradas com sucesso',
-          data: viagensAposSincronizacao,
-          count: viagensAposSincronizacao.length,
-          executionTime: `${Date.now() - startTime}ms`,
-          source: 'POSTGRESQL_AFTER_SYNC',
-          filters: filtros,
-          sincronizado: true
-        };
-      } catch (error: any) {
-        this.logger.error(`❌ Erro na sincronização automática: ${error.message}`);
-      }
-    }
+
 
     return {
       success: true,
