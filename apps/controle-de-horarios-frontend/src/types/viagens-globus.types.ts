@@ -10,21 +10,27 @@ export interface ViagemGlobus {
   horChegada: string;
   horSaidaTime: string;
   horChegadaTime: string;
-  codLocalidade: number;
+  codOrigemViagem?: number;
   localOrigemViagem: string;
+  codDestinoLinha?: number;
+  localDestinoLinha?: string;
   codServicoCompleto: string;
   codServicoNumero: string;
-  codMotorista: number;
+  codMotorista?: number;
+  crachaMotoristaGlobus?: number;
   nomeMotorista: string;
-  codCobrador: number;
+  codCobrador?: number;
+  crachaCobradorGlobus?: number;
   nomeCobrador: string;
   totalHorarios: number;
   duracaoMinutos: number;
   dataReferencia: string;
+  descTipoDia?: string;
   sentidoTexto: string;
   periodoDoDia: string;
   temCobrador: boolean;
   origemDados: string;
+  prefixoVeiculo?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,21 +53,35 @@ export interface SincronizacaoGlobus {
 export type SentidoGlobus = 'I' | 'V' | 'C';
 
 export interface FiltrosViagemGlobus {
-  data_viagem?: string;
-  setores?: string[];
-  codigo_linha?: string[]; // Changed to string[]
-  nome_linha?: string;
-  sentido_texto?: string;
-  setor_principal_linha?: string;
-  local_origem_viagem?: string;
-  cod_servico_numero?: string;
-  nome_motorista?: string;
-  nome_cobrador?: string;
+  dataViagem?: string;
+  setores?: number[];
+  setorPrincipal?: string;
+  codigoLinha?: string;
+  nomeLinha?: string;
+  sentido?: 'I' | 'V' | 'C';
+  localOrigemViagem?: string;
+  codServicoNumero?: string;
+  nomeMotorista?: string;
+  nomeCobrador?: string;
+  codDestinoLinha?: number;
+  localDestinoLinha?: string;
+  descTipoDia?: string;
+  codAtividade?: number;
+  nomeAtividade?: string;
+  flgTipo?: string; // 'R' | 'S'
+  codMotoristaGlobus?: number;
+  chapaFuncMotorista?: string;
+  codCobradorGlobus?: number;
+  chapaFuncCobrador?: string;
+  prefixoVeiculo?: string;
+  apenasComCobrador?: boolean;
   horarioInicio?: string;
   horarioFim?: string;
+  buscaTexto?: string;
   limite?: number;
-  pagina?: number;
-  incluir_estatisticas?: boolean;
-  salvar_local?: boolean;
-  periodo_do_dia?: string;
+  page?: number;
+  incluirEstatisticas?: boolean;
+  salvarLocal?: boolean;
+  ordenarPor?: string;
+  ordem?: 'ASC' | 'DESC';
 }

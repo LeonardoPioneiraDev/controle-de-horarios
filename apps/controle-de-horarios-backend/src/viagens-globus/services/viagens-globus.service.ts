@@ -1,7 +1,7 @@
-// src/viagens-globus/services/viagens-globus.service.ts
+﻿// src/viagens-globus/services/viagens-globus.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm'; // ✅ CORRIGIDO: Importar In
+import { Repository } from 'typeorm'; // ✅ CORRIGIDO: Importar In
 import { ViagemGlobus } from '../entities/viagem-globus.entity';
 import { FiltrosViagemGlobusDto } from '../dto/filtros-viagem-globus.dto';
 import { OracleService } from '../../database/oracle/services/oracle.service';
@@ -131,6 +131,48 @@ export class ViagensGlobusService {
       });
     }
 
+    if (filtros?.localOrigemViagem) {
+      queryBuilder.andWhere('viagem.localOrigemViagem ILIKE :localOrigemViagem', {
+        localOrigemViagem: `%${filtros.localOrigemViagem}%`
+      });
+    }
+
+    if (filtros?.codServicoNumero) {
+      queryBuilder.andWhere('viagem.codServicoNumero ILIKE :codServicoNumero', {
+        codServicoNumero: `%${filtros.codServicoNumero}%`
+      });
+    }
+
+    if (filtros?.nomeCobrador) {
+      queryBuilder.andWhere('viagem.nomeCobrador ILIKE :nomeCobrador', {
+        nomeCobrador: `%${filtros.nomeCobrador}%`
+      });
+    }
+
+    if (filtros?.apenasComCobrador) {
+      queryBuilder.andWhere('viagem.temCobrador = :temCobrador', { temCobrador: true });
+    }
+
+    if (filtros?.horarioInicio) {
+      queryBuilder.andWhere("to_char(viagem.horSaida, 'HH24:MI') >= :horarioInicio", { horarioInicio: filtros.horarioInicio });
+    }
+
+    if (filtros?.horarioFim) {
+      queryBuilder.andWhere("to_char(viagem.horChegada, 'HH24:MI') <= :horarioFim", { horarioFim: filtros.horarioFim });
+    }
+
+    if (filtros?.buscaTexto) {
+      queryBuilder.andWhere(
+        '(viagem.nomeLinha ILIKE :buscaTexto OR ' +
+        'viagem.nomeMotorista ILIKE :buscaTexto OR ' +
+        'viagem.nomeCobrador ILIKE :buscaTexto OR ' +
+        'viagem.codigoLinha ILIKE :buscaTexto OR ' +
+        'viagem.codServicoNumero ILIKE :buscaTexto OR ' +
+        'viagem.prefixoVeiculo ILIKE :buscaTexto)',
+        { buscaTexto: `%${filtros.buscaTexto}%` }
+      );
+    }
+
     // ✅ PAGINAÇÃO
     if (filtros?.limite) {
       queryBuilder.limit(filtros.limite);
@@ -145,6 +187,19 @@ export class ViagensGlobusService {
       .orderBy('viagem.setorPrincipal', 'ASC')
       .addOrderBy('viagem.codigoLinha', 'ASC')
       .addOrderBy('viagem.horSaida', 'ASC');
+
+    // Override ordenação se parâmetros válidos forem fornecidos
+    if (filtros?.ordenarPor && filtros?.ordem) {
+      const allowedOrderColumns = new Set<string>([
+        'setorPrincipal', 'codigoLinha', 'nomeLinha', 'flgSentido', 'dataViagem',
+        'descTipoDia', 'horSaida', 'horChegada', 'localOrigemViagem', 'codServicoNumero',
+        'nomeMotorista', 'nomeCobrador', 'codAtividade', 'nomeAtividade', 'periodoDoDia', 'totalHorarios',
+      ]);
+      if (allowedOrderColumns.has(filtros.ordenarPor)) {
+        queryBuilder.orderBy(`viagem.${filtros.ordenarPor}` as any, filtros.ordem as any)
+          .addOrderBy('viagem.codigoLinha', 'ASC');
+      }
+    }
 
     const viagens = await queryBuilder.getMany();
     
@@ -707,3 +762,5 @@ ORDER BY
     };
   }
 }
+
+
