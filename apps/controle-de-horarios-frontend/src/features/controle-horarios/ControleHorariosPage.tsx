@@ -220,13 +220,13 @@ export const ControleHorariosPage: React.FC = () => {
           <th>Serviço</th>
           <th>Saída</th>
           <th>Chegada</th>
-          <th>Motorista (Atual)</th>
-          <th>Crachá Motorista (Atual)</th>
+          <th>Motorista (Substituto)</th>
+          <th>Crachá Motorista (Substituto)</th>
           <th>Motorista (Original)</th>
           <th>Crachá Motorista (Original)</th>
           <th>Carro</th>
-          <th>Cobrador (Atual)</th>
-          <th>Crachá Cobrador (Atual)</th>
+          <th>Cobrador (Substituto)</th>
+          <th>Crachá Cobrador (Substituto)</th>
           <th>Cobrador (Original)</th>
           <th>Crachá Cobrador (Original)</th>
         </tr>
