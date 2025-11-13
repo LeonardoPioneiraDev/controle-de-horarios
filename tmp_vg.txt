@@ -91,7 +91,7 @@ const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, on
         title="Sincronizar dados do dia selecionado?"
         description={
           <span>
-            Ao sincronizar, os dados <strong>existentes</strong> do dia selecionado ser√£o
+            Ao sincronizar, os dados <strong>existentes</strong> do dia selecionado ser„o
             apagados antes de importar novos, para evitar <strong>duplicidades</strong>.
             Deseja continuar?
           </span>
@@ -123,7 +123,7 @@ const DateAndStatus = ({ date, onDateChange, status }: any) => (
             <div>
               <span className="text-gray-400">Status: </span>
               <span className={`font-semibold ${status.existeNoBanco ? 'text-green-400' : 'text-red-400'}`}>
-                {status.existeNoBanco ? 'Dados Dispon√≠veis' : 'Sem Dados'}
+                {status.existeNoBanco ? 'Dados DisponÌveis' : 'Sem Dados'}
               </span>
             </div>
             {status.totalRegistros > 0 && (
@@ -136,7 +136,7 @@ const DateAndStatus = ({ date, onDateChange, status }: any) => (
             )}
             {status.ultimaAtualizacao && (
               <div>
-                <span className="text-gray-400">√öltima Atualiza√ß√£o: </span>
+                <span className="text-gray-400">⁄ltima AtualizaÁ„o: </span>
                 <span className="font-semibold text-gray-200">
                   {new Date(status.ultimaAtualizacao).toLocaleString('pt-BR')}
                 </span>
@@ -186,9 +186,9 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
             className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <option value="">Todos</option>
-            <option value="I">Ida</option>
-            <option value="V">Volta</option>
-            <option value="C">Circular</option>
+            <option value="IDA">Ida</option>
+            <option value="VOLTA">Volta</option>
+            <option value="CIRCULAR">Circular</option>
           </select>
         </div>
         <div>
@@ -201,7 +201,7 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
           />
         </div>
         <div>
-          <Label htmlFor="horarioInicio">Hor√°rio In√≠cio</Label>
+          <Label htmlFor="horarioInicio">Hor·rio InÌcio</Label>
           <Input
             id="horarioInicio"
             type="time"
@@ -210,7 +210,7 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
           />
         </div>
         <div>
-          <Label htmlFor="horarioFim">Hor√°rio Fim</Label>
+          <Label htmlFor="horarioFim">Hor·rio Fim</Label>
           <Input
             id="horarioFim"
             type="time"
@@ -228,7 +228,7 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
           />
         </div>
         <div>
-          <Label htmlFor="codServicoNumero">Servi√ßo</Label>
+          <Label htmlFor="codServicoNumero">ServiÁo</Label>
           <Input
             id="codServicoNumero"
             type="text"
@@ -260,7 +260,7 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
           <Input
             id="buscaTexto"
             type="text"
-            placeholder="Linha, motorista, cobrador, servi√ßo..."
+            placeholder="Linha, motorista, cobrador, serviÁo..."
             value={filters.buscaTexto || ''}
             onChange={(e) => onFilterChange('buscaTexto', e.target.value || undefined)}
           />
@@ -291,7 +291,7 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
 
     const getPeriodoColor = (periodo: string | undefined) => {
         switch (periodo) {
-        case 'MANH√É':
+        case 'MANH√':
             return 'text-yellow-400 bg-yellow-900/50 border-yellow-500/30';
         case 'TARDE':
             return 'text-orange-400 bg-orange-900/50 border-orange-500/30';
@@ -310,9 +310,9 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
             return 'text-red-400 bg-red-900/50 border-red-500/30';
         case 'SANTA MARIA':
             return 'text-blue-400 bg-blue-900/50 border-blue-500/30';
-        case 'PARANO√Å':
+        case 'PARANO¡':
             return 'text-green-400 bg-green-900/50 border-green-500/30';
-        case 'S√ÉO SEBASTI√ÉO':
+        case 'S√O SEBASTI√O':
             return 'text-purple-400 bg-purple-900/50 border-purple-500/30';
         default:
             return 'text-gray-400 bg-gray-700/50 border-gray-500/30';
@@ -347,7 +347,7 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
             <table className="min-w-full divide-y divide-yellow-400/20">
                 <thead>
                 <tr>
-                    {['Setor', 'Linha', 'Servi√ßo', 'Sentido', 'Hor√°rio Sa√≠da', 'Hor√°rio Chegada', 'Motorista', 'Cobrador', 'Carro', 'Local Origem', 'Local Destino', 'Tipo Dia', 'Per√≠odo'].map(header => (
+                    {['Setor', 'Linha', 'ServiÁo', 'Sentido', 'Hor·rio SaÌda', 'Hor·rio Chegada', 'Motorista', 'Cobrador', 'Carro', 'Local Origem', 'Local Destino', 'Tipo Dia', 'PerÌodo'].map(header => (
                     <th key={header} className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                         {header}
                     </th>
@@ -394,7 +394,7 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
                                     </div>
                                     {viagem.crachaMotoristaGlobus && (
                                     <div className="flex items-center text-xs text-gray-500 mt-1">
-                                        <span>Crach√°: {viagem.crachaMotoristaGlobus}</span>
+                                        <span>Crach·: {viagem.crachaMotoristaGlobus}</span>
                                     </div>
                                     )}
                                 </>
@@ -413,7 +413,7 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
                                     </div>
                                     {viagem.crachaCobradorGlobus && (
                                     <div className="flex items-center text-xs text-gray-500 mt-1">
-                                        <span>Crach√°: {viagem.crachaCobradorGlobus}</span>
+                                        <span>Crach·: {viagem.crachaCobradorGlobus}</span>
                                     </div>
                                     )}
                                 </>
@@ -472,11 +472,11 @@ const ViagensTable = ({ viagens, loading, formatTime }: { viagens: ControleHorar
                             <p className={`font-medium inline-flex px-2 py-1 text-xs rounded-full border ${getSentidoColor(viagem.sentido_texto)}`}>{viagem.sentido_texto}</p>
                         </div>
                         <div>
-                            <p className="text-gray-400">Per√≠odo</p>
+                            <p className="text-gray-400">PerÌodo</p>
                             <p className={`font-medium inline-flex px-2 py-1 text-xs rounded-full border ${getPeriodoColor(viagem.periodo_do_dia)}`}>{viagem.periodo_do_dia}</p>
                         </div>
                         <div>
-                            <p className="text-gray-400">Sa√≠da</p>
+                            <p className="text-gray-400">SaÌda</p>
                             <p className="text-gray-200 font-medium flex items-center">
                                 <Clock size={14} className="mr-1.5 text-gray-500" />
                                 {formatTime(viagem.horaSaida)}
@@ -525,10 +525,10 @@ const NoData = ({ onSync, synchronizing, onTestOracle, testingOracle, isAdmin }:
     <CardContent className="p-8">
         <Calendar className="mx-auto h-12 w-12 text-gray-500" />
         <h3 className="mt-4 text-xl font-semibold text-gray-200">
-        Dados n√£o dispon√≠veis para esta data
+        Dados n„o disponÌveis para esta data
         </h3>
         <p className="mt-2 text-md text-gray-400">
-        Clique no bot√£o abaixo para buscar os dados do Oracle Globus.
+        Clique no bot„o abaixo para buscar os dados do Oracle Globus.
         </p>
         <div className="mt-6 flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4">
             {isAdmin && (
@@ -556,13 +556,13 @@ const NoData = ({ onSync, synchronizing, onTestOracle, testingOracle, isAdmin }:
   </GlowingCard>
 );
 
-// Mensagem clara quando n√£o h√° dados para a data selecionada
+// Mensagem clara quando n„o h· dados para a data selecionada
 const NoDataGlobus = ({ onSync, synchronizing, onTestOracle, testingOracle, isAdmin }: any) => (
   <GlowingCard className="text-center">
     <CardContent className="p-8">
       <Calendar className="mx-auto h-12 w-12 text-gray-500" />
-      <h3 className="mt-4 text-xl font-semibold text-gray-200">N√£o h√° dados para esta data</h3>
-      <p className="mt-2 text-md text-gray-400">Fa√ßa a sincroniza√ß√£o para carregar os dados deste dia.</p>
+      <h3 className="mt-4 text-xl font-semibold text-gray-200">N„o h· dados para esta data</h3>
+      <p className="mt-2 text-md text-gray-400">FaÁa a sincronizaÁ„o para carregar os dados deste dia.</p>
       <div className="mt-6 flex flex-col sm:flex-row justify-center items-center space-y-3 sm:space-y-0 sm:space-x-4">
         {isAdmin && (
           <Button
@@ -697,14 +697,7 @@ const mapViagemGlobusToItem = (v: ViagemGlobus): ControleHorarioItem => {
   };
 };
 
-const initialFilters: FiltrosViagemGlobus = {
-  page: 1,
-  limite: 100,
-  setorPrincipal: undefined,
-  codigoLinha: undefined,
-  sentido: undefined,
-  nomeMotorista: undefined,
-};
+const initialFilters: FiltrosViagemGlobus = {\n  page: 1,\n  limite: 100,\n  setorPrincipal: undefined,\n  codigoLinha: undefined,\n  sentido: undefined,\n  nomeMotorista: undefined,\n};
 
 export const ViagensGlobus: React.FC = () => {
   const { user } = useAuth();
@@ -722,7 +715,6 @@ export const ViagensGlobus: React.FC = () => {
   const [testingOracle, setTestingOracle] = useState(false);
   const [oracleStatus, setOracleStatus] = useState<any>(null);
   const isAdmin = isAtLeast(user?.role, UserRole.ADMINISTRADOR);
-  const [pagination, setPagination] = useState<{ total: number; page: number; limit: number; totalPages: number }>({ total: 0, page: initialFilters.page || 1, limit: initialFilters.limite || 100, totalPages: 1 });
 
   const loadInitialData = useCallback(async () => {
     setLoading(true);
@@ -733,27 +725,30 @@ export const ViagensGlobus: React.FC = () => {
 
       if (status.existeNoBanco) {
         console.log('loadInitialData: Current filters before service call:', filtros);
-        // Buscar diretamente no endpoint de viagens Globus, evitando controle-hor√°rios aqui
-        try {
-          const [viagensResponse, setoresResponse, linhasResponse] = await Promise.all([
-            viagensGlobusService.getViagens(selectedDate, filtros),
-            viagensGlobusService.getSetores(selectedDate),
-            viagensGlobusService.getLinhas(selectedDate),
-          ]);
+        const [controleHorariosResponse, setoresResponse, linhasResponse] = await Promise.all([
+          controleHorariosService.buscarControleHorarios(selectedDate, filtros),
+          viagensGlobusService.getSetores(selectedDate),
+          viagensGlobusService.getLinhas(selectedDate),
+        ]);
 
-          const listaGlobus = viagensResponse?.data || [];
-          const mappedViagens = listaGlobus.map(mapViagemGlobusToItem);
-          setViagens(mappedViagens);
-          setSetores(setoresResponse);
-          setLinhas(linhasResponse);
-          setPagination({ total: viagensResponse.total || 0, page: viagensResponse.page || (filtros.page || 1), limit: viagensResponse.limit || (filtros.limite || 100), totalPages: viagensResponse.totalPages || 1 });
-          return;
-        } catch (e) {
-          console.warn('Falha ao buscar viagens Globus:', (e as any)?.message || e);
-          // Evita fallback para controle-horarios aqui; mant√©m UI est√°vel
-          setViagens([]);
-          return;
+        let lista: ControleHorario[] = controleHorariosResponse?.data || [];
+        console.log('loadInitialData: Raw data from service (controleHorariosResponse.data):', lista);
+
+        if ((lista.length === 0) && (status.totalRegistros > 0)) {
+          try {
+            await controleHorariosService.sincronizarViagensGlobus(selectedDate);
+            const refreshed = await controleHorariosService.buscarControleHorarios(selectedDate, filtros);
+            lista = refreshed?.data || [];
+          } catch (syncErr: any) {
+            console.warn('Falha na sincronizaÁ„o autom·tica de controle-hor·rios:', syncErr?.message || syncErr);
+          }
         }
+
+        const mappedViagens = lista.map(mapToControleHorarioItem);
+        console.log('loadInitialData: Mapped data (mappedViagens):', mappedViagens);
+        setViagens(mappedViagens);
+        setSetores(setoresResponse);
+        setLinhas(linhasResponse);
       } else {
         setViagens([]);
       }
@@ -774,11 +769,11 @@ export const ViagensGlobus: React.FC = () => {
     setSuccess('');
     try {
       const result = await viagensGlobusService.sincronizarViagens(selectedDate);
-      setSuccess(`Sincroniza√ß√£o conclu√≠da: ${result.sincronizadas} viagens processadas.`);
-      toast.success(`Sincroniza√ß√£o conclu√≠da: ${result.sincronizadas} viagens processadas.`);
+      setSuccess(`SincronizaÁ„o concluÌda: ${result.sincronizadas} viagens processadas.`);
+      toast.success(`SincronizaÁ„o concluÌda: ${result.sincronizadas} viagens processadas.`);
       await loadInitialData();
     } catch (err: any) {
-      const errorMessage = err.message || 'Erro na sincroniza√ß√£o.';
+      const errorMessage = err.message || 'Erro na sincronizaÁ„o.';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -795,14 +790,14 @@ export const ViagensGlobus: React.FC = () => {
       const result = await viagensGlobusService.testarConexaoOracle();
       setOracleStatus(result);
       if (result.success) {
-        setSuccess('Conex√£o com Oracle bem-sucedida!');
-        toast.success('Conex√£o com Oracle bem-sucedida!');
+        setSuccess('Conex„o com Oracle bem-sucedida!');
+        toast.success('Conex„o com Oracle bem-sucedida!');
       } else {
-        setError(result.message || 'Falha ao testar conex√£o com Oracle.');
-        toast.error(result.message || 'Falha ao testar conex√£o com Oracle.');
+        setError(result.message || 'Falha ao testar conex„o com Oracle.');
+        toast.error(result.message || 'Falha ao testar conex„o com Oracle.');
       }
     } catch (err: any) {
-      const errorMessage = err.message || 'Erro ao testar conex√£o com Oracle.';
+      const errorMessage = err.message || 'Erro ao testar conex„o com Oracle.';
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -811,7 +806,15 @@ export const ViagensGlobus: React.FC = () => {
   };
 
   const handleFilterChange = (key: keyof FiltrosViagemGlobus, value: any) => {
-    const newFilters: FiltrosViagemGlobus = { ...filtros, [key]: value, page: 1 };
+    let newFilters: FiltrosViagemGlobus;
+    if (key === 'codigo_linha' && value !== undefined) {
+      newFilters = { ...filtros, [key]: [value], pagina: 1 };
+    } else if (key === 'codigo_linha' && value === undefined) {
+      newFilters = { ...filtros, [key]: undefined, pagina: 1 };
+    }
+    else {
+      newFilters = { ...filtros, [key]: value, pagina: 1 };
+    }
     console.log('handleFilterChange: New filters after update:', newFilters);
     setFiltros(newFilters);
   };
@@ -873,7 +876,7 @@ export const ViagensGlobus: React.FC = () => {
                 </Alert>
             )}
 
-<DateAndStatus
+            <DateAndStatus
                 date={selectedDate}
                 onDateChange={setSelectedDate}
                 status={statusDados}
@@ -902,29 +905,6 @@ export const ViagensGlobus: React.FC = () => {
                             loading={loading}
                             formatTime={formatTime}
                         />
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-3 p-4 border-t border-yellow-400/20">
-                          <div className="text-sm text-gray-400">
-                            Total: <span className="text-gray-200 font-semibold">{pagination.total}</span>
-                            <span className="mx-2">|</span>
-                            P√°gina <span className="text-gray-200 font-semibold">{pagination.page}</span> de <span className="text-gray-200 font-semibold">{pagination.totalPages}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              disabled={(filtros.page || 1) <= 1}
-                              onClick={() => setFiltros({ ...filtros, page: Math.max(1, (filtros.page || 1) - 1) })}
-                            >
-                              Anterior
-                            </Button>
-                            <Button
-                              variant="outline"
-                              disabled={(filtros.page || 1) >= pagination.totalPages}
-                              onClick={() => setFiltros({ ...filtros, page: Math.min(pagination.totalPages, (filtros.page || 1) + 1) })}
-                            >
-                              Pr√≥xima
-                            </Button>
-                          </div>
-                        </div>
                     </CardContent>
                 </GlowingCard>
             ) : (
@@ -940,3 +920,6 @@ export const ViagensGlobus: React.FC = () => {
     </div>
   );
 };
+
+
+

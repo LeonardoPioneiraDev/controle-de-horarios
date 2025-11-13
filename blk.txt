@@ -1,0 +1,26 @@
+    }
+
+    if (filtros?.pagina && filtros?.limite) {
+      queryBuilder.offset((filtros.pagina - 1) * filtros.limite);
+    }
+
+    // ? ORDENAÇÃO
+    if (filtros?.ordenar_por && filtros?.ordem) {
+      let orderByColumn = filtros.ordenar_por;
+      // Mapear propriedades da entidade para nomes de coluna do banco de dados, se necessário
+      if (orderByColumn.toLowerCase() === 'desc_tipodia') {
+        orderByColumn = 'desc_tipodia';
+      } else if (orderByColumn === 'codigo_linha') {
+        orderByColumn = 'codigo_linha';
+      } else if (orderByColumn === 'nome_motorista') {
+        orderByColumn = 'nome_motorista';
+      }
+      queryBuilder.orderBy(`controle.${orderByColumn}`, filtros.ordem);
+    } else {
+      queryBuilder
+        .orderBy('controle.setor_principal_linha', 'ASC')
+        .addOrderBy('controle.codigo_linha', 'ASC')
+        .addOrderBy('controle.hor_saida', 'ASC');
+    }
+
+    const horarios = await queryBuilder.getMany();

@@ -58,6 +58,7 @@ export const ControleHorariosPage: React.FC = () => {
     setTipoLocal,
     statusEdicaoLocal,
     setStatusEdicaoLocal,
+    salvarFiltrosManualmente,
   } = useControleHorarios();
 
   const { user } = useAuth();
@@ -362,6 +363,9 @@ export const ControleHorariosPage: React.FC = () => {
                 </Button>
                 <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }}>
                   Limpar Filtros
+                </Button>
+                <Button variant="outline" onClick={salvarFiltrosManualmente}>
+                  Salvar Filtros
                 </Button>
                 <Button variant="outline" onClick={() => setShowReport(true)}>
                   <FileText className="h-4 w-4 mr-2" /> Gerar Relatório

@@ -20,6 +20,9 @@ import HistoricoComparacoes from './pages/HistoricoComparacoes';
 import { ControleHorariosPage } from './features/controle-horarios/ControleHorariosPage';
 import { UserRole } from './types/user.types';
 
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 function App() {
   return (
     <AuthProvider>
@@ -126,6 +129,7 @@ function App() {
           {/* Catch all route */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
+        <ToastContainer />
       </Router>
     </AuthProvider>
   );

@@ -1,0 +1,162 @@
+        const loteProcessado = lote.map(item => this.processarDadosOracle(item, dataReferencia));
+        
+        // Filter out duplicates based on hash_dados within the current batch
+        const uniqueLoteProcessado = Array.from(new Map(loteProcessado.map(item => [item.hash_dados, item])).values());
+
+        try {
+          await this.controleHorarioRepository.upsert(
+            uniqueLoteProcessado, // Use the unique list here
+            {
+              conflictPaths: ['hash_dados'],
+              skipUpdateIfNoValuesChanged: true,
+            },
+          );
+          novas += uniqueLoteProcessado.length; // Count unique items
+        } catch (error: any) {
+          this.logger.error(`? Erro ao salvar/atualizar lote (upsert): ${error.message}`);
+          erros += uniqueLoteProcessado.length; // Count unique items that caused error
+        }
+
+        if (i % (BATCH_SIZE * 10) === 0) {
+          this.logger.log(`?? Processados ${i + BATCH_SIZE}/${dadosOracle.length} registros...`);
+        }
+      }
+
+      const sincronizadas = novas;
+
+      this.logger.log(`? Sincronização de controle de horários concluída: ${sincronizadas} total (${novas} novas, 0 atualizadas, 0 desativadas, ${erros} erros)`);
+
+      return { sincronizadas, novas, atualizadas: 0, erros, desativadas: 0 };
+
+    } catch (error: any) {
+      this.logger.error(`? Erro na sincronização de controle de horários: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private processarDadosOracle(item: any, dataReferencia: string): Partial<ControleHorario> {
+    const horSaida = this.processarHorarioOracle(item.HOR_SAIDA, dataReferencia);
+    const horChegada = this.processarHorarioOracle(item.HOR_CHEGADA, dataReferencia);
+
+    const sentidoTexto = this.determinarSentidoTexto(item.FLG_SENTIDO);
+    const periodoDoDia = this.determinarPeriodoDoDia(horSaida);
+
+    const controle = new ControleHorario();
+
+    controle.setor_principal_linha = item.SETOR_PRINCIPAL_LINHA || '';
+    controle.cod_local_terminal_sec = item.COD_LOCAL_TERMINAL_SEC || 0;
+    controle.codigo_linha = item.CODIGOLINHA || '';
+    if (!item.CODIGOLINHA) {
+      this.logger.warn(`CODIGOLINHA is missing for item: ${JSON.stringify(item)}`);
+    }
+    controle.nome_linha = item.NOMELINHA || '';
+    if (!item.NOMELINHA) {
+      this.logger.warn(`NOMELINHA is missing for item: ${JSON.stringify(item)}`);
+    }
+    controle.cod_destino_linha = item.COD_DESTINO_LINHA || null;
+    controle.local_destino_linha = item.LOCAL_DESTINO_LINHA || null;
+    controle.flg_sentido = item.FLG_SENTIDO || null;
+    controle.data_viagem = item.DATA_VIAGEM ? new Date(item.DATA_VIAGEM) : null;
+    controle.desc_tipodia = item.DESC_TIPODIA || null;
+    controle.hor_saida = horSaida;
+    if (!horSaida) {
+      this.logger.warn(`HOR_SAIDA is missing or invalid for item: ${JSON.stringify(item)}`);
+    }
+    controle.hor_chegada = horChegada;
+    if (!horChegada) {
+      this.logger.warn(`HOR_CHEGADA is missing or invalid for item: ${JSON.stringify(item)}`);
+    }
+    controle.cod_motorista = item.COD_MOTORISTA || null;
+    controle.nome_motorista = item.NOME_MOTORISTA || null;
+    controle.cracha_motorista = item.CRACHA_MOTORISTA || null;
+    controle.chapa_func_motorista = item.CHAPAFUNC_MOTORISTA || null;
+    controle.cod_cobrador = item.COD_COBRADOR || null;
+    controle.nome_cobrador = item.NOME_COBRADOR || null;
+    controle.cracha_cobrador = item.CRACHA_COBRADOR || null;
+    controle.chapa_func_cobrador = item.CHAPAFUNC_COBRADOR || null;
+    controle.total_horarios = item.TOTAL_HORARIOS || null;
+
+    // Novos campos - inicialmente nulos ou vazios, pois vêm da edição do frontend
+    controle.placaVeiculo = null;
+    controle.prefixo_veiculo = null;
+  private processarDadosOracle(item: any, dataReferencia: string): Partial<ControleHorario> {
+    const horSaida = this.processarHorarioOracle(item.HOR_SAIDA, dataReferencia);
+    const horChegada = this.processarHorarioOracle(item.HOR_CHEGADA, dataReferencia);
+
+    const sentidoTexto = this.determinarSentidoTexto(item.FLG_SENTIDO);
+    const periodoDoDia = this.determinarPeriodoDoDia(horSaida);
+
+    const controle = new ControleHorario();
+
+    controle.setor_principal_linha = item.SETOR_PRINCIPAL_LINHA || '';
+    controle.cod_local_terminal_sec = item.COD_LOCAL_TERMINAL_SEC || 0;
+    controle.codigo_linha = item.CODIGOLINHA || '';
+    if (!item.CODIGOLINHA) {
+      this.logger.warn(`CODIGOLINHA is missing for item: ${JSON.stringify(item)}`);
+    }
+    controle.nome_linha = item.NOMELINHA || '';
+    if (!item.NOMELINHA) {
+      this.logger.warn(`NOMELINHA is missing for item: ${JSON.stringify(item)}`);
+    }
+    controle.cod_destino_linha = item.COD_DESTINO_LINHA || null;
+    controle.local_destino_linha = item.LOCAL_DESTINO_LINHA || null;
+    controle.flg_sentido = item.FLG_SENTIDO || null;
+    controle.data_viagem = item.DATA_VIAGEM ? new Date(item.DATA_VIAGEM) : null;
+    controle.desc_tipodia = item.DESC_TIPODIA || null;
+    controle.hor_saida = horSaida;
+    if (!horSaida) {
+      this.logger.warn(`HOR_SAIDA is missing or invalid for item: ${JSON.stringify(item)}`);
+    }
+    controle.hor_chegada = horChegada;
+    if (!horChegada) {
+      this.logger.warn(`HOR_CHEGADA is missing or invalid for item: ${JSON.stringify(item)}`);
+    }
+    controle.cod_motorista = item.COD_MOTORISTA || null;
+    controle.nome_motorista = item.NOME_MOTORISTA || null;
+    controle.cracha_motorista = item.CRACHA_MOTORISTA || null;
+    controle.chapa_func_motorista = item.CHAPAFUNC_MOTORISTA || null;
+    controle.cod_cobrador = item.COD_COBRADOR || null;
+    controle.nome_cobrador = item.NOME_COBRADOR || null;
+    controle.cracha_cobrador = item.CRACHA_COBRADOR || null;
+    controle.chapa_func_cobrador = item.CHAPAFUNC_COBRADOR || null;
+    controle.total_horarios = item.TOTAL_HORARIOS || null;
+
+    // Novos campos - inicialmente nulos ou vazios, pois vêm da edição do frontend
+    controle.placaVeiculo = null;
+    controle.prefixo_veiculo = null;
+    controle.garagemVeiculo = null;
+    controle.motorista_substituto_nome = null;
+    controle.motorista_substituto_cracha = null;
+    controle.cobrador_substituto_nome = null;
+    controle.cobrador_substituto_cracha = null;
+    controle.observacoes_edicao = null;
+    controle.editado_por_nome = null;
+    controle.editado_por_email = null;
+
+    controle.data_referencia = dataReferencia;
+    controle.sentido_texto = sentidoTexto;
+    controle.periodo_do_dia = periodoDoDia;
+    controle.tem_cobrador = !!(item.COD_COBRADOR && item.NOME_COBRADOR);
+    controle.origem_dados = 'ORACLE_GLOBUS';
+    controle.is_ativo = true;
+
+    controle.hash_dados = controle.gerarHashDados();
+
+    return controle;
+  }
+
+  private processarHorarioOracle(horarioOracle: any, dataReferencia: string): Date | null {
+    if (!horarioOracle) return null;
+
+    // Parse dataReferencia to get year, month, day
+    const dateParts = dataReferencia.split('-').map(Number);
+    const year = dateParts[0];
+    // Month is 0-indexed in JavaScript Date
+    const month = dateParts[1] - 1;
+    const day = dateParts[2];
+
+    // Lida com o formato de string 'HH:MI:SS' vindo do TO_CHAR
+    if (typeof horarioOracle === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(horarioOracle)) {
+      try {
+        const [hours, minutes, seconds] = horarioOracle.split(':').map(Number);
+        // Construct a Date object in UTC to avoid local timezone shifts during creation

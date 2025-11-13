@@ -27,11 +27,11 @@ export const EditDriverCobradorModal: React.FC<EditDriverCobradorModalProps> = (
   useEffect(() => {
     if (isOpen) {
       if (field === 'motorista') {
-        setEditedCracha(viagem.crachaMotoristaEditado || viagem.crachaMotoristaGlobus || '');
+        setEditedCracha(String(viagem.crachaMotoristaEditado || viagem.crachaMotoristaGlobus || ''));
         setEditedNome(viagem.nomeMotoristaEditado || viagem.nomeMotoristaGlobus || '');
         setObservacoes(viagem.observacoes || '');
       } else { // cobrador
-        setEditedCracha(viagem.crachaCobradorEditado || viagem.crachaCobradorGlobus || '');
+        setEditedCracha(String(viagem.crachaCobradorEditado || viagem.crachaCobradorGlobus || ''));
         setEditedNome(viagem.nomeCobradorEditado || viagem.nomeCobradorGlobus || '');
         setObservacoes(viagem.observacoes || '');
       }

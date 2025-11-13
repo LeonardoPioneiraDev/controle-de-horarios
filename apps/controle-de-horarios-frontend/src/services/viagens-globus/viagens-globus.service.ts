@@ -8,24 +8,40 @@ export class ViagensGlobusService extends BaseApiService {
   }
 
   async getViagens(data: string, filtros: FiltrosViagemGlobus = {}): Promise<ResponsePaginada<ViagemGlobus>> {
-    const params = new URLSearchParams();
-    if (filtros.setor_principal_linha) params.append('setor_principal_linha', filtros.setor_principal_linha);
-    if (filtros.codigo_linha) params.append('codigo_linha', filtros.codigo_linha.join(','));
-    if (filtros.nome_linha) params.append('nome_linha', filtros.nome_linha);
-    if (filtros.sentido) params.append('sentido', filtros.sentido);
-    if (filtros.local_origem_viagem) params.append('local_origem_viagem', filtros.local_origem_viagem);
-    if (filtros.cod_servico_numero) params.append('cod_servico_numero', filtros.cod_servico_numero);
-    if (filtros.nome_motorista) params.append('nome_motorista', filtros.nome_motorista);
-    if (filtros.nome_cobrador) params.append('nome_cobrador', filtros.nome_cobrador);
-    if (filtros.limite) params.append('limite', filtros.limite.toString());
-    if (filtros.pagina) params.append('pagina', filtros.pagina.toString());
-    if (filtros.incluir_estatisticas !== undefined) params.append('incluir_estatisticas', filtros.incluir_estatisticas.toString());
-    if (filtros.salvar_local !== undefined) params.append('salvar_local', filtros.salvar_local.toString());
+    const url = `/viagens-globus/${data}/filtrados`;
+    const params: Record<string, string | number | boolean> = {};
+    if (filtros.setores && filtros.setores.length > 0) params['setores'] = filtros.setores.join(',');
+    if (filtros.setorPrincipal) params['setorPrincipal'] = filtros.setorPrincipal;
+    if (filtros.codigoLinha) params['codigoLinha'] = filtros.codigoLinha;
+    if (filtros.nomeLinha) params['nomeLinha'] = filtros.nomeLinha;
+    if (filtros.sentido) params['sentido'] = filtros.sentido;
+    if (filtros.localOrigemViagem) params['localOrigemViagem'] = filtros.localOrigemViagem;
+    if (filtros.codServicoNumero) params['codServicoNumero'] = filtros.codServicoNumero;
+    if (filtros.nomeMotorista) params['nomeMotorista'] = filtros.nomeMotorista;
+    if (filtros.nomeCobrador) params['nomeCobrador'] = filtros.nomeCobrador;
+    if (filtros.codDestinoLinha !== undefined) params['codDestinoLinha'] = filtros.codDestinoLinha;
+    if (filtros.localDestinoLinha) params['localDestinoLinha'] = filtros.localDestinoLinha;
+    if (filtros.descTipoDia) params['descTipoDia'] = filtros.descTipoDia;
+    if (filtros.codAtividade !== undefined) params['codAtividade'] = filtros.codAtividade;
+    if (filtros.nomeAtividade) params['nomeAtividade'] = filtros.nomeAtividade;
+    if (filtros.flgTipo) params['flgTipo'] = filtros.flgTipo;
+    if (filtros.codMotoristaGlobus !== undefined) params['codMotoristaGlobus'] = filtros.codMotoristaGlobus;
+    if (filtros.chapaFuncMotorista) params['chapaFuncMotorista'] = filtros.chapaFuncMotorista;
+    if (filtros.codCobradorGlobus !== undefined) params['codCobradorGlobus'] = filtros.codCobradorGlobus;
+    if (filtros.chapaFuncCobrador) params['chapaFuncCobrador'] = filtros.chapaFuncCobrador;
+    if (filtros.prefixoVeiculo) params['prefixoVeiculo'] = filtros.prefixoVeiculo;
+    if (filtros.apenasComCobrador !== undefined) params['apenasComCobrador'] = filtros.apenasComCobrador;
+    if (filtros.horarioInicio) params['horarioInicio'] = filtros.horarioInicio;
+    if (filtros.horarioFim) params['horarioFim'] = filtros.horarioFim;
+    if (filtros.buscaTexto) params['buscaTexto'] = filtros.buscaTexto;
+    if (typeof filtros.limite === 'number') params['limite'] = filtros.limite;
+    if (typeof filtros.page === 'number') params['page'] = filtros.page;
+    if (filtros.incluirEstatisticas !== undefined) params['incluirEstatisticas'] = filtros.incluirEstatisticas;
+    if (filtros.salvarLocal !== undefined) params['salvarLocal'] = filtros.salvarLocal;
+    if (filtros.ordenarPor) params['ordenarPor'] = filtros.ordenarPor;
+    if (filtros.ordem) params['ordem'] = filtros.ordem;
 
-    const queryString = params.toString();
-    const url = `/viagens-globus/${data}${queryString ? `?${queryString}` : ''}`;
-
-    const response = await this.api.get<ResponsePaginada<ViagemGlobus>>(url);
+    const response = await this.api.get<ResponsePaginada<ViagemGlobus>>(url, { params });
     return response.data;
   }
 

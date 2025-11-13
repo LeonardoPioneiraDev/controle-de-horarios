@@ -59,7 +59,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
 
     // 3. Determine if a substitution is being made
     const isSubstitutionBeingMade = tempNome.trim() !== '' || tempCracha.trim() !== '';
-    const isOriginalCrachaAvailable = crachaOriginal && crachaOriginal.trim() !== '';
+    const isOriginalCrachaAvailable = !!crachaOriginal && String(crachaOriginal).trim() !== '';
     const newCrachaSignature = `Crachá Original: ${crachaOriginal}`;
 
     // 4. Build the final observacoes string

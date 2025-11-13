@@ -5,48 +5,49 @@ export interface ControleHorario {
   cod_local_terminal_sec: number;
   codigo_linha: string;
   nome_linha: string;
-  cod_destino_linha: number;
-  local_destino_linha: string;
+  cod_destino_linha?: number;
+  local_destino_linha?: string;
   flg_sentido: string;
   data_viagem: Date;
-  desc_tipodia: string;
+  desc_tipodia?: string;
   hor_saida: Date;
   hor_chegada: Date;
-  cod_origem_viagem: number;
-  local_origem_viagem: string;
-  cod_servico_completo: string;
-  cod_servico_numero: string;
-  cod_atividade: number;
-  nome_atividade: string;
-  flg_tipo: string;
-  cod_motorista: number;
-  nome_motorista: string;
-  cracha_motorista: string;
-  chapa_func_motorista: string;
-  cod_cobrador: number;
-  nome_cobrador: string;
-  cracha_cobrador: string;
-  chapa_func_cobrador: string;
+  cod_origem_viagem?: number;
+  local_origem_viagem?: string;
+  cod_servico_completo?: string;
+  cod_servico_numero?: string;
+  cod_atividade?: number;
+  nome_atividade?: string;
+  flg_tipo?: string;
+  cracha_motorista_globus?: number;
+  nome_motorista?: string;
+  cracha_motorista?: string;
+  chapa_func_motorista?: string;
+  cracha_cobrador_globus?: number;
+  nome_cobrador?: string;
+  cracha_cobrador?: string;
+  chapa_func_cobrador?: string;
   total_horarios: number;
-  placaVeiculo: string;
-  garagemVeiculo: string;
-  prefixo_veiculo: string;
-  motorista_substituto_nome: string;
-  motorista_substituto_cracha: string;
-  cobrador_substituto_nome: string;
-  cobrador_substituto_cracha: string;
-  observacoes_edicao: string;
-  editado_por_nome: string;
-  editado_por_email: string;
+  placaVeiculo?: string;
+  garagemVeiculo?: string;
+  prefixo_veiculo?: string;
+  motorista_substituto_nome?: string;
+  motorista_substituto_cracha?: string;
+  cobrador_substituto_nome?: string;
+  cobrador_substituto_cracha?: string;
+  observacoes_edicao?: string;
+  editado_por_nome?: string;
+  editado_por_email?: string;
   data_referencia: string;
   hash_dados: string;
   created_at: Date;
   updated_at: Date;
-  sentido_texto: string;
-  periodo_do_dia: string;
-  tem_cobrador: boolean;
-  origem_dados: string;
-  is_ativo: boolean;
+  sentido_texto?: string;
+  periodo_do_dia?: string;
+  tem_cobrador?: boolean;
+  origem_dados?: string;
+  is_ativo?: boolean;
+  cod_local_destino_linha?: number; // Added
 }
 
 // Interface para compatibilidade com o frontend (com aliases)
@@ -58,9 +59,12 @@ export interface ControleHorarioItem extends ControleHorario {
   horaSaida: string; // alias para hor_saida (formatado)
   horaChegada: string; // alias para hor_chegada (formatado)
   nomeMotoristaGlobus: string; // alias para nome_motorista
-  crachaMotoristaGlobus: string; // alias para cracha_motorista
+  crachaMotoristaGlobus: number; // alias para cracha_motorista_globus
   nomeCobradorGlobus: string; // alias para nome_cobrador
-  crachaCobradorGlobus: string; // alias para cracha_cobrador
+  crachaCobradorGlobus: number; // alias para cracha_cobrador_globus
+  codServicoNumero: string; // alias para cod_servico_numero
+  descTipoDia: string; // alias para desc_tipodia
+  localDestinoLinha: string; // alias para local_destino_linha
   
   // Campos editáveis (aliases)
   numeroCarro: string; // alias para prefixo_veiculo
