@@ -119,6 +119,8 @@ export const ControleHorariosPage: React.FC = () => {
       String(v ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]!));
     const items = Array.isArray(sortedControleHorarios) ? sortedControleHorarios : [];
 
+    // Logo em base64
+    const logoBase64 =  '../assets/logo.png'
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const rows = items
@@ -135,48 +137,42 @@ export const ControleHorariosPage: React.FC = () => {
         const isLateNoVehicle = hm !== null && hm < nowMinutes && !hasVehicle;
         const rowClass = isLateNoVehicle ? 'row-danger' : hasEdits ? 'row-warning' : 'row-ok';
 
-        const motoristaNomeAtual = it.nomeMotoristaEditado || it.nomeMotoristaGlobus || '';
-        const motoristaCrachaAtual = it.crachaMotoristaEditado || it.crachaMotoristaGlobus || '';
-        const cobradorNomeAtual = it.nomeCobradorEditado || it.nomeCobradorGlobus || '';
-        const cobradorCrachaAtual = it.crachaCobradorEditado || it.crachaCobradorGlobus || '';
-
+        const motoristaNomeOriginal = it.nomeMotoristaGlobus || '';
+        const motoristaCrachaOriginal = it.crachaMotoristaGlobus || '';
         const isMotoristaSubstituted = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus);
+        const motoristaNomeSubstituto = isMotoristaSubstituted ? (it.nomeMotoristaEditado || '') : '';
+        const motoristaCrachaSubstituto = isMotoristaSubstituted ? (it.crachaMotoristaEditado || '') : '';
+
+        const cobradorNomeOriginal = it.nomeCobradorGlobus || '';
+        const cobradorCrachaOriginal = it.crachaCobradorGlobus || '';
         const isCobradorSubstituted = (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) || (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus);
+        const cobradorNomeSubstituto = isCobradorSubstituted ? (it.nomeCobradorEditado || '') : '';
+        const cobradorCrachaSubstituto = isCobradorSubstituted ? (it.crachaCobradorEditado || '') : '';
 
-        const motoristaDisplayHtml = isMotoristaSubstituted
-          ? `<div>${safe(motoristaNomeAtual)} <span class="text-xs text-gray-500">(Substituto)</span></div><div class="text-xs text-gray-500">Original: ${safe(it.nomeMotoristaGlobus)}</div>`
-          : `<div>${safe(motoristaNomeAtual)}</div>`;
-        const motoristaCrachaDisplayHtml = isMotoristaSubstituted
-          ? `<div>${safe(motoristaCrachaAtual)} <span class="text-xs text-gray-500">(Substituto)</span></div><div class="text-xs text-gray-500">Original: ${safe(it.crachaMotoristaGlobus)}</div>`
-          : `<div>${safe(motoristaCrachaAtual)}</div>`;
+        const hasCobrador = cobradorNomeOriginal || cobradorNomeSubstituto;
 
-        const cobradorDisplayHtml = isCobradorSubstituted
-          ? `<div>${safe(cobradorNomeAtual)} <span class="text-xs text-gray-500">(Substituto)</span></div><div class="text-xs text-gray-500">Original: ${safe(it.nomeCobradorGlobus)}</div>`
-          : `<div>${safe(cobradorNomeAtual)}</div>`;
-        const cobradorCrachaDisplayHtml = isCobradorSubstituted
-          ? `<div>${safe(cobradorCrachaAtual)} <span class="text-xs text-gray-500">(Substituto)</span></div><div class="text-xs text-gray-500">Original: ${safe(it.crachaCobradorGlobus)}</div>`
-          : `<div>${safe(cobradorCrachaAtual)}</div>`;
-
-        const cobradorCell = cobradorNomeAtual
-          ? `${cobradorDisplayHtml}${cobradorCrachaDisplayHtml}`
-          : '<span class="badge badge-no-cobrador">SEM COBRADOR</span>';
+        const cobradorCells = hasCobrador
+          ? `
+          <td>${safe(cobradorNomeOriginal)}</td>
+          <td class="center">${safe(cobradorCrachaOriginal)}</td>
+          <td class="${cobradorNomeSubstituto ? 'cell-substitute' : ''}">${safe(cobradorNomeSubstituto)}</td>
+          <td class="center ${cobradorCrachaSubstituto ? 'cell-substitute' : ''}">${safe(cobradorCrachaSubstituto)}</td>
+        `
+          : '<td colspan="4" class="cell-no-cobrador">SEM COBRADOR</td>';
 
         return `
         <tr class="${rowClass}">
           <td>${safe(it.setorPrincipalLinha)}</td>
           <td>${safe(it.codigoLinha)} - ${safe(it.nomeLinha)}</td>
-          <td>${safe(it.codServicoNumero ?? it.cod_servico_numero ?? '')}</td>
-          <td>${safe(it.horaSaida)}</td>
-          <td>${safe(it.horaChegada)}</td>
-          <td>${safe(motoristaNomeAtual)}</td>
-          <td>${safe(motoristaCrachaAtual)}</td>
-          <td>${safe(it.nomeMotoristaGlobus)}</td>
-          <td>${safe(it.crachaMotoristaGlobus)}</td>
-          <td>${safe(it.numeroCarro)}</td>
-          <td>${safe(cobradorNomeAtual)}</td>
-          <td>${safe(cobradorCrachaAtual)}</td>
-          <td>${safe(it.nomeCobradorGlobus)}</td>
-          <td>${safe(it.crachaCobradorGlobus)}</td>
+          <td class="center">${safe(it.codServicoNumero ?? it.cod_servico_numero ?? '')}</td>
+          <td class="center">${safe(it.horaSaida)}</td>
+          <td class="center">${safe(it.horaChegada)}</td>
+          <td class="center">${safe(it.numeroCarro)}</td>
+          <td>${safe(motoristaNomeOriginal)}</td>
+          <td class="center">${safe(motoristaCrachaOriginal)}</td>
+          <td class="${motoristaNomeSubstituto ? 'cell-substitute' : ''}">${safe(motoristaNomeSubstituto)}</td>
+          <td class="center ${motoristaCrachaSubstituto ? 'cell-substitute' : ''}">${safe(motoristaCrachaSubstituto)}</td>
+          ${cobradorCells}
         </tr>`;
       })
       .join('');
@@ -190,53 +186,87 @@ export const ControleHorariosPage: React.FC = () => {
   <meta charset="utf-8" />
   <title>Relatório - Controle de Horários</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #111; margin: 24px; }
-    h1 { margin: 0 0 4px; }
-    .muted { color: #555; }
-    .tags { margin: 12px 0; display: flex; flex-wrap: wrap; gap: 8px; }
-    .tag { padding: 4px 8px; border: 1px solid #ddd; border-radius: 999px; font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px; }
-    th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; }
-    thead th { background: #f9fafb; }
-    tfoot td { background: #fafaf9; font-weight: 600; }
-    .row-ok { background:#ecfdf5; }
-    .row-warning { background:#fffbeb; }
-    .row-danger { background:#fef2f2; }
-    .badge-no-cobrador { color:#b45309; background:#fef3c7; padding:2px 6px; border-radius:999px; font-weight:600; border:1px solid #fcd34d; }
-    @media print { .no-print { display: none; } body { margin: 0; } }
+    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+    body { font-family: 'Roboto', system-ui, -apple-system, Segoe UI, sans-serif; color: #333; margin: 0; background-color: #f4f4f9; }
+    .container { max-width: 1600px; margin: 24px auto; padding: 24px; background-color: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 8px; }
+    .report-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #fbcc2c; padding-bottom: 16px; margin-bottom: 16px; }
+     
+    .report-header .title-block { text-align: right; }
+    h1 { margin: 0 0 4px; color: #1a1a1a; font-size: 28px; }
+    .muted { color: #555; font-size: 14px; }
+    .tags-container { margin: 20px 0; padding: 12px; background-color: #f8f9fa; border-radius: 6px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .tags b { font-weight: 500; }
+    .tag { padding: 5px 12px; border-radius: 15px; font-size: 12px; background-color: #e9ecef; color: #495057; }
+    .tag b { color: #000; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border: 1px solid #dee2e6; padding: 10px 12px; text-align: left; vertical-align: middle; }
+    thead th { background: #343a40; color: #fff; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    thead .group-header { background-color: #495057; text-align: center; }
+    tbody tr:nth-child(even) { background-color: #f8f9fa; }
+    tbody tr:hover { background-color: #e9ecef; }
+    tfoot td { background: #e9ecef; font-weight: 700; }
+    .row-warning { background-color: #fff3cd; }
+    .row-danger { background-color: #f8d7da; color: #721c24; }
+    .row-danger td { border-color: #f5c6cb; }
+    .cell-substitute { background-color: #fff9c4; font-weight: 700; color: #333; }
+    .cell-no-cobrador { text-align: center; color: #6c757d; background-color: #f8f9fa; font-style: italic; }
+    .center { text-align: center; }
+    .col-setor { width: 5%; }
+    .col-linha { width: 18%; }
+    .col-servico, .col-saida, .col-chegada, .col-carro { width: 6%; text-align: center; }
+    .col-motorista, .col-cobrador { width: 12%; }
+    .col-cracha { width: 7%; text-align: center; }
+    @media print { 
+      body { margin: 0; font-size: 10px; } 
+      .container { box-shadow: none; margin: 0; padding: 10px; border-radius: 0; }
+      .no-print { display: none; } 
+      th, td { padding: 6px 8px; }
+    }
   </style>
   </head>
   <body>
-    
-    <h1>Relatório - Controle de Horários</h1>
-    <div class="muted">Data de referência: <b>${safe(dataReferencia)}</b> • Tipo do dia: <b>${safe(dayType)}</b></div>
-    <div class="muted">Usuário: <b>${safe(user?.email)}</b></div>
-    <div class="muted">Total de viagens: <b>${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</b></div>
-    <div class="tags">${filtrosAtivos}</div>
-    <table>
-      <thead>
-        <tr>
-          <th>Setor</th>
-          <th>Linha</th>
-          <th>Serviço</th>
-          <th>Saída</th>
-          <th>Chegada</th>
-          <th>Motorista (Substituto)</th>
-          <th>Crachá Motorista (Substituto)</th>
-          <th>Motorista (Original)</th>
-          <th>Crachá Motorista (Original)</th>
-          <th>Carro</th>
-          <th>Cobrador (Substituto)</th>
-          <th>Crachá Cobrador (Substituto)</th>
-          <th>Cobrador (Original)</th>
-          <th>Crachá Cobrador (Original)</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-      <tfoot>
-        <tr><td colspan="14">Registros: ${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</td></tr>
-      </tfoot>
-    </table>
+    <div class="container">
+      <div class="report-header">
+        
+        <div class="title-block">
+          <h1>Relatório de Controle de Horários</h1>
+          <div class="muted">Data de referência: <b>${safe(dataReferencia)}</b> • Tipo do dia: <b>${safe(dayType)}</b></div>
+          <div class="muted">Gerado por: <b>${safe(user?.email)}</b></div>
+        </div>
+      </div>
+      <div class="tags-container">
+        <div class="tags"><b>Filtros Aplicados:</b> ${filtrosAtivos || '<span class="tag">Nenhum</span>'}</div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2" class="col-setor">Setor</th>
+            <th rowspan="2" class="col-linha">Linha</th>
+            <th rowspan="2" class="col-servico">Serviço</th>
+            <th rowspan="2" class="col-saida">Saída</th>
+            <th rowspan="2" class="col-chegada">Chegada</th>
+            <th rowspan="2" class="col-carro">Carro</th>
+            <th colspan="4" class="group-header">Motorista</th>
+            <th colspan="4" class="group-header">Cobrador</th>
+          </tr>
+          <tr>
+            <th class="col-motorista">Original</th>
+            <th class="col-cracha">Crachá</th>
+            <th class="col-motorista">Substituto</th>
+            <th class="col-cracha">Crachá</th>
+            <th class="col-cobrador">Original</th>
+            <th class="col-cracha">Crachá</th>
+            <th class="col-cobrador">Substituto</th>
+            <th class="col-cracha">Crachá</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr><td colspan="14">Total de registros: ${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</td></tr>
+        </tfoot>
+      </table>
+    </div>
   </body></html>`;
 
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -257,28 +287,34 @@ export const ControleHorariosPage: React.FC = () => {
     const items = Array.isArray(sortedControleHorarios) ? sortedControleHorarios : [];
 
     const header = [
-      'Setor', 'Linha', 'Serviço', 'Saída', 'Chegada',
-      'Motorista (Atual)', 'Crachá Motorista (Atual)', 'Motorista (Original)', 'Crachá Motorista (Original)',
-      'Carro',
-      'Cobrador (Atual)', 'Crachá Cobrador (Atual)', 'Cobrador (Original)', 'Crachá Cobrador (Original)'
+      'Setor', 'Linha', 'Serviço', 'Saída', 'Chegada', 'Carro',
+      'Motorista (Original)', 'Crachá (Original)', 'Motorista (Substituto)', 'Crachá (Substituto)',
+      'Cobrador (Original)', 'Crachá (Original)', 'Cobrador (Substituto)', 'Crachá (Substituto)'
     ];
 
-    const data = items.map((it: any) => [
-      it.setorPrincipalLinha,
-      `${it.codigoLinha} - ${it.nomeLinha}`,
-      it.codServicoNumero ?? it.cod_servico_numero ?? '',
-      it.horaSaida,
-      it.horaChegada,
-      it.nomeMotoristaEditado || it.nomeMotoristaGlobus,
-      it.crachaMotoristaEditado || it.crachaMotoristaGlobus,
-      (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) ? it.nomeMotoristaGlobus : '',
-      (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus) ? it.crachaMotoristaGlobus : '',
-      it.numeroCarro,
-      it.nomeCobradorEditado || it.nomeCobradorGlobus || 'SEM COBRADOR',
-      it.crachaCobradorEditado || it.crachaCobradorGlobus || '',
-      (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) ? it.nomeCobradorGlobus : '',
-      (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus) ? it.crachaCobradorGlobus : '',
-    ]);
+    const data = items.map((it: any) => {
+      const isMotoristaSubstituted = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus);
+      const isCobradorSubstituted = (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) || (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus);
+
+      const hasCobrador = it.nomeCobradorGlobus || isCobradorSubstituted;
+
+      return [
+        it.setorPrincipalLinha,
+        `${it.codigoLinha} - ${it.nomeLinha}`,
+        it.codServicoNumero ?? it.cod_servico_numero ?? '',
+        it.horaSaida,
+        it.horaChegada,
+        it.numeroCarro,
+        it.nomeMotoristaGlobus || '',
+        it.crachaMotoristaGlobus || '',
+        isMotoristaSubstituted ? (it.nomeMotoristaEditado || '') : '',
+        isMotoristaSubstituted ? (it.crachaMotoristaEditado || '') : '',
+        hasCobrador ? (it.nomeCobradorGlobus || '') : 'SEM COBRADOR',
+        hasCobrador ? (it.crachaCobradorGlobus || '') : '',
+        isCobradorSubstituted ? (it.nomeCobradorEditado || '') : '',
+        isCobradorSubstituted ? (it.crachaCobradorEditado || '') : '',
+      ];
+    });
 
     const ws_data = [
       ['Relatório - Controle de Horários'],
@@ -397,7 +433,7 @@ export const ControleHorariosPage: React.FC = () => {
           </div>
         )}
 
-        {showFilters && (
+        {showFilters && !isTableFullScreen && (
           <FiltersPanel
             showFilters={showFilters}
             onClose={() => setShowFilters(false)}
@@ -419,18 +455,44 @@ export const ControleHorariosPage: React.FC = () => {
         {Array.isArray(controleHorarios) && controleHorarios.length > 0 ? (
           <div className={isTableFullScreen ? 'fixed inset-0 z-50 bg-gray-900 p-0 overflow-auto' : ''}>
             {isTableFullScreen && (
-              <div className="sticky top-0 z-10 bg-gray-900/90 backdrop-blur border-b border-yellow-400/20 px-4 py-3 flex items-center justify-between">
+              <div className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur border-b border-yellow-400/20 px-4 py-3 flex items-center justify-between">
                 <div className="text-sm text-gray-300">
                   <b>{controleHorarios.length}</b> viagens • Data: <b>{dataReferencia}</b> • <b>{dayType}</b>
                 </div>
                 <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setShowFilters((v) => !v)}>
+                  Filtros
+                </Button>
+                <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }}>
+                  Limpar Filtros
+                </Button>
                   <Button variant="outline" onClick={handleExportHtml}>
-                    <Download className="h-4 w-4 mr-2" /> Exportar HTML
+                    <Download className="h-4 w-4 mr-2" /> Gerar Relatório
                   </Button>
                   <Button variant="outline" onClick={() => setIsTableFullScreen(false)}>
                     <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
                   </Button>
                 </div>
+              </div>
+            )}
+            {isTableFullScreen && showFilters && (
+              <div className="fixed right-4 top-16 z-[60] w-[calc(100%-2rem)] sm:w-[720px]">
+                <FiltersPanel
+                  showFilters={showFilters}
+                  onClose={() => setShowFilters(false)}
+                  filtros={filtros}
+                  setFiltros={setFiltros}
+                  opcoesFiltros={opcoesFiltros}
+                  showLinhaMultiSelect={showLinhaMultiSelect}
+                  setShowLinhaMultiSelect={setShowLinhaMultiSelect}
+                  onLimparFiltros={limparFiltros}
+                  onAplicarFiltros={aplicarFiltros}
+                  onAplicarFiltroRapido={aplicarFiltroRapido}
+                  tipoLocal={tipoLocal}
+                  setTipoLocal={setTipoLocal}
+                  statusEdicaoLocal={statusEdicaoLocal}
+                  setStatusEdicaoLocal={setStatusEdicaoLocal}
+                />
               </div>
             )}
 
@@ -487,7 +549,7 @@ export const ControleHorariosPage: React.FC = () => {
         {showReport && (
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur flex items-center justify-center p-4">
             <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-xl border border-yellow-400/20 bg-gray-900 shadow-2xl">
-                            <div className="sticky top-0 z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-yellow-400/20 px-4 py-3 bg-gray-900">
+                            <div className="sticky top-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-yellow-400/20 px-4 py-3 bg-gray-900">
                               <div>
                                 <div className="text-lg font-semibold">Relatório - Controle de Horários</div>
                                 <div className="text-xs text-gray-400">Data: {dataReferencia} • {dayType} • Registros: {Array.isArray(controleHorarios) ? controleHorarios.length : 0}</div>
@@ -526,36 +588,53 @@ export const ControleHorariosPage: React.FC = () => {
                         <th className="px-3 py-2 text-left font-semibold">Serviço</th>
                         <th className="px-3 py-2 text-left font-semibold">Saída</th>
                         <th className="px-3 py-2 text-left font-semibold">Chegada</th>
-                        <th className="px-3 py-2 text-left font-semibold">Motorista</th>
-                        <th className="px-3 py-2 text-left font-semibold">Crachá Motorista</th>
-                        <th className="px-3 py-2 text-left font-semibold">Motorista Original</th>
-                        <th className="px-3 py-2 text-left font-semibold">Crachá Motorista Original</th>
                         <th className="px-3 py-2 text-left font-semibold">Carro</th>
-                        <th className="px-3 py-2 text-left font-semibold">Cobrador</th>
-                        <th className="px-3 py-2 text-left font-semibold">Crachá Cobrador</th>
+                        <th className="px-3 py-2 text-left font-semibold">Motorista Original</th>
+                        <th className="px-3 py-2 text-left font-semibold">Crachá Original</th>
+                        <th className="px-3 py-2 text-left font-semibold">Motorista Substituto</th>
+                        <th className="px-3 py-2 text-left font-semibold">Crachá Substituto</th>
                         <th className="px-3 py-2 text-left font-semibold">Cobrador Original</th>
-                        <th className="px-3 py-2 text-left font-semibold">Crachá Cobrador Original</th>
+                        <th className="px-3 py-2 text-left font-semibold">Crachá Original</th>
+                        <th className="px-3 py-2 text-left font-semibold">Cobrador Substituto</th>
+                        <th className="px-3 py-2 text-left font-semibold">Crachá Substituto</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedControleHorarios.map((it: any) => (
-                        <tr key={it.id} className="border-b border-gray-800">
-                          <td className="px-3 py-2">{it.setorPrincipalLinha}</td>
-                          <td className="px-3 py-2">{it.codigoLinha} - {it.nomeLinha}</td>
-                          <td className="px-3 py-2">{it.codServicoNumero ?? it.cod_servico_numero}</td>
-                          <td className="px-3 py-2">{it.horaSaida}</td>
-                          <td className="px-3 py-2">{it.horaChegada}</td>
-                          <td className="px-3 py-2">{it.nomeMotoristaEditado || it.nomeMotoristaGlobus}</td>
-                          <td className="px-3 py-2">{it.crachaMotoristaEditado || it.crachaMotoristaGlobus}</td>
-                          <td className="px-3 py-2">{it.nomeMotoristaGlobus}</td>
-                          <td className="px-3 py-2">{it.crachaMotoristaGlobus}</td>
-                          <td className="px-3 py-2">{it.numeroCarro}</td>
-                          <td className="px-3 py-2">{it.nomeCobradorEditado || it.nomeCobradorGlobus || 'SEM COBRADOR'}</td>
-                          <td className="px-3 py-2">{it.crachaCobradorEditado || it.crachaCobradorGlobus}</td>
-                          <td className="px-3 py-2">{it.nomeCobradorGlobus}</td>
-                          <td className="px-3 py-2">{it.crachaCobradorGlobus}</td>
-                        </tr>
-                      ))}
+                      {sortedControleHorarios.map((it: any) => {
+                        const isMotoristaSubstituted = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus);
+                        const motoristaNomeSubstituto = isMotoristaSubstituted ? (it.nomeMotoristaEditado || '') : '';
+                        const motoristaCrachaSubstituto = isMotoristaSubstituted ? (it.crachaMotoristaEditado || '') : '';
+
+                        const isCobradorSubstituted = (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) || (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus);
+                        const cobradorNomeSubstituto = isCobradorSubstituted ? (it.nomeCobradorEditado || '') : '';
+                        const cobradorCrachaSubstituto = isCobradorSubstituted ? (it.crachaCobradorEditado || '') : '';
+                        const hasCobrador = it.nomeCobradorGlobus || cobradorNomeSubstituto;
+
+                        return (
+                          <tr key={it.id} className="border-b border-gray-800 hover:bg-gray-800/40">
+                            <td className="px-3 py-2">{it.setorPrincipalLinha}</td>
+                            <td className="px-3 py-2">{it.codigoLinha} - {it.nomeLinha}</td>
+                            <td className="px-3 py-2">{it.codServicoNumero ?? it.cod_servico_numero}</td>
+                            <td className="px-3 py-2">{it.horaSaida}</td>
+                            <td className="px-3 py-2">{it.horaChegada}</td>
+                            <td className="px-3 py-2">{it.numeroCarro}</td>
+                            <td className="px-3 py-2">{it.nomeMotoristaGlobus}</td>
+                            <td className="px-3 py-2">{it.crachaMotoristaGlobus}</td>
+                            <td className={`px-3 py-2 ${motoristaNomeSubstituto ? 'text-yellow-300 font-bold' : ''}`}>{motoristaNomeSubstituto}</td>
+                            <td className={`px-3 py-2 ${motoristaCrachaSubstituto ? 'text-yellow-300 font-bold' : ''}`}>{motoristaCrachaSubstituto}</td>
+                            {hasCobrador ? (
+                              <>
+                                <td className="px-3 py-2">{it.nomeCobradorGlobus}</td>
+                                <td className="px-3 py-2">{it.crachaCobradorGlobus}</td>
+                                <td className={`px-3 py-2 ${cobradorNomeSubstituto ? 'text-yellow-300 font-bold' : ''}`}>{cobradorNomeSubstituto}</td>
+                                <td className={`px-3 py-2 ${cobradorCrachaSubstituto ? 'text-yellow-300 font-bold' : ''}`}>{cobradorCrachaSubstituto}</td>
+                              </>
+                            ) : (
+                              <td colSpan={4} className="px-3 py-2 text-center text-gray-500">SEM COBRADOR</td>
+                            )}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -582,3 +661,6 @@ export const ControleHorariosPage: React.FC = () => {
     </div>
   );
 };
+
+
+

@@ -153,30 +153,8 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
   <GlowingCard>
     <CardContent className="p-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 custom-md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <div>
-          <Label htmlFor="setor">Setor</Label>
-          <select
-            id="setor"
-            value={filters.setorPrincipal || ''}
-            onChange={(e) => onFilterChange('setorPrincipal', e.target.value || undefined)}
-            className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="">Todos os setores</option>
-            {setores && setores.map((setor: string) => <option key={setor} value={setor}>{setor}</option>)}
-          </select>
-        </div>
-        <div>
-          <Label htmlFor="linha">Linha</Label>
-          <select
-            id="linha"
-            value={filters.codigoLinha || ''}
-            onChange={(e) => onFilterChange('codigoLinha', e.target.value || undefined)}
-            className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <option value="">Todas as linhas</option>
-            {linhas && linhas.map((linha: string) => <option key={linha} value={linha}>{linha}</option>)}
-          </select>
-        </div>
+       
+         
         <div>
           <Label htmlFor="sentido">Sentido</Label>
           <select
@@ -200,33 +178,8 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
             onChange={(e) => onFilterChange('nomeMotorista', e.target.value || undefined)}
           />
         </div>
-        <div>
-          <Label htmlFor="horarioInicio">Horário Início</Label>
-          <Input
-            id="horarioInicio"
-            type="time"
-            value={filters.horarioInicio || ''}
-            onChange={(e) => onFilterChange('horarioInicio', e.target.value || undefined)}
-          />
-        </div>
-        <div>
-          <Label htmlFor="horarioFim">Horário Fim</Label>
-          <Input
-            id="horarioFim"
-            type="time"
-            value={filters.horarioFim || ''}
-            onChange={(e) => onFilterChange('horarioFim', e.target.value || undefined)}
-          />
-        </div>
-        <div>
-          <Label htmlFor="localOrigem">Local Origem</Label>
-          <Input
-            id="localOrigem"
-            type="text"
-            value={filters.localOrigemViagem || ''}
-            onChange={(e) => onFilterChange('localOrigemViagem', e.target.value || undefined)}
-          />
-        </div>
+        
+       
         <div>
           <Label htmlFor="codServicoNumero">Serviço</Label>
           <Input
@@ -245,16 +198,7 @@ const FilterSection = ({ filters, onFilterChange, onClearFilters, setores, linha
             onChange={(e) => onFilterChange('nomeCobrador', e.target.value || undefined)}
           />
         </div>
-        <div className="flex items-center gap-2 mt-6">
-          <input
-            id="apenasComCobrador"
-            type="checkbox"
-            checked={!!filters.apenasComCobrador}
-            onChange={(e) => onFilterChange('apenasComCobrador', e.target.checked)}
-            className="h-4 w-4 text-yellow-500 border-yellow-400/30 bg-neutral-900 rounded"
-          />
-          <Label htmlFor="apenasComCobrador">Apenas com Cobrador</Label>
-        </div>
+       
         <div>
           <Label htmlFor="buscaTexto">Buscar</Label>
           <Input

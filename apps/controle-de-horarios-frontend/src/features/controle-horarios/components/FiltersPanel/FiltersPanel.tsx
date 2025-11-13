@@ -55,7 +55,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
   }, [opcoesFiltros.linhas, buscaLinha]);
 
   return (
-    <div className="border border-yellow-400/20 bg-gray-900/60 text-gray-100 rounded-xl p-6 shadow-[0_0_30px_rgba(251,191,36,0.06)]">
+    <div className="border border-yellow-400/20 bg-gray-900/100 text-gray-100 rounded-xl p-6 shadow-[0_0_30px_rgba(251,191,36,0.06)]">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2">
           <Search className="h-5 w-5 text-yellow-300" />

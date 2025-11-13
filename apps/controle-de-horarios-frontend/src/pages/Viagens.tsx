@@ -24,6 +24,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Alert, AlertDescription, AlertTitle, AlertIcon } from '../components/ui/alert';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
+import { ViagensFiltersPanel } from '@/features/viagens/components/FiltersPanel';
 
 // Helper for glowing card effect
 const GlowingCard = ({ children, className }: { children: React.ReactNode, className?: string }) => (
@@ -144,50 +145,7 @@ const DateAndStatus = ({ date, onDateChange, status }: any) => (
     </GlowingCard>
 );
 
-const FilterSection = ({ filters, onFilterChange, onClearFilters, services }: any) => (
-    <GlowingCard>
-        <CardContent className="p-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                <InputFilter id="nomeLinha" label="Nome da Linha" type="text" value={filters.nomeLinha} onChange={onFilterChange} placeholder="Buscar por nome..." />
-                <SelectFilter id="numeroServico" label="Número do Serviço" value={filters.numeroServico} onChange={onFilterChange} options={services.map((s: number) => ({ value: s, label: s }))} placeholder="Todos os serviços" />
-                <SelectFilter id="sentido" label="Sentido" value={filters.sentido} onChange={onFilterChange} options={[{ value: 'IDA', label: 'Ida' }, { value: 'VOLTA', label: 'Volta' }]} placeholder="Todos" />
-                <SelectFilter id="statusCumprimento" label="Status" value={filters.statusCumprimento} onChange={onFilterChange} options={[{ value: 'CUMPRIDA', label: 'Cumprida' }, { value: 'NAO_CUMPRIDA', label: 'Não Cumprida' }, { value: 'PARCIALMENTE_CUMPRIDA', label: 'Parcial' }, { value: 'PENDENTE', label: 'Pendente' }]} placeholder="Todos" />
-                <InputFilter id="prefixoRealizado" label="Prefixo do Veículo" type="text" value={filters.prefixoRealizado} onChange={onFilterChange} placeholder="Ex: 12345" />
-                <InputFilter id="nomeMotorista" label="Nome do Motorista" type="text" value={filters.nomeMotorista} onChange={onFilterChange} placeholder="Buscar por nome..." />
-                <InputFilter id="horarioInicio" label="Horário Início (a partir de)" type="time" value={filters.horarioInicio} onChange={onFilterChange} />
-                <InputFilter id="horarioFim" label="Horário Fim (até)" type="time" value={filters.horarioFim} onChange={onFilterChange} />
-                <div className="flex items-end">
-                    <div className="flex items-center h-10">
-                        <input id="somenteAtrasados" type="checkbox" checked={filters.somenteAtrasados || false} onChange={(e) => onFilterChange('somenteAtrasados', e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500" />
-                        <Label htmlFor="somenteAtrasados" className="ml-2 text-sm text-gray-300">Somente Atrasados</Label>
-                    </div>
-                </div>
-            </div>
-            <div className="mt-4 flex justify-end">
-                <Button variant="outline" onClick={onClearFilters}>
-                    Limpar Filtros
-                </Button>
-            </div>
-        </CardContent>
-    </GlowingCard>
-);
-
-const InputFilter = ({ id, label, ...props }: any) => (
-    <div>
-        <Label htmlFor={id}>{label}</Label>
-        <Input id={id} name={id} onChange={(e) => props.onChange(id, e.target.value || undefined)} {...props} />
-    </div>
-);
-
-const SelectFilter = ({ id, label, value, onChange, options, placeholder }: any) => (
-    <div>
-        <Label htmlFor={id}>{label}</Label>
-        <select id={id} name={id} value={value || ''} onChange={(e) => onChange(id, e.target.value || undefined)} className="w-full mt-1 flex h-10 rounded-md border border-yellow-400/20 bg-neutral-900 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 disabled:cursor-not-allowed disabled:opacity-50">
-            <option value="">{placeholder}</option>
-            {options.map((opt: any) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-        </select>
-    </div>
-);
+// FilterSection movido para componente dedicado
 
 // Componente para a tabela de viagens (agora responsivo)
 const ViagensTable = ({ viagens, loading }: { viagens: ViagemTransdata[], loading: boolean }) => {
@@ -506,7 +464,7 @@ export const Viagens: React.FC = () => {
                 />
 
                 {showFilters && (
-                    <FilterSection
+                    <ViagensFiltersPanel
                         filters={filtros}
                         onFilterChange={handleFilterChange}
                         onClearFilters={clearFilters}
