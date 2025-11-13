@@ -470,7 +470,7 @@ const ReportModal = ({ isOpen, onClose, stats, comparisons, date, filters }: { i
 
 // Main component
 const initialFilters: FiltrosComparacao = {
-  limit: 50,
+  limit: 150,
   page: 1,
 };
 

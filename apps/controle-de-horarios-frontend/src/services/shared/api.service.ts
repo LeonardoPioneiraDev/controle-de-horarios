@@ -18,21 +18,20 @@ export class BaseApiService {
         : undefined;
 
     const resolveBaseOrigin = (): string => {
-      const raw = (envBase || '').trim();
-      if (!raw) return window.location.origin;
-      const fixed = raw.replace(/^https?:(?!\/)/, (m) => `${m}//`);
+      const fallback = window.location.origin;
+      const raw = (envBase || '').trim() || fallback;
+      const normalized = raw.replace(/^(https?:)(?!\/\/)/i, '$1//');
+      const withSlash = normalized.endsWith('/') ? normalized : `${normalized}/`;
       try {
-        const url = new URL(fixed, window.location.origin);
-        const origin = `${url.origin}${url.pathname && url.pathname !== '/' ? url.pathname.replace(/\/$/, '') : ''}`;
-        return origin;
+        const u = new URL(withSlash);
+        return u.toString();
       } catch {
-        return window.location.origin;
+        return new URL(fallback.endsWith('/') ? fallback : `${fallback}/`).toString();
       }
     };
 
     const baseOrigin = resolveBaseOrigin();
-    const originWithSlash = baseOrigin.endsWith('/') ? baseOrigin : `${baseOrigin}/`;
-    this.baseURL = new URL('api/', originWithSlash).toString().replace(/\/$/, '');
+    this.baseURL = new URL('api/', baseOrigin).toString().replace(/\/$/, '');
     this.timeout = 12000000;
     this.debug = true; // process.env.NODE_ENV !== 'production';
 

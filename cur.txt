@@ -1,0 +1,51 @@
+
+    if (filtros?.chapaFuncCobrador) {
+      queryBuilder.andWhere('viagem.chapaFuncCobrador ILIKE :chapaFuncCobrador', {
+        chapaFuncCobrador: `%${filtros.chapaFuncCobrador}%`
+      });
+    }
+
+    if (filtros?.prefixoVeiculo) {
+      queryBuilder.andWhere('viagem.prefixoVeiculo ILIKE :prefixoVeiculo', {
+        prefixoVeiculo: `%${filtros.prefixoVeiculo}%`
+      });
+    }
+
+    // ? PAGINAÇÃO
+    if (filtros?.limite) {
+      queryBuilder.limit(filtros.limite);
+    }
+
+    if (filtros?.page && filtros?.limite) {
+      queryBuilder.offset((filtros.page - 1) * filtros.limite);
+    }
+
+    // ? ORDENAÇÃO
+    queryBuilder
+      .orderBy('viagem.setorPrincipal', 'ASC')
+      .addOrderBy('viagem.codigoLinha', 'ASC')
+      .addOrderBy('viagem.horSaida', 'ASC');
+
+    const viagens = await queryBuilder.getMany();
+    
+    this.logger.log(`? Encontradas ${viagens.length} viagens no PostgreSQL`);
+    return viagens;
+  }
+
+  // ? SINCRONIZAR COM ORACLE GLOBUS
+  async sincronizarViagensPorData(dataViagem: string): Promise<{
+    sincronizadas: number;
+    novas: number;
+    atualizadas: number;
+    erros: number;
+    desativadas: number;
+  }> {
+    this.logger.log(`?? Sincronizando viagens Globus para ${dataViagem}`);
+
+    try {
+      // ? VERIFICAR SE ORACLE ESTÁ HABILITADO
+      if (!this.oracleService.isEnabled()) {
+        this.logger.warn('?? Oracle está desabilitado');
+        return { sincronizadas: 0, novas: 0, atualizadas: 0, erros: 1, desativadas: 0 };
+      }
+
