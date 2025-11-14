@@ -76,6 +76,36 @@ export const ControleHorariosPage: React.FC = () => {
   const canSyncCH = useMemo(() => canSyncControleHorarios(user?.role), [user]);
   const canSaveCH = useMemo(() => canEditControleHorarios(user?.role), [user]);
 
+  // Saved filters quick-select (top bar)
+  type SavedFilterQuick = {
+    name: string;
+    filtros: any;
+    tipoLocal?: 'R' | 'S';
+    statusEdicaoLocal?: 'todos' | 'editados' | 'nao_editados';
+    createdAt: number;
+  };
+  const savedFiltersKey = useMemo(() => {
+    const u: any = user;
+    return `ch_saved_filters_${u?.id || u?.email || 'default'}`;
+  }, [user]);
+  const [savedFiltersQuick, setSavedFiltersQuick] = useState<SavedFilterQuick[]>([]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(savedFiltersKey);
+      setSavedFiltersQuick(raw ? JSON.parse(raw) : []);
+    } catch {
+      setSavedFiltersQuick([]);
+    }
+  }, [savedFiltersKey, showFilters]);
+  const applySavedFilterQuick = (name: string) => {
+    const sf = savedFiltersQuick.find((x) => x.name === name);
+    if (!sf) return;
+    setFiltros(sf.filtros || {});
+    if (setTipoLocal) setTipoLocal(sf.tipoLocal);
+    if (setStatusEdicaoLocal && sf.statusEdicaoLocal) setStatusEdicaoLocal(sf.statusEdicaoLocal);
+    setTimeout(() => aplicarFiltros(), 0);
+  };
+
   const dayType = useMemo(() => {
     if (!dataReferencia) return '';
     // Parse YYYY-MM-DD string to avoid timezone issues
@@ -422,9 +452,16 @@ export const ControleHorariosPage: React.FC = () => {
                 <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }}>
                   Limpar Filtros
                 </Button>
-                <Button variant="outline" onClick={salvarFiltrosManualmente}>
-                  Salvar Filtros
-                </Button>
+                <select
+                  className="border border-gray-700 bg-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent min-w-[180px]"
+                  onChange={(e) => e.target.value && applySavedFilterQuick(e.target.value)}
+                  defaultValue=""
+                >
+                  <option value="" className="bg-gray-900">Filtros salvos…</option>
+                  {savedFiltersQuick.map((sf) => (
+                    <option key={sf.name} value={sf.name} className="bg-gray-900">{sf.name}</option>
+                  ))}
+                </select>
                 <Button variant="outline" onClick={() => setShowReport(true)}>
                   <FileText className="h-4 w-4 mr-2" /> Gerar Relatório
                 </Button>
