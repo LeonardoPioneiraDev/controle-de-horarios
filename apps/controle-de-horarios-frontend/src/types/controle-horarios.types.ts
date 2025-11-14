@@ -12,6 +12,13 @@ export interface ControleHorario {
   desc_tipodia?: string;
   hor_saida: Date;
   hor_chegada: Date;
+  // Campos ajustáveis/estado
+  hor_saida_ajustada?: Date | null;
+  hor_chegada_ajustada?: Date | null;
+  atraso_motivo?: string | null;
+  atraso_observacao?: string | null;
+  de_acordo?: boolean;
+  de_acordo_em?: Date | null;
   cod_origem_viagem?: number;
   local_origem_viagem?: string;
   cod_servico_completo?: string;
@@ -102,6 +109,9 @@ export interface FiltrosControleHorarios {
   local_destino_linha?: string;
   buscaTexto?: string; // Added
   editado_por_usuario_email?: string; // Added
+  // Backend flag: filtra apenas viagens que já foram editadas
+  apenas_editadas?: boolean;
+  apenas_confirmadas?: boolean; // de_acordo = true
   limite?: number;
   pagina?: number;
   ordenar_por?: string;

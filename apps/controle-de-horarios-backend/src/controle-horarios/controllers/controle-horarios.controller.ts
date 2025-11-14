@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Get,
   Post,
@@ -37,7 +37,7 @@ export class ControleHorariosController {
   @Get(':data')
   @Roles(UserRole.OPERADOR)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Buscar controle de horários por data' })
+  @ApiOperation({ summary: 'Buscar controle de horários por data', description: 'Quando o parâmetro editado_por_usuario_email é informado, a resposta é limitada a viagens que foram confirmadas (de_acordo = true) e tiveram edição relevante (veículo e/ou substituições). Nessa visão, a regra de ocultar confirmadas após N segundos não é aplicada.' })
   @ApiResponse({ status: 200, description: 'Horários encontrados com sucesso' })
   async buscarControleHorariosPorData(
     @Param('data') data: string,
@@ -50,7 +50,7 @@ export class ControleHorariosController {
     const executionTime = Date.now() - startTime;
 
     if (false && horarios.length === 0 && filtros.salvar_local !== false) {
-      this.logger.log(`📥 Nenhum horário encontrado, tentando sincronizar...`);
+      this.logger.log(`🔥 Nenhum horário encontrado, tentando sincronizar...`);
 
       try {
         await this.controleHorariosService.sincronizarControleHorariosPorData(data);
@@ -111,7 +111,7 @@ export class ControleHorariosController {
 
   // Alias estático adicional para atualização em lote, garantindo prioridade sobre rota dinâmica ':id'
   @Patch('multiples-batch')
-  @Roles(UserRole.ANALISTA, UserRole.GERENTE)
+  @Roles(UserRole.FUNCIONARIO)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualizar múltiplos registros de controle de horário (alias estático)' })
   @ApiResponse({ status: 200, description: 'Registros atualizados com sucesso' })
@@ -120,7 +120,7 @@ export class ControleHorariosController {
     @Body() updateMultipleDto: UpdateMultipleControleHorariosDto,
     @Req() req: any,
   ) {
-    this.logger.log(`📝 Recebida requisição (alias) para atualizar múltiplos controles de horário`);
+    this.logger.log(`🔄 Recebida requisição (alias) para atualizar múltiplos controles de horário`);
     try {
       const editorNome = req.user?.nome || 'Desconhecido';
       const editorEmail = req.user?.email || 'desconhecido@example.com';
@@ -149,7 +149,7 @@ export class ControleHorariosController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.ANALISTA, UserRole.GERENTE)
+  @Roles(UserRole.FUNCIONARIO)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualizar um registro de controle de horário' })
   @ApiResponse({ status: 200, description: 'Registro atualizado com sucesso' })
@@ -163,6 +163,34 @@ export class ControleHorariosController {
     try {
       const editorNome = req.user?.nome || 'Desconhecido';
       const editorEmail = req.user?.email || 'desconhecido@example.com';
+      const userRole: any = req.user?.role || req.user?.perfil || UserRole.OPERADOR;
+      if (userRole === UserRole.OPERADOR) {
+        const allowedKeys = [
+          'de_acordo',
+          'hor_saida_ajustada',
+          'hor_chegada_ajustada',
+          'atraso_motivo',
+          'atraso_observacao',
+          'observacoes_edicao',
+        ];
+        const sanitized: any = {};
+        for (const key of allowedKeys) {
+          if (Object.prototype.hasOwnProperty.call(updateControleHorarioDto as any, key)) {
+            sanitized[key] = (updateControleHorarioDto as any)[key];
+          }
+        }
+        if (Object.keys(sanitized).length === 0) {
+          throw new HttpException(
+            {
+              success: false,
+              message: 'Operador não tem permissão para alterar esses campos',
+              error: 'Campos não permitidos para OPERADOR',
+            },
+            HttpStatus.FORBIDDEN,
+          );
+        }
+        updateControleHorarioDto = sanitized as any;
+      }
 
       const updatedHorario = await this.controleHorariosService.updateControleHorario(
         id,
@@ -189,7 +217,7 @@ export class ControleHorariosController {
   }
 
   @Patch('multiples')
-  @Roles(UserRole.ANALISTA, UserRole.GERENTE)
+  @Roles(UserRole.FUNCIONARIO)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualizar múltiplos registros de controle de horário com propagação' })
   @ApiResponse({ status: 200, description: 'Registros atualizados com sucesso' })
@@ -202,6 +230,34 @@ export class ControleHorariosController {
     try {
       const editorNome = req.user?.nome || 'Desconhecido';
       const editorEmail = req.user?.email || 'desconhecido@example.com';
+      const userRole: any = req.user?.role || req.user?.perfil || UserRole.OPERADOR;
+      if (userRole === UserRole.OPERADOR) {
+        const allowedKeys = [
+          'de_acordo',
+          'hor_saida_ajustada',
+          'hor_chegada_ajustada',
+          'atraso_motivo',
+          'atraso_observacao',
+          'observacoes_edicao',
+        ];
+        const sanitized: any = {};
+        for (const key of allowedKeys) {
+          if (Object.prototype.hasOwnProperty.call(updateMultipleDto as any, key)) {
+            sanitized[key] = (updateMultipleDto as any)[key];
+          }
+        }
+        if (Object.keys(sanitized).length === 0) {
+          throw new HttpException(
+            {
+              success: false,
+              message: 'Operador não tem permissão para alterar esses campos',
+              error: 'Campos não permitidos para OPERADOR',
+            },
+            HttpStatus.FORBIDDEN,
+          );
+        }
+        updateMultipleDto = sanitized as any;
+      }
 
       const results = await this.controleHorariosService.updateMultipleControleHorarios(
         updateMultipleDto.updates,

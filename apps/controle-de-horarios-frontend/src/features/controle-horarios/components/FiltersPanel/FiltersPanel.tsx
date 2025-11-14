@@ -40,7 +40,16 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
   if (!showFilters) return null;
 
   const handleFilterChange = (key: keyof FiltrosControleHorarios, value: any) => {
-    setFiltros(prev => ({ ...prev, [key]: value }));
+    setFiltros(prev => {
+      const newFilters = { ...prev, [key]: value };
+
+      // Para filtros booleanos, remova-os do estado se forem falsos, para que não sejam enviados na string de consulta.
+      if (key === 'apenas_editadas' && value === false) {
+        delete newFilters[key];
+      }
+
+      return newFilters;
+    });
   };
 
   const servicosPadrao = useMemo(() => Array.from({ length: 100 }, (_, i) => String(i).padStart(2, '0')), []);
@@ -289,16 +298,26 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           />
         </div>
 
+      
+
+
         {/* Edições (local) */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Edições</label>
           <select
             value={statusEdicaoLocal || 'todos'}
-            onChange={(e) => setStatusEdicaoLocal && setStatusEdicaoLocal(e.target.value as any)}
+            onChange={(e) => {
+              const v = e.target.value as 'todos' | 'editados' | 'nao_editados';
+              if (setStatusEdicaoLocal) setStatusEdicaoLocal(v);
+              // Aplica filtro rápido diretamente quando selecionar uma opção
+              if (onAplicarFiltroRapido) onAplicarFiltroRapido(v);
+              // Dispara busca imediatamente para experiência responsiva
+              onAplicarFiltros();
+            }}
             className="w-full min-w-[150px] border border-gray-700 bg-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
           >
             <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="todos">Todos</option>
-            <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="editados">Editados por mim</option>
+            <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="editados">Editados por mim (confirmados)</option>
             <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="nao_editados">Não editados</option>
           </select>
         </div>
@@ -342,4 +361,5 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
     </div>
   );
 };
+
 

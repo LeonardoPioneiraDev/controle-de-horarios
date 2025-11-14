@@ -21,8 +21,8 @@ export class ControleHorariosService {
     private readonly configService: ConfigService,
   ) {}
 
-  // Executa diariamente às 17:00 (horário do servidor) a sincronização do dia seguinte
-  @Cron('0 17 * * *', { timeZone: 'America/Sao_Paulo' })
+  // Executa diariamente às 19:00 (horário do servidor) a sincronização do dia seguinte
+  @Cron('0 19 * * *', { timeZone: 'America/Sao_Paulo' })
   async agendarSincronizacaoDiaSeguinte(): Promise<void> {
     try {
       const enabled = this.configService.get<string>('ENABLE_AUTO_SYNC');
@@ -39,7 +39,7 @@ export class ControleHorariosService {
       const dd = String(amanha.getDate()).padStart(2, '0');
       const dataReferencia = `${yyyy}-${mm}-${dd}`;
 
-      this.logger.log(`⏱️ Iniciando sincronização automática das 17h para ${dataReferencia}`);
+      this.logger.log(`⏱️ Iniciando sincronização automática das 19h para ${dataReferencia}`);
       const inicio = Date.now();
       const resultado = await this.sincronizarControleHorariosPorData(dataReferencia);
       const duracao = Date.now() - inicio;
@@ -48,7 +48,7 @@ export class ControleHorariosService {
         `✅ Auto-sync concluído para ${dataReferencia}: ${resultado.sincronizadas} sincronizadas (novas=${resultado.novas}, atualizadas=${resultado.atualizadas}, desativadas=${resultado.desativadas}, erros=${resultado.erros}) em ${duracao}ms`,
       );
     } catch (error: any) {
-      this.logger.error(`❌ Falha no auto-sync diário às 17h: ${error.message}`);
+      this.logger.error(`❌ Falha no auto-sync diário às 19h: ${error.message}`);
     }
   }
 
@@ -59,6 +59,25 @@ export class ControleHorariosService {
   ): Promise<ControleHorario[]> {
     this.logger.log(`🔄 Iniciando atualização de múltiplos controles de horário com ${updates.length} DTO(s).`);
     const updatedRecords: ControleHorario[] = [];
+    const normalizedEditorEmail = (editorEmail || '').toString().trim().toLowerCase();
+
+    const parseHoraAjustada = (baseDate: Date | null | undefined, val?: string): Date | null => {
+      if (!val) return null;
+      const isHHMM = /^\\d{1,2}:\\d{2}(?::\\d{2})?$/.test(val);
+      try {
+        if (isHHMM) {
+          const [h, m, s] = val.split(':').map((n) => parseInt(n, 10));
+          const base = baseDate ? new Date(baseDate) : new Date();
+          base.setHours(h || 0, m || 0, (s || 0), 0);
+          return base;
+        }
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? null : d;
+      } catch { 
+        return null; 
+      }
+    };
+
     const processedIds = new Set<string>();
 
     for (const updateDto of updates) {
@@ -85,11 +104,23 @@ export class ControleHorariosService {
 
       // 3. Guarda de segurança para propagação
       const isPropagationSafe = originalControleHorario.cod_servico_numero && originalControleHorario.cracha_motorista;
+      
+      // map adjusted times and agreement if present in payload
+      if (typeof (fieldsToUpdate as any).hor_saida_ajustada === 'string') {
+        (fieldsToUpdate as any).hor_saida_ajustada = parseHoraAjustada(originalControleHorario.hor_saida, (fieldsToUpdate as any).hor_saida_ajustada) || undefined;
+      }
+      if (typeof (fieldsToUpdate as any).hor_chegada_ajustada === 'string') {
+        (fieldsToUpdate as any).hor_chegada_ajustada = parseHoraAjustada(originalControleHorario.hor_chegada, (fieldsToUpdate as any).hor_chegada_ajustada) || undefined;
+      }
+      if (typeof (fieldsToUpdate as any).de_acordo === 'boolean') {
+        (fieldsToUpdate as any).de_acordo_em = (fieldsToUpdate as any).de_acordo ? new Date() : null;
+      }
+
       if (!isPropagationSafe) {
         this.logger.log(`🚫 Propagação não aplicável para o ID ${id}: serviço ou crachá do motorista ausente. Atualizando apenas este registro.`);
         Object.assign(originalControleHorario, fieldsToUpdate, {
           editado_por_nome: editorNome,
-          editado_por_email: editorEmail,
+          editado_por_email: normalizedEditorEmail,
           updated_at: new Date(),
         });
         updatedRecords.push(originalControleHorario);
@@ -123,7 +154,7 @@ export class ControleHorariosService {
         this.logger.log(`  -> Aplicando alterações no ID: ${relatedHorario.id}`);
         Object.assign(relatedHorario, fieldsToUpdate, {
           editado_por_nome: editorNome,
-          editado_por_email: editorEmail,
+          editado_por_email: normalizedEditorEmail,
           updated_at: new Date(),
         });
         
@@ -160,108 +191,109 @@ export class ControleHorariosService {
       .where('controle.data_referencia = :dataReferencia', { dataReferencia })
       .andWhere('controle.is_ativo = :isAtivo', { isAtivo: true });
 
+    // Prioridade: quando visualizar escala por crachá do motorista, ignorar demais filtros de escopo
+    const isEscala = Boolean(filtros?.cracha_funcionario && String(filtros.cracha_funcionario).trim());
+
     // ✅ APLICAR FILTROS
-    if (filtros?.setores?.length > 0) {
+    if (!isEscala && filtros?.setores?.length > 0) {
       queryBuilder.andWhere('controle.cod_local_terminal_sec IN (:...setores)', {
         setores: filtros.setores,
       });
     }
 
     // Filtro de Linha (Múltipla Seleção)
-    if (filtros?.codigo_linha && filtros.codigo_linha.length > 0) {
+    if (!isEscala && filtros?.codigo_linha && filtros.codigo_linha.length > 0) {
       queryBuilder.andWhere('controle.codigo_linha IN (:...codigo_linha)', {
         codigo_linha: filtros.codigo_linha,
       });
     }
 
-    if (filtros?.nome_linha) {
+    if (!isEscala && filtros?.nome_linha) {
       queryBuilder.andWhere('controle.nome_linha ILIKE :nome_linha', {
         nome_linha: `%${filtros.nome_linha}%`,
       });
     }
 
-
-
-    if (filtros?.setor_principal_linha) {
+    if (!isEscala && filtros?.setor_principal_linha) {
       queryBuilder.andWhere('controle.setor_principal_linha = :setor_principal_linha', {
         setor_principal_linha: filtros.setor_principal_linha,
       });
     }
 
-    if (filtros?.local_origem_viagem) {
+    if (!isEscala && filtros?.local_origem_viagem) {
       queryBuilder.andWhere('controle.local_origem_viagem ILIKE :local_origem_viagem', {
         local_origem_viagem: `%${filtros.local_origem_viagem}%`,
       });
     }
 
-    if (filtros?.cod_servico_numero) {
+    if (!isEscala && filtros?.cod_servico_numero) {
       queryBuilder.andWhere('controle.cod_servico_numero ILIKE :cod_servico_numero', {
         cod_servico_numero: `%${filtros.cod_servico_numero}%`,
       });
     }
 
-    if (filtros?.nome_motorista) {
+    if (!isEscala && filtros?.nome_motorista) {
       queryBuilder.andWhere('controle.nome_motorista ILIKE :nome_motorista', {
         nome_motorista: `%${filtros.nome_motorista}%`,
       });
     }
 
-    if (filtros?.nome_cobrador) {
+    if (!isEscala && filtros?.nome_cobrador) {
       queryBuilder.andWhere('controle.nome_cobrador ILIKE :nome_cobrador', {
         nome_cobrador: `%${filtros.nome_cobrador}%`,
       });
     }
 
-    if (filtros?.periodo_do_dia) {
+    if (!isEscala && filtros?.periodo_do_dia) {
       queryBuilder.andWhere('controle.periodo_do_dia = :periodo_do_dia', {
         periodo_do_dia: filtros.periodo_do_dia,
       });
     }
 
-    if (filtros?.cod_atividade) {
+    if (!isEscala && filtros?.cod_atividade) {
       queryBuilder.andWhere('controle.cod_atividade = :cod_atividade', {
         cod_atividade: filtros.cod_atividade,
       });
     }
 
-    if (filtros?.nome_atividade) {
+    if (!isEscala && filtros?.nome_atividade) {
       queryBuilder.andWhere('controle.nome_atividade ILIKE :nome_atividade', {
         nome_atividade: `%${filtros.nome_atividade}%`,
       });
     }
 
-    if (filtros?.desc_tipodia) {
+    if (!isEscala && filtros?.desc_tipodia) {
       queryBuilder.andWhere('controle.desc_tipodia = :desc_tipodia', {
         desc_tipodia: filtros.desc_tipodia,
       });
     }
 
     // Novos filtros
-    if (filtros?.prefixo_veiculo) {
+    if (!isEscala && filtros?.prefixo_veiculo) {
       queryBuilder.andWhere('controle.prefixo_veiculo ILIKE :prefixo_veiculo', {
         prefixo_veiculo: `%${filtros.prefixo_veiculo}%`,
       });
     }
 
-    if (filtros?.motorista_substituto_nome) {
+    if (!isEscala && filtros?.motorista_substituto_nome) {
       queryBuilder.andWhere('controle.motorista_substituto_nome ILIKE :motorista_substituto_nome', {
         motorista_substituto_nome: `%${filtros.motorista_substituto_nome}%`,
       });
     }
 
-    if (filtros?.motorista_substituto_cracha) {
+    if (!isEscala && filtros?.motorista_substituto_cracha) {
       queryBuilder.andWhere('controle.motorista_substituto_cracha ILIKE :motorista_substituto_cracha', {
         motorista_substituto_cracha: `%${filtros.motorista_substituto_cracha}%`,
       });
     }
 
-    if (filtros?.cobrador_substituto_nome) {
+    if (!isEscala && filtros?.cobrador_substituto_nome) {
       queryBuilder.andWhere('controle.cobrador_substituto_nome ILIKE :cobrador_substituto_nome', {
         cobrador_substituto_nome: `%${filtros.cobrador_substituto_nome}%`,
       });
     }
 
-    if (filtros?.cobrador_substituto_cracha) {
+    if (!isEscala && filtros?.cobrador_substituto_cracha) {
       queryBuilder.andWhere('controle.cobrador_substituto_cracha ILIKE :cobrador_substituto_cracha', {
         cobrador_substituto_cracha: `%${filtros.cobrador_substituto_cracha}%`,
       });
@@ -276,13 +308,52 @@ export class ControleHorariosService {
     }
 
     // Filtro de Viagens Editadas
-    if (filtros?.apenas_editadas) {
+    if (!isEscala && filtros?.apenas_editadas) {
       queryBuilder.andWhere('controle.editado_por_nome IS NOT NULL');
+    }
+
+    // Filtro de viagens confirmadas (de_acordo = true)
+    if (!isEscala && filtros?.apenas_confirmadas) {
+      queryBuilder.andWhere('controle.de_acordo = TRUE');
+    }
+
+    // Visão "editados por": exigir confirmação e pelo menos uma edição relevante
+    const isFiltroEditadosPor = Boolean(
+      filtros?.editado_por_usuario_email && String(filtros.editado_por_usuario_email).trim(),
+    );
+    if (!isEscala && isFiltroEditadosPor) {
+      queryBuilder.andWhere('LOWER(controle.editado_por_email) = LOWER(:editado_por_usuario_email)', {
+        editado_por_usuario_email: filtros!.editado_por_usuario_email!,
+      });
+      queryBuilder.andWhere('controle.de_acordo = TRUE');
+      queryBuilder.andWhere(
+        `(
+          (controle.prefixo_veiculo IS NOT NULL AND controle.prefixo_veiculo <> '')
+          OR (controle.motorista_substituto_nome IS NOT NULL AND controle.motorista_substituto_nome <> '')
+          OR (controle.motorista_substituto_cracha IS NOT NULL AND controle.motorista_substituto_cracha <> '')
+          OR (controle.cobrador_substituto_nome IS NOT NULL AND controle.cobrador_substituto_nome <> '')
+          OR (controle.cobrador_substituto_cracha IS NOT NULL AND controle.cobrador_substituto_cracha <> '')
+        )`,
+      );
+    }
+
+    // Esconder viagens \"de acordo\" após N segundos (padrão 30s)
+    const ocultarSegundos = Number(filtros?.ocultar_de_acordo_apos_segundos ?? 30);
+    if (!isFiltroEditadosPor && ocultarSegundos > 0) {
+      queryBuilder.andWhere(
+        `(
+          controle.de_acordo = FALSE
+          OR controle.de_acordo IS NULL
+          OR controle.de_acordo_em IS NULL
+          OR controle.de_acordo_em > (NOW() - (INTERVAL '1 second' * :ocultarSegundos))
+        )`,
+        { ocultarSegundos },
+      );
     }
 
     // Novos Filtros Implementados
     // Mapear sentido_texto para flg_sentido
-    if (filtros?.sentido_texto) {
+    if (!isEscala && filtros?.sentido_texto) {
       let flgSentido: string;
       switch (filtros.sentido_texto.toUpperCase()) {
         case 'IDA':
@@ -301,36 +372,37 @@ export class ControleHorariosService {
         queryBuilder.andWhere('controle.flg_sentido = :flgSentido', { flgSentido });
       }
     }
-
     // Filtrar por horário de início
-    if (filtros?.horarioInicio) {
-      queryBuilder.andWhere('TO_CHAR(controle.hor_saida, \'HH24:MI\') >= :horarioInicio', { horarioInicio: filtros.horarioInicio });
+    if (!isEscala && filtros?.horarioInicio) {
+      queryBuilder.andWhere('CAST(controle.hor_saida AS time) >= CAST(:horarioInicio AS time)', { horarioInicio: filtros.horarioInicio });
     }
 
     // Filtrar por horário de fim
-    if (filtros?.horarioFim) {
-      queryBuilder.andWhere('TO_CHAR(controle.hor_chegada, \'HH24:MI\') <= :horarioFim', { horarioFim: filtros.horarioFim });
+    if (!isEscala && filtros?.horarioFim) {
+      queryBuilder.andWhere('CAST(controle.hor_chegada AS time) <= CAST(:horarioFim AS time)', { horarioFim: filtros.horarioFim });
     }
 
     // Busca geral em múltiplos campos
-    if (filtros?.buscaTexto) {
+    if (!isEscala && filtros?.buscaTexto) {
       queryBuilder.andWhere(
         '(controle.nome_linha ILIKE :buscaTexto OR ' +
         'controle.nome_motorista ILIKE :buscaTexto OR ' +
         'controle.nome_cobrador ILIKE :buscaTexto OR ' +
-        'controle.prefixo_veiculo ILIKE :buscaTexto OR ' +
+        'controle.prefixo_veiculo ILIKE :buscaTexto OR ' + 
+        'controle.atraso_motivo ILIKE :buscaTexto OR ' + 
+        'controle.atraso_observacao ILIKE :buscaTexto OR ' +
         'controle.cod_servico_numero ILIKE :buscaTexto)',
         { buscaTexto: `%${filtros.buscaTexto}%` },
       );
     }
 
     // Filtrar por email do editor
-    if (filtros?.editado_por_usuario_email) {
-      queryBuilder.andWhere('controle.editado_por_email = :editado_por_usuario_email', { editado_por_usuario_email: filtros.editado_por_usuario_email });
+    if (!isEscala && filtros?.editado_por_usuario_email && !isFiltroEditadosPor) {
+      queryBuilder.andWhere('LOWER(controle.editado_por_email) = LOWER(:editado_por_usuario_email)', { editado_por_usuario_email: filtros.editado_por_usuario_email });
     }
 
     // Filtrar por código do cobrador
-    if (filtros?.cod_cobrador) {
+    if (!isEscala && filtros?.cod_cobrador) {
       queryBuilder.andWhere('controle.cod_cobrador = :cod_cobrador', { cod_cobrador: filtros.cod_cobrador });
     }
 
@@ -634,16 +706,18 @@ export class ControleHorariosService {
     const month = dateParts[1] - 1;
     const day = dateParts[2];
 
-    // Lida com o formato de string 'HH:MI:SS' vindo do TO_CHAR
-    if (typeof horarioOracle === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(horarioOracle)) {
-      try {
-        const [hours, minutes, seconds] = horarioOracle.split(':').map(Number);
-        // Construct a Date object in UTC to avoid local timezone shifts during creation
-        // This will ensure the internal representation is exactly what we want
-        return new Date(year, month, day, hours, minutes, seconds);
-      } catch (error) {
-        this.logger.error(`Erro ao processar string de horário: ${horarioOracle}`, error);
-        return null;
+    // Normaliza string e valida formato HH:MM:SS (ex.: 22:00:01)
+    if (typeof horarioOracle === 'string') {
+      const timeStr = horarioOracle.trim();
+      if (/^\d{2}:\d{2}:\d{2}$/.test(timeStr)) {
+        try {
+          const [hours, minutes, seconds] = timeStr.split(':').map(Number);
+          // Construir como horário local no dia informado
+          return new Date(year, month, day, hours, minutes, seconds);
+        } catch (error) {
+          this.logger.error(`Erro ao processar string de horário: ${timeStr}`, error);
+          return null;
+        }
       }
     }
 
@@ -654,11 +728,8 @@ export class ControleHorariosService {
         this.logger.warn(`Data inválida recebida do Oracle: ${horarioOracle}`);
         return null;
       }
-      // If it's already a Date object, we still want to ensure it's treated as a local time
-      // and combined with the dataReferencia.
-      // This part might need more context if Oracle is returning actual Date objects with timezone info.
-      // For now, assuming it's a time component that needs to be combined with dataReferencia.
-      return new Date(Date.UTC(year, month, day, data.getHours(), data.getMinutes(), data.getSeconds()));
+      // Combina a hora recebida com a data de referência como horário local
+      return new Date(year, month, day, data.getHours(), data.getMinutes(), data.getSeconds());
     } catch (error) {
       this.logger.error(`Erro ao processar data do Oracle: ${horarioOracle}`, error);
       return null;
@@ -872,11 +943,6 @@ export class ControleHorariosService {
           AND UPPER(L.NOMELINHA) NOT LIKE '%DUPLAS RESERVAS%'
           AND L.COD_LOCAL_TERMINAL_SEC IN (6000, 7000, 8000, 9000)
           AND TRUNC(D.DAT_ESCALA) = TO_DATE('${dataReferencia}', 'YYYY-MM-DD')
-        ORDER BY
-            SETOR_PRINCIPAL_LINHA,
-            L.CODIGOLINHA,
-            H.FLG_SENTIDO,
-            H.HOR_SAIDA
       `;
 
       const stats = await this.oracleService.executeQuery(statsQuery);
@@ -935,9 +1001,39 @@ export class ControleHorariosService {
     } else {
       this.logger.log(`🖊️ Nenhuma alteração propagável detectada. Atualizando apenas o registro com ID: ${id}`);
       
+      // Função auxiliar para parsing de hora ajustada
+      const parseHoraAjustada = (baseDate: Date | null | undefined, val?: string): Date | null => {
+        if (!val) return null;
+        const isHHMM = /^\d{1,2}:\d{2}(?::\d{2})?$/.test(val);
+        try {
+          if (isHHMM) {
+            const [h, m, s] = val.split(':').map((n) => parseInt(n, 10));
+            const base = baseDate ? new Date(baseDate) : new Date();
+            base.setHours(h || 0, m || 0, (s || 0), 0);
+            return base;
+          }
+          const d = new Date(val);
+          return isNaN(d.getTime()) ? null : d;
+        } catch { 
+          return null; 
+        }
+      };
+
+      // convert adjusted time strings to Date if needed
+      if (typeof (updateDto as any).hor_saida_ajustada === 'string') {
+        (updateDto as any).hor_saida_ajustada = parseHoraAjustada(controleHorario.hor_saida, (updateDto as any).hor_saida_ajustada) || undefined;
+      }
+      if (typeof (updateDto as any).hor_chegada_ajustada === 'string') {
+        (updateDto as any).hor_chegada_ajustada = parseHoraAjustada(controleHorario.hor_chegada, (updateDto as any).hor_chegada_ajustada) || undefined;
+      }
+      if (typeof (updateDto as any).de_acordo === 'boolean') {
+        (updateDto as any).de_acordo_em = (updateDto as any).de_acordo ? new Date() : null;
+      }
+
+      const normalizedEditorEmail = (editorEmail || '').toString().trim().toLowerCase();
       Object.assign(controleHorario, updateDto, {
         editado_por_nome: editorNome,
-        editado_por_email: editorEmail,
+        editado_por_email: normalizedEditorEmail,
         updated_at: new Date(),
       });
 

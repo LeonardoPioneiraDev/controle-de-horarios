@@ -13,6 +13,7 @@ async function bootstrap() {
       'http://10.10.100.176:3000',
       'http://10.10.100.176:3005',
       'http://localhost:3005',
+      'https://horarios.vpioneira.com.br',
       'http://127.0.0.1:3000',   
       'http://127.0.0.1:3005'
     ],
@@ -49,7 +50,8 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   //const port = process.env.PORT || 3336; // Desenvolvimento
-  const port = process.env.PORT || 3355; // Produção
+  const port = process.env.PORT || 3355; // Docker
+  //const port = process.env.PORT || 3335; // Produção
   await app.listen(port);
 
   console.log('🚀 ==========================================');

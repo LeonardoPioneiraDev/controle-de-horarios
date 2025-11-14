@@ -4,6 +4,7 @@ import {
   IsUUID,
   IsBoolean,
   MaxLength,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -13,8 +14,9 @@ export class UpdateControleHorarioDto {
     example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
     required: true,
   })
+  @IsOptional()
   @IsUUID()
-  id: string;
+  id?: string;
 
   @ApiProperty({
     description: 'Prefixo do veículo (editável)',
@@ -104,4 +106,33 @@ export class UpdateControleHorarioDto {
   @IsOptional()
   @IsBoolean()
   is_ativo?: boolean;
+
+  // Horários ajustados e aprovação
+  @ApiProperty({ description: 'Horário de saída ajustado (HH:MM ou ISO)', required: false })
+  @IsOptional()
+  @IsString()
+  hor_saida_ajustada?: string;
+
+  @ApiProperty({ description: 'Horário de chegada ajustado (HH:MM ou ISO)', required: false })
+  @IsOptional()
+  @IsString()
+  hor_chegada_ajustada?: string;
+
+  @ApiProperty({ description: 'Indica se a viagem está de acordo (aprovada)', required: false })
+  @IsOptional()
+  @IsBoolean()
+  de_acordo?: boolean;
+
+  // Motivo do atraso e observação livre
+  @ApiProperty({ description: 'Motivo do atraso (pré-definido)', required: false, enum: ['ENGARRAFAMENTO', 'ACIDENTE', 'QUEBRA_OU_DEFEITO', 'DIVERSOS'] })
+  @IsOptional()
+  @IsString()
+  @IsIn(['ENGARRAFAMENTO', 'ACIDENTE', 'QUEBRA_OU_DEFEITO', 'DIVERSOS'])
+  atraso_motivo?: string;
+
+  @ApiProperty({ description: 'Observação livre do atraso', required: false })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  atraso_observacao?: string;
 }

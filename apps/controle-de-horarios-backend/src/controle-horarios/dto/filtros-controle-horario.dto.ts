@@ -196,4 +196,16 @@ export class FiltrosControleHorarioDto {
   @IsOptional()
   @IsString()
   periodo_do_dia?: string;
+
+  @ApiPropertyOptional({ description: 'Ocultar viagens marcadas como de acordo após N segundos (padrão: 30)', default: 30 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  ocultar_de_acordo_apos_segundos?: number = 30;
+
+  @ApiPropertyOptional({ description: 'Filtrar apenas viagens confirmadas (de_acordo = TRUE)', default: false })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true')
+  apenas_confirmadas?: boolean = false;
 }

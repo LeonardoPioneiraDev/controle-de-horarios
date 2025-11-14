@@ -66,6 +66,35 @@ export const controleHorariosService = {
     return response;
   },
 
+  async atualizarControleHorario(
+    id: string,
+    dados: Partial<{
+      prefixo_veiculo: string;
+      motorista_substituto_nome: string;
+      motorista_substituto_cracha: string;
+      cobrador_substituto_nome: string;
+      cobrador_substituto_cracha: string;
+      observacoes_edicao: string;
+      de_acordo: boolean;
+      hor_saida_ajustada: string; // HH:MM ou ISO
+      hor_chegada_ajustada: string; // HH:MM ou ISO
+      atraso_motivo: string;
+      atraso_observacao: string;
+    }>,
+  ): Promise<any> {
+    const response = await makeAuthenticatedRequest(
+      `/controle-horarios/${id}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify(dados),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    return response;
+  },
+
   async buscarOpcoesControleHorarios(
     dataReferencia: string,
   ): Promise<OpcoesControleHorariosDto> {

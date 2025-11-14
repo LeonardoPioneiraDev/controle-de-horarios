@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserRole, canSyncControleHorarios, canEditControleHorarios } from '../../types/user.types';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
@@ -20,6 +20,7 @@ export const ControleHorariosPage: React.FC = () => {
   const [showReport, setShowReport] = useState(false);
   const [openConfirmSync, setOpenConfirmSync] = useState(false);
 
+  const [isHorariosModalOpen, setIsHorariosModalOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [windowHeight, setWindowHeight] = useState(window.innerHeight);
 
@@ -85,7 +86,7 @@ export const ControleHorariosPage: React.FC = () => {
     const wd = d.getDay(); // getDay() returns 0 for Sunday, 1 for Monday, etc.
     if (wd === 0) return 'DOMINGO';
     if (wd === 6) return 'SÁBADO';
-    return 'DIAS UTÉIS';
+    return 'DIAS ÚTEIS';
   }, [dataReferencia]);
 
   // Ordenação cronológica considerando virada de dia
@@ -125,17 +126,19 @@ export const ControleHorariosPage: React.FC = () => {
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
     const rows = items
       .map((it: any) => {
+        const hasAdjust = Boolean(it.hor_saida_ajustada || it.hor_chegada_ajustada);
         const hasEdits = Boolean(
           it.nomeMotoristaEditado ||
           it.crachaMotoristaEditado ||
           it.nomeCobradorEditado ||
-          it.crachaCobradorEditado
+          it.crachaCobradorEditado ||
+          hasAdjust
         );
         const hasVehicle = Boolean(it.numeroCarro);
         const m = String(it.horaSaida || '').match(/^(\d{1,2}):(\d{2})/);
         const hm = m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
         const isLateNoVehicle = hm !== null && hm < nowMinutes && !hasVehicle;
-        const rowClass = isLateNoVehicle ? 'row-danger' : hasEdits ? 'row-warning' : 'row-ok';
+        const rowClass = isLateNoVehicle ? 'row-danger' : (hasAdjust ? 'row-adjusted' : (hasEdits ? 'row-warning' : 'row-ok'));
 
         const motoristaNomeOriginal = it.nomeMotoristaGlobus || '';
         const motoristaCrachaOriginal = it.crachaMotoristaGlobus || '';
@@ -160,6 +163,13 @@ export const ControleHorariosPage: React.FC = () => {
         `
           : '<td colspan="4" class="cell-no-cobrador">SEM COBRADOR</td>';
 
+        const fmtAdj = (v?: string) => {
+          if (!v) return '';
+          try { const d = new Date(v); if (isNaN(d.getTime())) return ''; return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
+        };
+        const saidaAdj = fmtAdj(it.hor_saida_ajustada);
+        const chegadaAdj = fmtAdj(it.hor_chegada_ajustada);
+
         return `
         <tr class="${rowClass}">
           <td>${safe(it.setorPrincipalLinha)}</td>
@@ -167,6 +177,8 @@ export const ControleHorariosPage: React.FC = () => {
           <td class="center">${safe(it.codServicoNumero ?? it.cod_servico_numero ?? '')}</td>
           <td class="center">${safe(it.horaSaida)}</td>
           <td class="center">${safe(it.horaChegada)}</td>
+          <td class="center ${saidaAdj ? 'cell-adjusted' : ''}">${safe(saidaAdj || '')}</td>
+          <td class="center ${chegadaAdj ? 'cell-adjusted' : ''}">${safe(chegadaAdj || '')}</td>
           <td class="center">${safe(it.numeroCarro)}</td>
           <td>${safe(motoristaNomeOriginal)}</td>
           <td class="center">${safe(motoristaCrachaOriginal)}</td>
@@ -207,9 +219,11 @@ export const ControleHorariosPage: React.FC = () => {
     tbody tr:hover { background-color: #e9ecef; }
     tfoot td { background: #e9ecef; font-weight: 700; }
     .row-warning { background-color: #fff3cd; }
+    .row-adjusted { background-color: #ecfdf5; }
     .row-danger { background-color: #f8d7da; color: #721c24; }
     .row-danger td { border-color: #f5c6cb; }
     .cell-substitute { background-color: #fff9c4; font-weight: 700; color: #333; }
+    .cell-adjusted { background-color: #d1fae5; color: #065f46; font-weight: 700; border: 1px solid #a7f3d0; }
     .cell-no-cobrador { text-align: center; color: #6c757d; background-color: #f8f9fa; font-style: italic; }
     .center { text-align: center; }
     .col-setor { width: 5%; }
@@ -246,6 +260,8 @@ export const ControleHorariosPage: React.FC = () => {
             <th rowspan="2" class="col-servico">Serviço</th>
             <th rowspan="2" class="col-saida">Saída</th>
             <th rowspan="2" class="col-chegada">Chegada</th>
+            <th rowspan="2" class="col-saida">Saída Ajustada</th>
+            <th rowspan="2" class="col-chegada">Chegada Ajustada</th>
             <th rowspan="2" class="col-carro">Carro</th>
             <th colspan="4" class="group-header">Motorista</th>
             <th colspan="4" class="group-header">Cobrador</th>
@@ -263,7 +279,7 @@ export const ControleHorariosPage: React.FC = () => {
         </thead>
         <tbody>${rows}</tbody>
         <tfoot>
-          <tr><td colspan="14">Total de registros: ${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</td></tr>
+          <tr><td colspan="16">Total de registros: ${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</td></tr>
         </tfoot>
       </table>
     </div>
@@ -287,7 +303,7 @@ export const ControleHorariosPage: React.FC = () => {
     const items = Array.isArray(sortedControleHorarios) ? sortedControleHorarios : [];
 
     const header = [
-      'Setor', 'Linha', 'Serviço', 'Saída', 'Chegada', 'Carro',
+      'Setor', 'Linha', 'Serviço', 'Saída', 'Chegada', 'Saída Ajustada', 'Chegada Ajustada', 'Carro',
       'Motorista (Original)', 'Crachá (Original)', 'Motorista (Substituto)', 'Crachá (Substituto)',
       'Cobrador (Original)', 'Crachá (Original)', 'Cobrador (Substituto)', 'Crachá (Substituto)'
     ];
@@ -298,12 +314,18 @@ export const ControleHorariosPage: React.FC = () => {
 
       const hasCobrador = it.nomeCobradorGlobus || isCobradorSubstituted;
 
+      const fmtAdj = (v?: string) => {
+        if (!v) return '';
+        try { const d = new Date(v); if (isNaN(d.getTime())) return ''; return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
+      };
       return [
         it.setorPrincipalLinha,
         `${it.codigoLinha} - ${it.nomeLinha}`,
         it.codServicoNumero ?? it.cod_servico_numero ?? '',
         it.horaSaida,
         it.horaChegada,
+        fmtAdj(it.hor_saida_ajustada as any),
+        fmtAdj(it.hor_chegada_ajustada as any),
         it.numeroCarro,
         it.nomeMotoristaGlobus || '',
         it.crachaMotoristaGlobus || '',
@@ -374,7 +396,7 @@ export const ControleHorariosPage: React.FC = () => {
         <Card className="relative border border-yellow-400/20">
           <CardHeader className="pb-2">
             <h1 className="text-2xl sm:text-3xl font-bold">Controle de Horários</h1>
-            <p className="mt-1 text-sm text-gray-400">Gerencie e edite os horários das viagens   </p>
+            <p className="mt-1 text-sm text-gray-400">Gerencie e edite os horários das viagens</p>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -509,6 +531,7 @@ export const ControleHorariosPage: React.FC = () => {
                 temAlteracoesPendentes={temAlteracoesPendentes}
                 contarAlteracoesPendentes={contarAlteracoesPendentes}
                 canSave={canSaveCH}
+                editedByMeActive={Boolean((filtros as any).editado_por_usuario_email)}
                 onApplyScaleFilter={({ servico, cracha }) => {
                   setFiltros((prev: any) => ({
                     ...prev,
@@ -526,9 +549,10 @@ export const ControleHorariosPage: React.FC = () => {
                     : null
                 }
                 onClearScaleFilter={limparFiltros}
+                onHorariosModalOpenChange={setIsHorariosModalOpen}
               />
 
-              {canSaveCH && (
+              {canSaveCH && !isHorariosModalOpen && (
                 <FloatingActionButton
                   temAlteracoesPendentes={temAlteracoesPendentes}
                   alteracoesPendentes={contarAlteracoesPendentes()}
@@ -556,11 +580,11 @@ export const ControleHorariosPage: React.FC = () => {
                               </div>
                               <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
                                 <Button variant="outline" onClick={handleExportHtml} className="w-full sm:w-auto">
-                                  <Download className="h-4 w-4 mr-2" /> Exportar HTML
+                                  <Download className="h-4 w-4 mr-2" /> Gerar Relatório
                                 </Button>
                                 {isAnalistaOuMais && (
                                   <Button variant="outline" onClick={handleExportExcel} className="w-full sm:w-auto">
-                                    <Download className="h-4 w-4 mr-2" /> Exportar Excel
+                                    <Download className="h-4 w-4 mr-2" /> Gerar Relatório Excel
                                   </Button>
                                 )}
                                 <Button variant="outline" onClick={() => setShowReport(false)} className="w-full sm:w-auto">
@@ -588,6 +612,8 @@ export const ControleHorariosPage: React.FC = () => {
                         <th className="px-3 py-2 text-left font-semibold">Serviço</th>
                         <th className="px-3 py-2 text-left font-semibold">Saída</th>
                         <th className="px-3 py-2 text-left font-semibold">Chegada</th>
+                        <th className="px-3 py-2 text-left font-semibold">Saída Ajustada</th>
+                        <th className="px-3 py-2 text-left font-semibold">Chegada Ajustada</th>
                         <th className="px-3 py-2 text-left font-semibold">Carro</th>
                         <th className="px-3 py-2 text-left font-semibold">Motorista Original</th>
                         <th className="px-3 py-2 text-left font-semibold">Crachá Original</th>
@@ -601,6 +627,12 @@ export const ControleHorariosPage: React.FC = () => {
                     </thead>
                     <tbody>
                       {sortedControleHorarios.map((it: any) => {
+                        const fmtAdj = (v?: string) => {
+                          if (!v) return '';
+                          try { const d = new Date(v); if (isNaN(d.getTime())) return ''; return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
+                        };
+                        const saidaAdj = fmtAdj(it.hor_saida_ajustada);
+                        const chegadaAdj = fmtAdj(it.hor_chegada_ajustada);
                         const isMotoristaSubstituted = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus);
                         const motoristaNomeSubstituto = isMotoristaSubstituted ? (it.nomeMotoristaEditado || '') : '';
                         const motoristaCrachaSubstituto = isMotoristaSubstituted ? (it.crachaMotoristaEditado || '') : '';
@@ -610,13 +642,16 @@ export const ControleHorariosPage: React.FC = () => {
                         const cobradorCrachaSubstituto = isCobradorSubstituted ? (it.crachaCobradorEditado || '') : '';
                         const hasCobrador = it.nomeCobradorGlobus || cobradorNomeSubstituto;
 
+                        const hasAdjust = Boolean(saidaAdj || chegadaAdj);
                         return (
-                          <tr key={it.id} className="border-b border-gray-800 hover:bg-gray-800/40">
+                          <tr key={it.id} className={`border-b border-gray-800 hover:bg-gray-800/40 ${hasAdjust ? 'bg-emerald-900/10' : ''}`}>
                             <td className="px-3 py-2">{it.setorPrincipalLinha}</td>
                             <td className="px-3 py-2">{it.codigoLinha} - {it.nomeLinha}</td>
                             <td className="px-3 py-2">{it.codServicoNumero ?? it.cod_servico_numero}</td>
                             <td className="px-3 py-2">{it.horaSaida}</td>
                             <td className="px-3 py-2">{it.horaChegada}</td>
+                            <td className="px-3 py-2">{saidaAdj ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">{saidaAdj}<span className="text-[10px] uppercase">ajustado</span></span> : <span className="text-gray-500">—</span>}</td>
+                            <td className="px-3 py-2">{chegadaAdj ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">{chegadaAdj}<span className="text-[10px] uppercase">ajustado</span></span> : <span className="text-gray-500">—</span>}</td>
                             <td className="px-3 py-2">{it.numeroCarro}</td>
                             <td className="px-3 py-2">{it.nomeMotoristaGlobus}</td>
                             <td className="px-3 py-2">{it.crachaMotoristaGlobus}</td>
@@ -661,6 +696,3 @@ export const ControleHorariosPage: React.FC = () => {
     </div>
   );
 };
-
-
-
