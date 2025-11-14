@@ -1,5 +1,5 @@
 // src/features/controle-horarios/components/FiltersPanel/FiltersPanel.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, X, ChevronDown, CheckCheck, Trash2 } from 'lucide-react';
 import { FiltrosControleHorarios, OpcoesControleHorariosDto } from '@/types/controle-horarios.types';
 
@@ -39,8 +39,51 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
 }) => {
   if (!showFilters) return null;
 
+  // Utilidade local para persistir filtros nomeados por usuário
+  const getUsuarioAtual = () => {
+    try {
+      const raw = localStorage.getItem('user');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { id: '1', email: 'usuario@exemplo.com' };
+  };
+  const user = getUsuarioAtual();
+  const SAVED_KEY = `ch_saved_filters_${user?.id || user?.email || 'default'}`;
+
+  type SavedFilter = {
+    name: string;
+    filtros: FiltrosControleHorarios;
+    tipoLocal?: 'R' | 'S';
+    statusEdicaoLocal?: 'todos' | 'editados' | 'nao_editados';
+    createdAt: number;
+  };
+
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>(() => {
+    try {
+      const raw = localStorage.getItem(SAVED_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [];
+  });
+  const [newFilterName, setNewFilterName] = useState('');
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SAVED_KEY, JSON.stringify(savedFilters.slice(0, 3)));
+    } catch {}
+  }, [SAVED_KEY, savedFilters]);
+
   const handleFilterChange = (key: keyof FiltrosControleHorarios, value: any) => {
-    setFiltros(prev => ({ ...prev, [key]: value }));
+    setFiltros(prev => {
+      const newFilters = { ...prev, [key]: value };
+
+      // Para filtros booleanos, remova-os do estado se forem falsos, para que não sejam enviados na string de consulta.
+      if (key === 'apenas_editadas' && value === false) {
+        delete newFilters[key];
+      }
+
+      return newFilters;
+    });
   };
 
   const servicosPadrao = useMemo(() => Array.from({ length: 100 }, (_, i) => String(i).padStart(2, '0')), []);
@@ -54,6 +97,29 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
     return all.filter(l => (l.codigo + ' ' + l.nome).toLowerCase().includes(q));
   }, [opcoesFiltros.linhas, buscaLinha]);
 
+  const handleSaveCurrentAsNamedFilter = () => {
+    const name = newFilterName.trim();
+    if (!name) return;
+    // limitar a 3 entradas
+    const next: SavedFilter[] = [
+      { name, filtros, tipoLocal, statusEdicaoLocal, createdAt: Date.now() },
+      ...savedFilters.filter((sf) => sf.name !== name),
+    ].slice(0, 3);
+    setSavedFilters(next);
+    setNewFilterName('');
+  };
+
+  const handleApplySavedFilter = (sf: SavedFilter) => {
+    setFiltros(sf.filtros || {});
+    if (setTipoLocal) setTipoLocal(sf.tipoLocal);
+    if (setStatusEdicaoLocal && sf.statusEdicaoLocal) setStatusEdicaoLocal(sf.statusEdicaoLocal);
+    onAplicarFiltros();
+  };
+
+  const handleDeleteSavedFilter = (name: string) => {
+    setSavedFilters((prev) => prev.filter((sf) => sf.name !== name));
+  };
+
   return (
     <div className="border border-yellow-400/20 bg-gray-900/100 text-gray-100 rounded-xl p-6 shadow-[0_0_30px_rgba(251,191,36,0.06)]">
       <div className="flex items-center justify-between mb-4">
@@ -61,9 +127,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <Search className="h-5 w-5 text-yellow-300" />
           Filtros Avançados
         </h3>
-        <button onClick={onClose} className="text-gray-300 hover:text-gray-100">
-          <X className="h-5 w-5" />
-        </button>
+      
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 ">
@@ -289,57 +353,114 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           />
         </div>
 
+      
+
+
         {/* Edições (local) */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1">Edições</label>
           <select
             value={statusEdicaoLocal || 'todos'}
-            onChange={(e) => setStatusEdicaoLocal && setStatusEdicaoLocal(e.target.value as any)}
+            onChange={(e) => {
+              const v = e.target.value as 'todos' | 'editados' | 'nao_editados';
+              if (setStatusEdicaoLocal) setStatusEdicaoLocal(v);
+              // Aplica filtro rápido diretamente quando selecionar uma opção
+              if (onAplicarFiltroRapido) onAplicarFiltroRapido(v);
+              // Dispara busca imediatamente para experiência responsiva
+              onAplicarFiltros();
+            }}
             className="w-full min-w-[150px] border border-gray-700 bg-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
           >
             <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="todos">Todos</option>
-            <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="editados">Editados por mim</option>
+            <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="editados">Editados por mim (confirmados)</option>
             <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="nao_editados">Não editados</option>
           </select>
         </div>
       </div>
 
-      <div className="mt-6 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Limite de Registros</label>
-            <select
-              value={filtros.limite || 10}
-              onChange={(e) => handleFilterChange('limite', parseInt(e.target.value))}
-              className="border border-gray-700 bg-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
-            >
-              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={10}>10 registros</option>
-              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={20}>20 registros</option>
-              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={30}>30 registros</option>
-              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={40}>40 registros</option>
-              <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={50}>50 registros</option>
-            </select>
+      <div className="mt-6 flex flex-col gap-4">
+        {/* Seção de filtros salvos */}
+        <div className="flex items-end gap-2 flex-wrap">
+          <div className="flex-1 min-w-[220px]">
+            <label className="block text-sm font-medium text-gray-300 mb-1">Salvar filtro (até 3)</label>
+            <input
+              type="text"
+              value={newFilterName}
+              maxLength={40}
+              onChange={(e) => setNewFilterName(e.target.value)}
+              placeholder="Nome do filtro (ex.: Madrugada Setor 7000)"
+              className="w-full border border-gray-700 bg-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+            />
           </div>
+          <button
+            onClick={handleSaveCurrentAsNamedFilter}
+            disabled={!newFilterName.trim() || savedFilters.length >= 3}
+            className={`px-4 py-2 text-sm rounded-md flex items-center gap-2 ${(!newFilterName.trim() || savedFilters.length >= 3) ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400'}`}
+            title={savedFilters.length >= 3 ? 'Limite de 3 filtros atingido' : 'Salvar filtro atual'}
+          >
+            <CheckCheck className="h-4 w-4" /> Salvar Filtro
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onLimparFiltros}
-            className="px-4 py-2 text-sm text-gray-200 hover:text-white flex items-center gap-2 rounded-md border border-gray-700 hover:bg-gray-800"
-          >
-            <X className="h-4 w-4" />
-            Limpar Filtros
-          </button>
-          <button
-            onClick={onAplicarFiltros}
-            className="px-4 py-2 text-sm bg-yellow-500 text-black hover:bg-yellow-400 flex items-center gap-2 rounded-md"
-          >
-            <CheckCheck className="h-4 w-4" />
-            Aplicar Filtros
-          </button>
+        {savedFilters.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {savedFilters.map((sf) => (
+              <span key={sf.name} className="inline-flex items-center gap-2 rounded-full border border-yellow-400/20 bg-yellow-400/10 px-2 py-1 text-xs text-yellow-200">
+                <button
+                  className="px-2 py-0.5 rounded-md bg-yellow-500/20 text-yellow-200 hover:bg-yellow-500/30"
+                  title="Aplicar filtro"
+                  onClick={() => handleApplySavedFilter(sf)}
+                >{sf.name}</button>
+                <button
+                  className="p-1 rounded-md hover:bg-red-500/20"
+                  title="Excluir filtro"
+                  onClick={() => handleDeleteSavedFilter(sf.name)}
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Limite de Registros</label>
+              <select
+                value={filtros.limite || 10}
+                onChange={(e) => handleFilterChange('limite', parseInt(e.target.value))}
+                className="border border-gray-700 bg-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+              >
+                <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={10}>10 registros</option>
+                <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={20}>20 registros</option>
+                <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={30}>30 registros</option>
+                <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={40}>40 registros</option>
+                <option className="ml-2 text-sm text-gray-300 bg-gray-900" value={50}>50 registros</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onLimparFiltros}
+              className="px-4 py-2 text-sm text-gray-200 hover:text-white flex items-center gap-2 rounded-md border border-gray-700 hover:bg-gray-800"
+            >
+              <X className="h-4 w-4" />
+              Limpar Filtros
+            </button>
+            <button
+              onClick={onAplicarFiltros}
+              className="px-4 py-2 text-sm bg-yellow-500 text-black hover:bg-yellow-400 flex items-center gap-2 rounded-md"
+            >
+              <CheckCheck className="h-4 w-4" />
+              Aplicar Filtros
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
 

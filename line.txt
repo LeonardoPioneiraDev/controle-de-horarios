@@ -1,1 +1,0 @@
-                    <div onClick={() => setShowDriverOptionsModal(item)} className="cursor-pointer">

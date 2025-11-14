@@ -1,0 +1,100 @@
+services:
+  # ==========================================
+  # 🗄️ POSTGRESQL DATABASE
+  # ==========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: controle-horarios-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: controle_horarios_db
+      POSTGRES_USER: horarios_user
+      POSTGRES_PASSWORD: horarios@@Vpioneira25
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=pt_BR.UTF-8 --lc-ctype=pt_BR.UTF-8"
+      TZ: America/Sao_Paulo
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - controle-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U horarios_user -d controle_horarios_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # 🚀 BACKEND NESTJS
+  # ==========================================
+  backend:
+    build:
+      context: ./apps/controle-de-horarios-backend
+      dockerfile: Dockerfile
+    container_name: controle-horarios-backend
+    restart: unless-stopped
+    ports:
+      - "3355:3355"
+    env_file:
+      - ./apps/controle-de-horarios-backend/.env
+    environment:
+      - NODE_ENV=development
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USERNAME=horarios_user
+      - DATABASE_PASSWORD=horarios@@Vpioneira25
+      - DATABASE_NAME=controle_horarios_db
+      - TZ=America/Sao_Paulo
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - controle-network
+    volumes:
+      - ./apps/controle-de-horarios-backend/logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f https://horariosapi.vpioneira.com.br/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # 🌐 FRONTEND REACT
+  # ==========================================
+  frontend:
+    build:
+      context: ./apps/controle-de-horarios-frontend
+      dockerfile: Dockerfile
+    container_name: controle-horarios-frontend
+    restart: unless-stopped
+    ports:
+      - "3008:80"
+    network:
+      - controle-network
+    depends_on:
+      - backend
+
+  # ==========================================
+  # �� ADMINER (DATABASE ADMIN)
+  # ==========================================
+  adminer:
+    image: adminer:latest
+    container_name: controle-horarios-adminer
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    depends_on:
+      - postgres
+    networks:
+      - controle-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  controle-network:
+    driver: bridge

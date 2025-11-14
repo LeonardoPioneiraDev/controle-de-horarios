@@ -1,7 +1,0 @@
-                  </td>
-                  <td className="px-2 py-4">
-                    <div onClick={() => setShowDriverOptionsModal(item)} className="cursor-pointer">
-                      <div className="text-sm font-bold text-gray-800 leading-tight">{(item as any).crachaMotoristaEditado || (item as any).crachaMotoristaGlobus || 'N/A'}</div>
-                      <div className="text-xs text-gray-500 leading-tight">{(item as any).nomeMotoristaGlobus || 'Não Informado'}</div>
-                    </div>
-                  </td>

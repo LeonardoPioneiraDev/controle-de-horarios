@@ -3,6 +3,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList, Navigation, ArrowDown, Play, Square, Users, Car, Bus, Calendar, Activity } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ControleHorarioItem, StatusControleHorariosData, StatusControleHorariosDto, EstatisticasControleHorariosDto } from '@/types/controle-horarios.types';
+import { controleHorariosService } from '@/services/controleHorariosService';
 
 // ... other code ...
 
@@ -381,6 +382,158 @@ const ConfirmPersonPropagationModal: React.FC<{
   );
 };
 
+interface HorariosModalProps {
+  item: ControleHorarioItem;
+  onClose: () => void;
+  onSave: (data: {
+    hor_saida_ajustada?: string;
+    hor_chegada_ajustada?: string;
+    atraso_motivo?: string;
+    atraso_observacao?: string;
+  }) => void;
+}
+
+const toHHMM = (value?: string | Date | null): string => {
+  if (!value) return '';
+  const d = typeof value === 'string' ? new Date(value) : value;
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+const HorariosModal: React.FC<HorariosModalProps> = ({ item, onClose, onSave }) => {
+  const [saidaAjustada, setSaidaAjustada] = useState(toHHMM((item as any).hor_saida_ajustada));
+  const [chegadaAjustada, setChegadaAjustada] = useState(toHHMM((item as any).hor_chegada_ajustada));
+  const [motivoAtraso, setMotivoAtraso] = useState((item as any).atraso_motivo || '');
+  const [observacaoAtraso, setObservacaoAtraso] = useState((item as any).atraso_observacao || '');
+
+  const handleSave = () => {
+    if (!item.numeroCarro || item.numeroCarro.trim() === '') {
+      toast.error('É necessário informar o número do veículo antes de confirmar a viagem.');
+      return;
+    }
+    onSave({
+      hor_saida_ajustada: saidaAjustada,
+      hor_chegada_ajustada: chegadaAjustada,
+      atraso_motivo: motivoAtraso,
+      atraso_observacao: observacaoAtraso,
+    });
+    onClose();
+  };
+
+  const formatTimeForDisplay = (timeString?: string): string => {
+    if (!timeString) return 'N/A';
+    try {
+      const date = new Date(timeString);
+      return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      return 'Inválido';
+    }
+  };
+
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
+        <div className="relative">
+          <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-cyan-400/30 via-blue-500/25 to-cyan-300/30 blur-md" />
+          <div className="relative rounded-xl border border-cyan-400/20 bg-neutral-900 text-gray-100 shadow-2xl">
+            <div className="px-6 py-4 border-b border-cyan-400/20">
+              <div className="flex items-center">
+                <Clock className="h-5 w-5 mr-2 text-cyan-400" />
+                <h3 className="text-lg font-semibold text-cyan-400">Ajustar Horários e Confirmar Viagem</h3>
+              </div>
+               <div className="mt-2 space-y-1 text-sm">
+                 <p className="text-gray-400">Linha: <span className="font-semibold text-gray-200">{(item as any).codigoLinha} - {(item as any).nomeLinha}</span></p>
+                 <p className="text-gray-400">Serviço: <span className="font-semibold text-gray-200">{(item as any).cod_servico_numero}</span></p>
+               </div>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              {/* Horários Previstos */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300">Saída Prevista</label>
+                  <p className="font-mono text-lg text-green-300">{formatTimeForDisplay((item as any).hor_saida)}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300">Chegada Prevista</label>
+                  <p className="font-mono text-lg text-red-300">{formatTimeForDisplay((item as any).hor_chegada)}</p>
+                </div>
+              </div>
+
+              {/* Horários Ajustados */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="saida-ajustada" className="block text-sm font-medium text-gray-300">Saída Ajustada</label>
+                  <input
+                    id="saida-ajustada"
+                    type="time"
+                    value={saidaAjustada}
+                    onChange={(e) => setSaidaAjustada(e.target.value)}
+                    className="block w-full px-3 py-2 border border-neutral-700 bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-100"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="chegada-ajustada" className="block text-sm font-medium text-gray-300">Chegada Ajustada</label>
+                  <input
+                    id="chegada-ajustada"
+                    type="time"
+                    value={chegadaAjustada}
+                    onChange={(e) => setChegadaAjustada(e.target.value)}
+                    className="block w-full px-3 py-2 border border-neutral-700 bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-100"
+                  />
+                </div>
+              </div>
+
+              {/* Motivo do Atraso */}
+              <div>
+                <label htmlFor="motivo-atraso" className="block text-sm font-medium text-gray-300">Motivo do Atraso (Opcional)</label>
+                <select
+                  id="motivo-atraso"
+                  value={motivoAtraso}
+                  onChange={(e) => setMotivoAtraso(e.target.value)}
+                  className="block w-full px-3 py-2 border border-neutral-700 bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-100"
+                >
+                  <option value="">Selecione um motivo</option>
+                  <option value="ENGARRAFAMENTO">Engarrafamento</option>
+                  <option value="ACIDENTE">Acidente</option>
+                  <option value="QUEBRA_OU_DEFEITO">Quebra ou Defeito</option>
+                  <option value="DIVERSOS">Diversos</option>
+                </select>
+              </div>
+
+              {/* Observação */}
+              <div>
+                <label htmlFor="observacao-atraso" className="block text-sm font-medium text-gray-300">Observação (Opcional)</label>
+                <textarea
+                  id="observacao-atraso"
+                  value={observacaoAtraso}
+                  onChange={(e) => setObservacaoAtraso(e.target.value)}
+                  rows={2}
+                  className="block w-full px-3 py-2 border border-neutral-700 bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-100"
+                  placeholder="Detalhes sobre o atraso, se houver."
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-cyan-400/20 flex justify-end gap-3">
+              <button onClick={onClose} className="px-4 py-2 bg-neutral-700 text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors">
+                <X className="h-4 w-4 mr-2 inline" />
+                Cancelar
+              </button>
+              <button onClick={handleSave} className="px-5 py-2 bg-cyan-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-neutral-900 focus:ring-cyan-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+                disabled={!item.numeroCarro || item.numeroCarro.trim() === ''}
+                title={!item.numeroCarro || item.numeroCarro.trim() === '' ? 'Informe o número do veículo primeiro' : 'Confirmar viagem'}
+              >
+                <Save className="h-4 w-4 mr-2 inline" />
+                Confirmar Viagem
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface DataTableProps {
   controleHorarios: ControleHorarioItem[];
   controleHorariosOriginais: ControleHorarioItem[];
@@ -397,6 +550,10 @@ interface DataTableProps {
   scaleFilterLabel: string | null;
   onClearScaleFilter: () => void;
   canSave: boolean;
+  // Notifica o container quando o modal de horários abre/fecha
+  onHorariosModalOpenChange?: (open: boolean) => void;
+  // Quando ativo, não ocultar viagens confirmadas após 30s (visão: Editados por mim)
+  editedByMeActive?: boolean;
 }
 
 export const DataTable: React.FC<DataTableProps> = ({
@@ -414,9 +571,19 @@ export const DataTable: React.FC<DataTableProps> = ({
   scaleFilterActive,
   scaleFilterLabel,
   onClearScaleFilter,
+  onHorariosModalOpenChange,
+  editedByMeActive = false,
 }) => {
   const [showDriverOptionsModal, setShowDriverOptionsModal] = useState<ControleHorarioItem | null>(null);
   const [showCobradorOptionsModal, setShowCobradorOptionsModal] = useState<ControleHorarioItem | null>(null);
+  const [horariosModalItem, setHorariosModalItem] = useState<ControleHorarioItem | null>(null);
+  
+  // Informe o container para ocultar mensagens globais enquanto o modal de horários está aberto
+  useEffect(() => {
+    if (typeof onHorariosModalOpenChange === 'function') {
+      onHorariosModalOpenChange(Boolean(horariosModalItem));
+    }
+  }, [horariosModalItem, onHorariosModalOpenChange]);
   const [vehicleDrafts, setVehicleDrafts] = useState<Record<string, string>>({});
   const [pendingVehicle, setPendingVehicle] = useState<{ open: boolean; vehicle: string; anchorId: string }>({ open: false, vehicle: '', anchorId: '' });
   const [hiddenRows, setHiddenRows] = useState(new Set<string>());
@@ -446,23 +613,22 @@ export const DataTable: React.FC<DataTableProps> = ({
 
   const visibleItems = controleHorarios;
 
+  // Quando a visão "Editados por mim" está ativa, garantir que nenhuma linha fique escondida
+  useEffect(() => {
+    if (editedByMeActive) {
+      setHiddenRows(new Set());
+    }
+  }, [editedByMeActive]);
+
   useEffect(() => {
     const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
     controleHorarios.forEach((item) => {
-      const saidaISO = (item as any).hor_saida || (item as any).horaSaida;
-      const saidaDate = saidaISO ? new Date(saidaISO) : null;
-      const passou = !!(saidaDate && saidaDate.getTime() < Date.now());
-      const temVeiculo = !!(item.numeroCarro && String(item.numeroCarro).trim() !== '');
-      const trocouMotorista = !!(item.nomeMotoristaEditado || item.crachaMotoristaEditado);
-      const trocouCobrador = !!(item.nomeCobradorEditado || item.crachaCobradorEditado);
-
-      const isGreenRow = passou && temVeiculo && !trocouMotorista && !trocouCobrador;
-
-      if (isGreenRow && !hiddenRows.has(item.id)) {
+      // New logic: Hide 30 seconds after 'de_acordo' is true
+      if (!editedByMeActive && (item as any).de_acordo && !hiddenRows.has(item.id)) {
         const timerId = setTimeout(() => {
           setHiddenRows(prev => new Set(prev).add(item.id));
-        }, 40000);
+        }, 30000); // 30 seconds
         timers.set(item.id, timerId);
       }
     });
@@ -470,7 +636,7 @@ export const DataTable: React.FC<DataTableProps> = ({
     return () => {
       timers.forEach(clearTimeout);
     };
-  }, [controleHorarios, hiddenRows]);
+  }, [controleHorarios, hiddenRows, editedByMeActive]);
 
   const anchorItem = pendingVehicle.open
     ? (visibleItems.find((it) => it.id === pendingVehicle.anchorId) || null)
@@ -498,9 +664,82 @@ export const DataTable: React.FC<DataTableProps> = ({
     return ids;
   })();
 
+  const handleHorariosModalSave = useCallback(async (
+    item: ControleHorarioItem,
+    data: {
+      hor_saida_ajustada?: string;
+      hor_chegada_ajustada?: string;
+      atraso_motivo?: string;
+      atraso_observacao?: string;
+    }
+  ) => {
+    // The validation is already in the modal, but we double-check here.
+    if (!item.numeroCarro || item.numeroCarro.trim() === '') {
+      toast.error('Veículo não informado.');
+      return;
+    }
+
+    // Helper to convert HH:mm string to ISO string for a given date
+    const toISOString = (time: string, date: Date): string | undefined => {
+        if (!/^\d{2}:\d{2}$/.test(time)) return undefined;
+        const [hours, minutes] = time.split(':').map(Number);
+        const newDate = new Date(date);
+        newDate.setHours(hours, minutes, 0, 0);
+        return newDate.toISOString();
+    };
+
+    const baseDate = new Date((item as any).hor_saida || Date.now());
+
+    let saidaISO: string | undefined;
+    let chegadaISO: string | undefined;
+    if (data.hor_saida_ajustada) {
+        saidaISO = toISOString(data.hor_saida_ajustada, baseDate);
+        onInputChange(item.id, 'hor_saida_ajustada' as keyof ControleHorarioItem, saidaISO);
+    }
+    if (data.hor_chegada_ajustada) {
+        chegadaISO = toISOString(data.hor_chegada_ajustada, baseDate);
+        onInputChange(item.id, 'hor_chegada_ajustada' as keyof ControleHorarioItem, chegadaISO);
+    }
+    onInputChange(item.id, 'atraso_motivo' as keyof ControleHorarioItem, data.atraso_motivo as any);
+    onInputChange(item.id, 'atraso_observacao' as keyof ControleHorarioItem, data.atraso_observacao as any);
+    onInputChange(item.id, 'de_acordo' as keyof ControleHorarioItem, true); // Confirm the trip
+
+    // Persistência imediata (optimistic): salva este item no backend
+    try {
+      const allowedMotivos = ['ENGARRAFAMENTO', 'ACIDENTE', 'QUEBRA_OU_DEFEITO', 'DIVERSOS'];
+      const updates: any = { id: item.id, de_acordo: true };
+      if (saidaISO) updates.hor_saida_ajustada = saidaISO;
+      if (chegadaISO) updates.hor_chegada_ajustada = chegadaISO;
+      const motivo = (data.atraso_motivo || '').toString().trim().toUpperCase();
+      if (motivo && allowedMotivos.includes(motivo)) {
+        updates.atraso_motivo = motivo;
+      }
+      const obs = (data.atraso_observacao || '').toString().trim();
+      if (obs) {
+        updates.atraso_observacao = obs;
+      }
+      // Ajustes e confirmação não usam propagação; atualizar somente este registro
+      const { id, ...ajustes } = updates;
+      await controleHorariosService.atualizarControleHorario(id, ajustes);
+      toast.success('Informações confirmadas e salvas.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Falha ao salvar alterações');
+    }
+  }, [onInputChange]);
+
   const formatTime = (timeString?: string): string => {
     if (!timeString) return 'N/A';
     return timeString.substring(0, 5);
+  };
+
+  // Editor de horários: estado para abrir/fechar por linha
+  const [openHorarioEditorId, setOpenHorarioEditorId] = useState<string | null>(null);
+
+  const toHHMM = (value?: string | Date | null): string => {
+    if (!value) return '';
+    const d = typeof value === 'string' ? new Date(value) : value;
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   const handlePersonModalSave = useCallback((item: ControleHorarioItem, personType: 'motorista' | 'cobrador', data: { nome: string; cracha: string; observacoes: string; numeroCarro: string }) => {
@@ -727,18 +966,19 @@ export const DataTable: React.FC<DataTableProps> = ({
               const trocouCobrador = !!(item.nomeCobradorEditado || item.crachaCobradorEditado);
               const nomeAtividade = ((item as any).nome_atividade || '').toString().toUpperCase();
               const isAtividadeAmarela = nomeAtividade === 'RECOLHIMENTO' || nomeAtividade === 'RENDIÇÃO';
-              const rowClass = (passou && !temVeiculo)
+              const isConfirmed = (item as any).de_acordo === true;
+              const rowClass = isConfirmed
+                ? 'border-l-4 border-green-500 bg-green-900/20' // Confirmed is always green
+                : (passou && !temVeiculo)
                 ? 'border-l-4 border-red-500 bg-red-900/30'
                 : (passou && (trocouMotorista || trocouCobrador))
                   ? 'border-l-4 border-yellow-400 bg-yellow-900/25'
-                  : (passou && temVeiculo && !trocouMotorista && !trocouCobrador)
-                    ? 'border-l-4 border-green-500 bg-green-900/20'
-                    : '';
+                  : '';
               const draft = vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '');
               return (
                 <tr key={item.id} className={`transition-colors hover:bg-gray-800/40 ${rowClass}`}>
                   <td className="px-3 py-4" />
-                  <td className="px-2 py-4 text-sm text-gray-200">
+                  <td className="px-2 py-4 text-sm text-gray-200 cursor-pointer" onClick={() => setHorariosModalItem(item)}>
                     <div className="flex flex-col space-y-2">
                       {/* Horário de Saída */}
                       <div className="flex items-center">
@@ -1009,6 +1249,14 @@ export const DataTable: React.FC<DataTableProps> = ({
         />
       )}
 
+      {horariosModalItem && (
+        <HorariosModal
+          item={horariosModalItem}
+          onClose={() => setHorariosModalItem(null)}
+          onSave={(data) => handleHorariosModalSave(horariosModalItem, data)}
+        />
+      )}
+
       <ConfirmPersonPropagationModal
         isOpen={pendingPerson.open}
         personType={pendingPerson.personType}
@@ -1057,3 +1305,6 @@ export const DataTable: React.FC<DataTableProps> = ({
 }
 
 export default DataTable;
+
+
+

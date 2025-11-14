@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿﻿﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { controleHorariosService } from '../../../services/controleHorariosService';
 import { isAtLeast, UserRole } from '../../../types/user.types';
 import {
@@ -148,8 +148,8 @@ export const useControleHorarios = () => {
       if (!reqFilters.editado_por_usuario_email && statusEdicaoLocal === 'editados') {
         const u = obterUsuarioAtual();
         if (u?.email) {
-          (reqFilters as any).editado_por_usuario_email = u.email;
-          (reqFilters as any).apenas_editadas = true;
+          const normalizedEmail = u.email.toString().trim().toLowerCase();
+          (reqFilters as any).editado_por_usuario_email = normalizedEmail;
         }
       }
       if (!reqFilters.cracha_funcionario) {
@@ -251,50 +251,76 @@ export const useControleHorarios = () => {
 
   const salvarTodasAlteracoes = useCallback(async () => {
     const usuarioAtual = obterUsuarioAtual();
-    const roleNorm = (usuarioAtual.perfil || '').toString().toLowerCase() as UserRole;
-    if (!isAtLeast(roleNorm, UserRole.ANALISTA)) {
-      setError('Voc� n�o tem permiss�o para salvar altera��es. Requer perfil Analista ou superior.');
-      return;
-    }
+    const getJwtClaim = (key: string): string => { try { const t = localStorage.getItem('token'); if (!t) return ''; const payload = JSON.parse(atob((t.split('.')[1] || ''))); return (payload[key] || '').toString(); } catch { return ''; } };
+    const roleNorm = (getJwtClaim('role') || getJwtClaim('perfil') || usuarioAtual.perfil || '').toString().toLowerCase() as UserRole;
+
+    // Diff originals vs current
     const origById = new Map(controleHorariosOriginais.map((o) => [o.id, o]));
-    const itensAlterados = controleHorarios.filter((item) => {
+
+    // Determine changed fields per item
+    const propagaveisChanged: Array<{ id: string; prefixo_veiculo?: string; motorista_substituto_nome?: string; motorista_substituto_cracha?: string; cobrador_substituto_nome?: string; cobrador_substituto_cracha?: string; observacoes_edicao?: string; }> = [];
+    const ajustesChanged: Array<{ id: string; de_acordo?: boolean; hor_saida_ajustada?: string; hor_chegada_ajustada?: string; atraso_motivo?: string; atraso_observacao?: string; }> = [];
+
+    for (const item of controleHorarios) {
       const original = origById.get(item.id);
-      if (!original) return true;
-      return (
-        item.numeroCarro !== original.numeroCarro ||
-        item.nomeMotoristaEditado !== original.nomeMotoristaEditado ||
-        item.crachaMotoristaEditado !== original.crachaMotoristaEditado ||
-        item.nomeCobradorEditado !== original.nomeCobradorEditado ||
-        item.crachaCobradorEditado !== original.crachaCobradorEditado ||
-        item.observacoes !== original.observacoes
-      );
-    });
-    if (itensAlterados.length === 0) return;
+      if (!original) continue;
+
+      const propPayload: any = {};
+      const adjPayload: any = {};
+
+      if (item.numeroCarro !== original.numeroCarro) propPayload.prefixo_veiculo = item.numeroCarro?.trim() || '';
+      if (item.nomeMotoristaEditado !== original.nomeMotoristaEditado) propPayload.motorista_substituto_nome = item.nomeMotoristaEditado?.trim() || '';
+      if (item.crachaMotoristaEditado !== original.crachaMotoristaEditado) propPayload.motorista_substituto_cracha = item.crachaMotoristaEditado?.trim() || '';
+      if (item.nomeCobradorEditado !== original.nomeCobradorEditado) propPayload.cobrador_substituto_nome = item.nomeCobradorEditado?.trim() || '';
+      if (item.crachaCobradorEditado !== original.crachaCobradorEditado) propPayload.cobrador_substituto_cracha = item.crachaCobradorEditado?.trim() || '';
+      if (item.observacoes !== original.observacoes) propPayload.observacoes_edicao = item.observacoes?.trim() || '';
+
+      if ((item as any).de_acordo !== (original as any).de_acordo) adjPayload.de_acordo = (item as any).de_acordo;
+      if (String((item as any).hor_saida_ajustada || '') !== String((original as any).hor_saida_ajustada || '')) adjPayload.hor_saida_ajustada = (item as any).hor_saida_ajustada || '';
+      if (String((item as any).hor_chegada_ajustada || '') !== String((original as any).hor_chegada_ajustada || '')) adjPayload.hor_chegada_ajustada = (item as any).hor_chegada_ajustada || '';
+      if ((item as any).atraso_motivo !== (original as any).atraso_motivo) adjPayload.atraso_motivo = (item as any).atraso_motivo || '';
+      if ((item as any).atraso_observacao !== (original as any).atraso_observacao) adjPayload.atraso_observacao = (item as any).atraso_observacao || '';
+
+      if (Object.keys(propPayload).length > 0) propagaveisChanged.push({ id: item.id, ...propPayload });
+      if (Object.keys(adjPayload).length > 0) ajustesChanged.push({ id: item.id, ...adjPayload });
+    }
+
+    if (propagaveisChanged.length === 0 && ajustesChanged.length === 0) return;
+
     try {
       setLoading(true);
-      const payload: UpdateMultipleControleHorariosDto = {
-        updates: itensAlterados.map((i) => ({
-          id: i.id,
-          prefixo_veiculo: i.numeroCarro?.trim() || undefined,
-          motorista_substituto_nome: i.nomeMotoristaEditado?.trim() || undefined,
-          motorista_substituto_cracha: i.crachaMotoristaEditado?.trim() || undefined,
-          cobrador_substituto_nome: i.nomeCobradorEditado?.trim() || undefined,
-          cobrador_substituto_cracha: i.crachaCobradorEditado?.trim() || undefined,
-          observacoes_edicao: i.observacoes?.trim() || undefined,
-        })),
-        editorNome: usuarioAtual.nome,
-        editorEmail: usuarioAtual.email,
-      };
-      await controleHorariosService.salvarMultiplosControles(payload);
+
+      // 1) Apply propagáveis via batch only if user is authorized
+      if (propagaveisChanged.length > 0) {
+        if (!isAtLeast(roleNorm, UserRole.ANALISTA)) {
+          setError('Ação não permitida: alterações com propagação exigem perfil Analista ou superior.');
+        } else {
+          const payload = {
+            updates: propagaveisChanged,
+            editorNome: usuarioAtual.nome,
+            editorEmail: usuarioAtual.email,
+          } as any;
+          await controleHorariosService.salvarMultiplosControles(payload);
+        }
+      }
+
+      // 2) Apply ajustes/confirm per record (no propagação)
+      for (const adj of ajustesChanged) {
+        const { id, ...data } = adj as any;
+        if (Object.keys(data).length > 0) {
+          await controleHorariosService.atualizarControleHorario(id, data);
+        }
+      }
+
       setControleHorariosOriginais(JSON.parse(JSON.stringify(controleHorarios)));
       setTemAlteracoesPendentes(false);
       await Promise.all([buscarControleHorarios(), verificarStatusDados()]);
     } catch (err: any) {
       const msg = String(err?.message || '').toLowerCase();
       if (msg.includes('forbidden')) {
-        setError('A��o n�o permitida: seu perfil n�o pode salvar. Requer Analista ou superior.');
+        setError('Ação não permitida: verifique seu perfil para salvar as alterações.');
       } else {
-        setError(err.message || 'Erro ao salvar altera��es');
+        setError(err.message || 'Erro ao salvar alterações');
       }
     } finally {
       setLoading(false);
@@ -321,7 +347,18 @@ export const useControleHorarios = () => {
 
   const handleInputChange = useCallback((viagemId: string, field: keyof ControleHorarioItem, value: string | number | boolean) => {
     setControleHorarios((prev) => prev.map((it) => (it.id === viagemId ? { ...it, [field]: value } as any : it)));
-    setTemAlteracoesPendentes(true);
+    // Marcar pendente apenas para campos que exigem ação de salvar em lote (veículo/substituições/observações)
+    const fieldsQueExigemSalvar = new Set<keyof ControleHorarioItem>([
+      'numeroCarro',
+      'nomeMotoristaEditado',
+      'crachaMotoristaEditado',
+      'nomeCobradorEditado',
+      'crachaCobradorEditado',
+      'observacoes',
+    ] as any);
+    if (fieldsQueExigemSalvar.has(field)) {
+      setTemAlteracoesPendentes(true);
+    }
     setError(null);
   }, []);
 
@@ -335,14 +372,28 @@ export const useControleHorarios = () => {
     buscarControleHorarios();
   }, [buscarControleHorarios]);
 
-  const aplicarFiltroRapido = useCallback((tipo: 'editados' | 'nao_editados' | 'todos') => {
-    const user = obterUsuarioAtual();
-    if (tipo === 'editados' && user.email) {
-      setFiltros((prev) => ({ ...prev, editado_por_usuario_email: user.email, apenas_editadas: true }));
+    const aplicarFiltroRapido = useCallback((tipo: 'editados' | 'nao_editados' | 'todos') => {
+    if (tipo === 'editados') {
+      // Editados por mim: aplica filtro de backend apenas com o email do editor
+      const u = obterUsuarioAtual();
+      setFiltros((prev: any) => ({
+        ...prev,
+        editado_por_usuario_email: u?.email,
+      }));
+    } else if (tipo === 'nao_editados') {
+      // Não envia filtro de servidor; filtragem local remove editados
+      setFiltros((prev: any) => ({
+        ...prev,
+        editado_por_usuario_email: undefined,
+      }));
     } else {
-      setFiltros((prev) => ({ ...prev, editado_por_usuario_email: undefined, apenas_editadas: undefined }));
+      // Todos: limpa filtros relacionados a edição
+      setFiltros((prev: any) => ({
+        ...prev,
+        editado_por_usuario_email: undefined,
+      }));
     }
-  }, []);
+  }, []);;
 
   const salvarFiltrosManualmente = useCallback(() => {
     console.log('salvarFiltrosManualmente: Saving filters...', { dataReferencia, filtros, tipoLocal, statusEdicaoLocal });
@@ -385,11 +436,13 @@ export const useControleHorarios = () => {
   // Atualiza filtros de "editados por mim" no backend quando statusEdicaoLocal muda
   useEffect(() => {
     const u = obterUsuarioAtual();
-    if (statusEdicaoLocal === 'editados' && u?.email) {
-      setFiltros((prev) => ({ ...prev, editado_por_usuario_email: u.email, apenas_editadas: true }));
+    const getJwtEmail = (() => { try { const t = localStorage.getItem('token'); if (!t) return ''; const payload = JSON.parse(atob((t.split('.')[1] || ''))); return (payload.email || payload.sub || '').toString(); } catch { return ''; } })();
+    const email = getJwtEmail || u?.email;
+    if (statusEdicaoLocal === 'editados' && email) {
+      setFiltros((prev) => ({ ...prev, editado_por_usuario_email: email }));
     } else {
       setFiltros((prev) => {
-        const { editado_por_usuario_email, apenas_editadas, ...rest } = prev as any;
+        const { editado_por_usuario_email, ...rest } = prev as any;
         return { ...rest } as any;
       });
     }
@@ -446,3 +499,5 @@ export const useControleHorarios = () => {
     salvarFiltrosManualmente,
   } as const;
 };
+
+

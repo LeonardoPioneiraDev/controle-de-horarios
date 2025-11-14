@@ -8,6 +8,10 @@ import { createHash } from 'crypto';
 @Index(['data_referencia', 'cod_servico_numero'], { unique: false })
 @Index(['data_referencia', 'nome_motorista'], { unique: false })
 @Index(['hash_dados'], { unique: true })
+// Índices para acelerar filtros de “editados por” e confirmados
+@Index(['data_referencia', 'editado_por_email'], { unique: false })
+@Index(['data_referencia', 'de_acordo'], { unique: false })
+@Index(['data_referencia', 'prefixo_veiculo'], { unique: false })
 export class ControleHorario {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -44,6 +48,13 @@ export class ControleHorario {
 
   @Column({ type: 'timestamp', nullable: true })
   hor_chegada: Date;
+
+  // Horários ajustados pelo usuário (quando diferem do previsto)
+  @Column({ type: 'timestamp', nullable: true })
+  hor_saida_ajustada: Date | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  hor_chegada_ajustada: Date | null;
 
   @Column({ type: 'integer', nullable: true })
   cod_origem_viagem: number;
@@ -118,6 +129,13 @@ export class ControleHorario {
   @Column({ type: 'varchar', length: 500, nullable: true })
   observacoes_edicao: string;
 
+  // Motivo de atraso e observação livre do usuário
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  atraso_motivo: string | null; // ENGARRAFAMENTO | ACIDENTE | QUEBRA_OU_DEFEITO | DIVERSOS
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  atraso_observacao: string | null;
+
   @Column({ type: 'varchar', length: 100, nullable: true })
   editado_por_nome: string;
 
@@ -136,6 +154,14 @@ export class ControleHorario {
 
   @UpdateDateColumn()
   updated_at: Date;
+
+  // Aprovação do usuário para a viagem (quando estiver de acordo)
+  @Column({ type: 'boolean', default: false })
+  de_acordo: boolean;
+
+  // Momento em que foi marcada como "de acordo" (usado para ocultar após 30s)
+  @Column({ type: 'timestamp', nullable: true })
+  de_acordo_em: Date | null;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
   sentido_texto: string;

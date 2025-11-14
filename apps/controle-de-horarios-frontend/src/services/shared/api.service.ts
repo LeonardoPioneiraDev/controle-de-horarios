@@ -11,27 +11,39 @@ export class BaseApiService {
   protected readonly debug: boolean;
 
   constructor() {
-    // Resolve API origin via Vite env (VITE_API_BASE_URL) ou window.location
+    // Resolve API base URL (tolerante a formatos incompletos)
     const envBase =
       typeof import.meta !== 'undefined' && (import.meta as ImportMeta).env
         ? (import.meta as ImportMeta).env.VITE_API_BASE_URL
         : undefined;
 
-    const resolveBaseOrigin = (): string => {
-      const fallback = window.location.origin;
-      const raw = (envBase || '').trim() || fallback;
-      const normalized = raw.replace(/^(https?:)(?!\/\/)/i, '$1//');
-      const withSlash = normalized.endsWith('/') ? normalized : `${normalized}/`;
-      try {
-        const u = new URL(withSlash);
-        return u.toString();
-      } catch {
-        return new URL(fallback.endsWith('/') ? fallback : `${fallback}/`).toString();
-      }
+    const resolveApiBase = (): string => {
+      const fallbackOrigin = window.location.origin;
+      const raw = (envBase || '').trim();
+
+      // Ensure we get a valid absolute URL with scheme and host
+      const coerceAbsolute = (value: string): URL => {
+        let s = (value || '').trim();
+        if (!s) s = fallbackOrigin;
+        if (!/^https?:\/\//i.test(s)) {
+          if (/^\/\//.test(s)) s = 'http:' + s; else s = 'http://' + s;
+        }
+        // Fix cases like 'http:localhost:3336' (missing '//')
+        s = s.replace(/^(https?:)(?!\/\/)/i, '$1//');
+        let u: URL;
+        try { u = new URL(s); } catch { u = new URL(fallbackOrigin); }
+        // Ensure path ends with '/api'
+        const path = (u.pathname || '').replace(/\/+$/,'');
+        u.pathname = /\/api$/i.test(path) ? path : (path ? path + '/api' : '/api');
+        return u;
+      };
+
+      const u = coerceAbsolute(raw);
+      // Return without trailing slash to be consistent
+      return u.toString().replace(/\/$/, '');
     };
 
-    const baseOrigin = resolveBaseOrigin();
-    this.baseURL = new URL('api/', baseOrigin).toString().replace(/\/$/, '');
+    this.baseURL = resolveApiBase();
     this.timeout = 12000000;
     this.debug = true; // process.env.NODE_ENV !== 'production';
 
@@ -49,29 +61,16 @@ export class BaseApiService {
   }
 
     private logConfiguration(): void {
-
-      if (this.debug) {
-
-        console.log('ðŸŒ ==========================================');
-
-        console.log('ðŸŒ CONFIGURAÃ‡ÃƒO DA API - FRONTEND');
-
-        console.log('ðŸŒ ==========================================');
-
-        console.log('ðŸ”§ Modo: Desenvolvimento');
-
-        console.log(`ðŸ”— Base URL: ${this.baseURL}`);
-
-        console.log('ðŸ“¡ Modo de conexÃ£o: proxy');
-
-        console.log(`â±ï¸ Timeout: ${this.timeout}ms`);
-
-        console.log(`ðŸ› Debug: ${this.debug}`);
-
-        console.log('ðŸŒ ==========================================');
-
-      }
-
+      if (!this.debug) return;
+      console.log('==========================================');
+      console.log('CONFIGURAÇÃO DA API - FRONTEND');
+      console.log('==========================================');
+      console.log('Modo: Desenvolvimento');
+      console.log(`Base URL: ${this.baseURL}`);
+      console.log('Conexão: proxy');
+      console.log(`Timeout: ${this.timeout}ms`);
+      console.log(`Debug: ${this.debug}`);
+      console.log('==========================================');
     }
 
   
@@ -196,16 +195,33 @@ export const makeAuthenticatedRequest = async (
       : undefined;
 
   const resolveApiBase = (): string => {
+    const fallbackOrigin = window.location.origin;
     const raw = (envBase || '').trim();
-    const origin = raw ? raw.replace(/^https?:(?!\/)/, (m) => `${m}//`) : window.location.origin;
-    const withSlash = origin.endsWith('/') ? origin : `${origin}/`;
-    return new URL('api/', withSlash).toString().replace(/\/$/, '');
+
+    const coerceAbsolute = (value: string): URL => {
+      let s = (value || '').trim();
+      if (!s) s = fallbackOrigin;
+      if (!/^https?:\/\//i.test(s)) {
+        if (/^\/\//.test(s)) s = 'http:' + s; else s = 'http://' + s;
+      }
+      s = s.replace(/^(https?:)(?!\/\/)/i, '$1//');
+      let u: URL;
+      try { u = new URL(s); } catch { u = new URL(fallbackOrigin); }
+      const path = (u.pathname || '').replace(/\/+$/,'');
+      u.pathname = /\/api$/i.test(path) ? path : (path ? path + '/api' : '/api');
+      return u;
+    };
+
+    const u = coerceAbsolute(raw);
+    return u.toString().replace(/\/$/, '');
   };
 
   const rawBaseURL = resolveApiBase();
   const base = rawBaseURL.endsWith('/') ? rawBaseURL : `${rawBaseURL}/`;
   const ep = endpoint.startsWith('/') ? endpoint.slice(1) : endpoint;
-  const url = new URL(ep, base).toString();
+  let url = new URL(ep, base).toString();
+  // Ensure scheme is followed by // (fix edge cases)
+  url = url.replace(/^(https?:)(?!\/\/)/i, '$1//');
 
   const defaultOptions: RequestInit = {
     headers: {
