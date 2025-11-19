@@ -40,7 +40,7 @@ export class ComparacaoViagensService {
     private readonly globusRepository: Repository<ViagemGlobus>,
     @InjectRepository(HistoricoComparacaoViagens)
     private readonly historicoRepository: Repository<HistoricoComparacaoViagens>,
-  ) {}
+  ) { }
 
   async executarComparacao(dataReferencia: string): Promise<ResultadoComparacaoDto> {
     const inicioProcessamento = Date.now();
@@ -56,93 +56,97 @@ export class ComparacaoViagensService {
     this.logger.log(`📊 Dados encontrados - Transdata: ${viagensTransdata.length}, Globus: ${viagensGlobus.length}`);
 
     if (viagensGlobus.length === 0 || viagensTransdata.length === 0) {
-        this.logger.warn(`Dados insuficientes para comparação. Abortando.`);
-        return {
-            totalComparacoes: 0, compativeis: 0, divergentes: 0, apenasTransdata: viagensTransdata.length,
-            apenasGlobus: viagensGlobus.length, horarioDivergente: 0, percentualCompatibilidade: 0,
-            linhasAnalisadas: 0, tempoProcessamento: '0s'
-        };
+      this.logger.warn(`Dados insuficientes para comparação. Abortando.`);
+      return {
+        totalComparacoes: 0, compativeis: 0, divergentes: 0, apenasTransdata: viagensTransdata.length,
+        apenasGlobus: viagensGlobus.length, horarioDivergente: 0, percentualCompatibilidade: 0,
+        linhasAnalisadas: 0, tempoProcessamento: '0s'
+      };
     }
 
     const todasComparacoes: ComparacaoViagem[] = [];
     let estatisticas = {
-        compativeis: 0, divergentes: 0, horarioDivergente: 0,
-        apenasTransdata: 0, apenasGlobus: 0, matches: 0
+      compativeis: 0, divergentes: 0, horarioDivergente: 0,
+      apenasTransdata: 0, apenasGlobus: 0, matches: 0
     };
 
     const globusMatchedIds = new Set<string>();
     const transdataProcessedIds = new Set<string>();
 
     const normalizedGlobusTrips = viagensGlobus.map(trip => ({
-        original: trip,
-        normalized: normalizeGlobusTrip(trip)
+      original: trip,
+      normalized: normalizeGlobusTrip(trip)
     }));
 
     // --- FASE 1: BUSCAR MATCHES EXATOS ---
     this.logger.log(`🔍 [FASE 1] Buscando matches exatos (TUDO_IGUAL)...`);
     for (const viagemTd of viagensTransdata) {
-        if (transdataProcessedIds.has(viagemTd.id.toString())) continue;
+      if (transdataProcessedIds.has(viagemTd.id.toString())) continue;
 
-        const normTd = normalizeTransDataTrip(viagemTd);
-        let foundExactMatch = false;
+      const normTd = normalizeTransDataTrip(viagemTd);
+      let foundExactMatch = false;
 
-        for (const globusWrapper of normalizedGlobusTrips) {
-            const viagemGb = globusWrapper.original;
-            const normGb = globusWrapper.normalized;
+      for (const globusWrapper of normalizedGlobusTrips) {
+        const viagemGb = globusWrapper.original;
+        const normGb = globusWrapper.normalized;
 
-            if (globusMatchedIds.has(viagemGb.id)) continue;
+        if (globusMatchedIds.has(viagemGb.id)) continue;
 
-            const combinacao = compareTrips(normTd, normGb);
+        const combinacao = compareTrips(normTd, normGb);
 
-            if (combinacao === CombinacaoComparacao.TUDO_IGUAL) {
-                const comparacao = this.criarComparacaoDetalhada(
-                    dataReferencia, viagemTd, viagemGb, StatusComparacao.COMPATIVEL, 'Tudo igual', combinacao
-                );
-                todasComparacoes.push(comparacao);
-                globusMatchedIds.add(viagemGb.id);
-                transdataProcessedIds.add(viagemTd.id.toString());
-                estatisticas.compativeis++;
-                estatisticas.matches++;
-                foundExactMatch = true;
-                break; // Move to the next Transdata trip
-            }
+        if (combinacao === CombinacaoComparacao.TUDO_IGUAL) {
+          const comparacao = this.criarComparacaoDetalhada(
+            dataReferencia, viagemTd, viagemGb, StatusComparacao.COMPATIVEL, 'Tudo igual', combinacao
+          );
+          todasComparacoes.push(comparacao);
+          globusMatchedIds.add(viagemGb.id);
+          transdataProcessedIds.add(viagemTd.id.toString());
+          estatisticas.compativeis++;
+          estatisticas.matches++;
+          foundExactMatch = true;
+          break; // Move to the next Transdata trip
         }
+      }
     }
     this.logger.log(`✅ [FASE 1] Matches exatos encontrados: ${estatisticas.compativeis}`);
 
     // --- FASE 2: COLETAR POTENCIAIS MATCHES DIVERGENTES ---
     this.logger.log(`🔍 [FASE 2] Coletando potenciais matches divergentes...`);
     const potentialDivergentMatches: {
-        tdTrip: ViagemTransdata;
-        gbTrip: ViagemGlobus;
-        combinacao: CombinacaoComparacao;
-        normTd: NormalizedTransDataTrip;
-        normGb: NormalizedGlobusTrip;
+      tdTrip: ViagemTransdata;
+      gbTrip: ViagemGlobus;
+      combinacao: CombinacaoComparacao;
+      normTd: NormalizedTransDataTrip;
+      normGb: NormalizedGlobusTrip;
     }[] = [];
 
     for (const viagemTd of viagensTransdata) {
-        if (transdataProcessedIds.has(viagemTd.id.toString())) continue;
+      if (transdataProcessedIds.has(viagemTd.id.toString())) continue;
 
-        const normTd = normalizeTransDataTrip(viagemTd);
+      const normTd = normalizeTransDataTrip(viagemTd);
 
-        for (const globusWrapper of normalizedGlobusTrips) {
-            const viagemGb = globusWrapper.original;
-            const normGb = globusWrapper.normalized;
+      for (const globusWrapper of normalizedGlobusTrips) {
+        const viagemGb = globusWrapper.original;
+        const normGb = globusWrapper.normalized;
 
-            if (globusMatchedIds.has(viagemGb.id)) continue;
+        if (globusMatchedIds.has(viagemGb.id)) continue;
 
-            const combinacao = compareTrips(normTd, normGb);
+        // ✅ IMPORTANTE: Só comparar viagens da MESMA LINHA
+        // Isso evita matches incorretos entre linhas diferentes
+        if (normTd.linha !== normGb.linha) continue;
 
-            if (combinacao !== CombinacaoComparacao.TUDO_DIFERENTE) {
-                potentialDivergentMatches.push({
-                    tdTrip: viagemTd,
-                    gbTrip: viagemGb,
-                    combinacao: combinacao,
-                    normTd: normTd,
-                    normGb: normGb,
-                });
-            }
+        const combinacao = compareTrips(normTd, normGb);
+
+        if (combinacao !== CombinacaoComparacao.TUDO_DIFERENTE) {
+          potentialDivergentMatches.push({
+            tdTrip: viagemTd,
+            gbTrip: viagemGb,
+            combinacao: combinacao,
+            normTd: normTd,
+            normGb: normGb,
+          });
         }
+      }
     }
     this.logger.log(`✅ [FASE 2] Potenciais matches divergentes coletados: ${potentialDivergentMatches.length}`);
 
@@ -152,41 +156,41 @@ export class ComparacaoViagensService {
     potentialDivergentMatches.sort((a, b) => COMBINACAO_PRIORITY[a.combinacao] - COMBINACAO_PRIORITY[b.combinacao]);
 
     for (const potentialMatch of potentialDivergentMatches) {
-        const { tdTrip, gbTrip, combinacao, normTd, normGb } = potentialMatch;
+      const { tdTrip, gbTrip, combinacao, normTd, normGb } = potentialMatch;
 
-        // Only process if both trips are still unmatched
-        if (!transdataProcessedIds.has(tdTrip.id.toString()) && !globusMatchedIds.has(gbTrip.id)) {
-            const status = this.determinarStatusComparacao(combinacao);
-            const observacao = this.gerarObservacao(combinacao, normTd, normGb);
+      // Only process if both trips are still unmatched
+      if (!transdataProcessedIds.has(tdTrip.id.toString()) && !globusMatchedIds.has(gbTrip.id)) {
+        const status = this.determinarStatusComparacao(combinacao);
+        const observacao = this.gerarObservacao(combinacao, normTd, normGb);
 
-            const comparacao = this.criarComparacaoDetalhada(
-                dataReferencia, tdTrip, gbTrip, status, observacao, combinacao
-            );
-            todasComparacoes.push(comparacao);
-            globusMatchedIds.add(gbTrip.id);
-            transdataProcessedIds.add(tdTrip.id.toString());
-            estatisticas.matches++;
-            if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
-            else estatisticas.divergentes++;
-        }
+        const comparacao = this.criarComparacaoDetalhada(
+          dataReferencia, tdTrip, gbTrip, status, observacao, combinacao
+        );
+        todasComparacoes.push(comparacao);
+        globusMatchedIds.add(gbTrip.id);
+        transdataProcessedIds.add(tdTrip.id.toString());
+        estatisticas.matches++;
+        if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
+        else estatisticas.divergentes++;
+      }
     }
     this.logger.log(`✅ [FASE 2.1] Matches divergentes processados: ${estatisticas.divergentes + estatisticas.horarioDivergente}`);
 
     // --- FASE 3: REGISTRAR VIAGENS NÃO COMBINADAS ---
     this.logger.log(`🔍 [FASE 3] Registrando viagens não combinadas...`);
     for (const viagemTd of viagensTransdata) {
-        if (!transdataProcessedIds.has(viagemTd.id.toString())) {
-            estatisticas.apenasTransdata++;
-            todasComparacoes.push(this.criarComparacaoApenasTransdata(dataReferencia, viagemTd));
-        }
+      if (!transdataProcessedIds.has(viagemTd.id.toString())) {
+        estatisticas.apenasTransdata++;
+        todasComparacoes.push(this.criarComparacaoApenasTransdata(dataReferencia, viagemTd));
+      }
     }
 
     for (const globusWrapper of normalizedGlobusTrips) {
-        const viagemGb = globusWrapper.original;
-        if (!globusMatchedIds.has(viagemGb.id)) {
-            estatisticas.apenasGlobus++;
-            todasComparacoes.push(this.criarComparacaoApenasGlobus(dataReferencia, viagemGb));
-        }
+      const viagemGb = globusWrapper.original;
+      if (!globusMatchedIds.has(viagemGb.id)) {
+        estatisticas.apenasGlobus++;
+        todasComparacoes.push(this.criarComparacaoApenasGlobus(dataReferencia, viagemGb));
+      }
     }
     this.logger.log(`✅ [FASE 3] Viagens apenas Transdata: ${estatisticas.apenasTransdata}, apenas Globus: ${estatisticas.apenasGlobus}`);
 
@@ -195,53 +199,53 @@ export class ComparacaoViagensService {
 
     const tempoProcessamento = ((Date.now() - inicioProcessamento) / 1000).toFixed(2);
     return {
-        totalComparacoes: todasComparacoes.length,
-        compativeis: estatisticas.compativeis,
-        divergentes: estatisticas.divergentes,
-        apenasTransdata: estatisticas.apenasTransdata,
-        apenasGlobus: estatisticas.apenasGlobus,
-        horarioDivergente: estatisticas.horarioDivergente,
-        percentualCompatibilidade: estatisticas.matches > 0 ? Math.round((estatisticas.compativeis / estatisticas.matches) * 100) : 0,
-        linhasAnalisadas: new Set(todasComparacoes.map(c => c.codigoLinha)).size,
-        tempoProcessamento: `${tempoProcessamento}s`
-      };
+      totalComparacoes: todasComparacoes.length,
+      compativeis: estatisticas.compativeis,
+      divergentes: estatisticas.divergentes,
+      apenasTransdata: estatisticas.apenasTransdata,
+      apenasGlobus: estatisticas.apenasGlobus,
+      horarioDivergente: estatisticas.horarioDivergente,
+      percentualCompatibilidade: estatisticas.matches > 0 ? Math.round((estatisticas.compativeis / estatisticas.matches) * 100) : 0,
+      linhasAnalisadas: new Set(todasComparacoes.map(c => c.codigoLinha)).size,
+      tempoProcessamento: `${tempoProcessamento}s`
+    };
   }
 
   private determinarStatusComparacao(combinacao: CombinacaoComparacao): StatusComparacao {
-      switch (combinacao) {
-          case CombinacaoComparacao.TUDO_IGUAL:
-              return StatusComparacao.COMPATIVEL;
-          case CombinacaoComparacao.SO_HORARIO_DIFERENTE:
-          case CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES: // If service and horario differ, but line/sentido are same
-          case CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES: // If sentido and horario differ, but line/service are same
-          case CombinacaoComparacao.SO_LINHA_IGUAL:
-              return StatusComparacao.HORARIO_DIVERGENTE;
-          default:
-              return StatusComparacao.DIVERGENTE;
-      }
+    switch (combinacao) {
+      case CombinacaoComparacao.TUDO_IGUAL:
+        return StatusComparacao.COMPATIVEL;
+      case CombinacaoComparacao.SO_HORARIO_DIFERENTE:
+      case CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES: // If service and horario differ, but line/sentido are same
+      case CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES: // If sentido and horario differ, but line/service are same
+      case CombinacaoComparacao.SO_LINHA_IGUAL:
+        return StatusComparacao.HORARIO_DIVERGENTE;
+      default:
+        return StatusComparacao.DIVERGENTE;
+    }
   }
 
   private gerarObservacao(combinacao: CombinacaoComparacao, td: NormalizedTransDataTrip, gb: NormalizedGlobusTrip): string {
-      const tpl = (t: string, g: string) => `(T: ${t} vs G: ${g})`;
-      switch (combinacao) {
-          case CombinacaoComparacao.TUDO_IGUAL: return 'Tudo igual';
-          case CombinacaoComparacao.SO_HORARIO_DIFERENTE: return `Apenas horário diferente ${tpl(td.horario, gb.horario)}`;
-          case CombinacaoComparacao.SO_SERVICO_DIFERENTE: return `Apenas serviço diferente ${tpl(td.servico, gb.servico)}`;
-          case CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES: return `Serviço ${tpl(td.servico, gb.servico)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
-          case CombinacaoComparacao.SO_SENTIDO_DIFERENTE: return `Apenas sentido diferente ${tpl(td.sentido, gb.sentido)}`;
-          case CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES: return `Sentido ${tpl(td.sentido, gb.sentido)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
-          case CombinacaoComparacao.SENTIDO_E_SERVICO_DIFERENTES: return `Sentido ${tpl(td.sentido, gb.sentido)} e Serviço ${tpl(td.servico, gb.servico)} diferentes`;
-          case CombinacaoComparacao.SO_LINHA_IGUAL: return `Apenas linha igual, outros campos divergem (Sentido: ${tpl(td.sentido, gb.sentido)}, Serviço: ${tpl(td.servico, gb.servico)}, Horário: ${tpl(td.horario, gb.horario)})`;
-          case CombinacaoComparacao.SO_LINHA_DIFERENTE: return `Apenas linha diferente ${tpl(td.linha, gb.linha)}`;
-          case CombinacaoComparacao.LINHA_E_HORARIO_DIFERENTES: return `Linha ${tpl(td.linha, gb.linha)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
-          case CombinacaoComparacao.LINHA_E_SERVICO_DIFERENTES: return `Linha ${tpl(td.linha, gb.linha)} e Serviço ${tpl(td.servico, gb.servico)} diferentes`;
-          case CombinacaoComparacao.SO_SENTIDO_IGUAL: return `Apenas sentido igual, outros campos divergem (Linha: ${tpl(td.linha, gb.linha)}, Serviço: ${tpl(td.servico, gb.servico)}, Horário: ${tpl(td.horario, gb.horario)})`;
-          case CombinacaoComparacao.LINHA_E_SENTIDO_DIFERENTES: return `Linha ${tpl(td.linha, gb.linha)} e Sentido ${tpl(td.sentido, gb.sentido)} diferentes`;
-          case CombinacaoComparacao.SO_SERVICO_IGUAL: return `Apenas serviço igual, outros campos divergem (Linha: ${tpl(td.linha, gb.linha)}, Sentido: ${tpl(td.sentido, gb.sentido)}, Horário: ${tpl(td.horario, gb.horario)})`;
-          case CombinacaoComparacao.SO_HORARIO_IGUAL: return `Apenas horário igual, outros campos divergem (Linha: ${tpl(td.linha, gb.linha)}, Sentido: ${tpl(td.sentido, gb.sentido)}, Serviço: ${tpl(td.servico, gb.servico)})`;
-          case CombinacaoComparacao.TUDO_DIFERENTE: return `Todos os campos (linha, sentido, serviço, horário) são diferentes`;
-          default: return `Divergência complexa (Combinação: ${combinacao})`; // Fallback, though all should be covered
-      }
+    const tpl = (t: string, g: string) => `(T: ${t} vs G: ${g})`;
+    switch (combinacao) {
+      case CombinacaoComparacao.TUDO_IGUAL: return 'Tudo igual';
+      case CombinacaoComparacao.SO_HORARIO_DIFERENTE: return `Apenas horário diferente ${tpl(td.horario, gb.horario)}`;
+      case CombinacaoComparacao.SO_SERVICO_DIFERENTE: return `Apenas serviço diferente ${tpl(td.servico, gb.servico)}`;
+      case CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES: return `Serviço ${tpl(td.servico, gb.servico)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
+      case CombinacaoComparacao.SO_SENTIDO_DIFERENTE: return `Apenas sentido diferente ${tpl(td.sentido, gb.sentido)}`;
+      case CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES: return `Sentido ${tpl(td.sentido, gb.sentido)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
+      case CombinacaoComparacao.SENTIDO_E_SERVICO_DIFERENTES: return `Sentido ${tpl(td.sentido, gb.sentido)} e Serviço ${tpl(td.servico, gb.servico)} diferentes`;
+      case CombinacaoComparacao.SO_LINHA_IGUAL: return `Apenas linha igual, outros campos divergem (Sentido: ${tpl(td.sentido, gb.sentido)}, Serviço: ${tpl(td.servico, gb.servico)}, Horário: ${tpl(td.horario, gb.horario)})`;
+      case CombinacaoComparacao.SO_LINHA_DIFERENTE: return `Apenas linha diferente ${tpl(td.linha, gb.linha)}`;
+      case CombinacaoComparacao.LINHA_E_HORARIO_DIFERENTES: return `Linha ${tpl(td.linha, gb.linha)} e Horário ${tpl(td.horario, gb.horario)} diferentes`;
+      case CombinacaoComparacao.LINHA_E_SERVICO_DIFERENTES: return `Linha ${tpl(td.linha, gb.linha)} e Serviço ${tpl(td.servico, gb.servico)} diferentes`;
+      case CombinacaoComparacao.SO_SENTIDO_IGUAL: return `Apenas sentido igual, outros campos divergem (Linha: ${tpl(td.linha, gb.linha)}, Serviço: ${tpl(td.servico, gb.servico)}, Horário: ${tpl(td.horario, gb.horario)})`;
+      case CombinacaoComparacao.LINHA_E_SENTIDO_DIFERENTES: return `Linha ${tpl(td.linha, gb.linha)} e Sentido ${tpl(td.sentido, gb.sentido)} diferentes`;
+      case CombinacaoComparacao.SO_SERVICO_IGUAL: return `Apenas serviço igual, outros campos divergem (Linha: ${tpl(td.linha, gb.linha)}, Sentido: ${tpl(td.sentido, gb.sentido)}, Horário: ${tpl(td.horario, gb.horario)})`;
+      case CombinacaoComparacao.SO_HORARIO_IGUAL: return `Apenas horário igual, outros campos divergem (Linha: ${tpl(td.linha, gb.linha)}, Sentido: ${tpl(td.sentido, gb.sentido)}, Serviço: ${tpl(td.servico, gb.servico)})`;
+      case CombinacaoComparacao.TUDO_DIFERENTE: return `Todos os campos (linha, sentido, serviço, horário) são diferentes`;
+      default: return `Divergência complexa (Combinação: ${combinacao})`; // Fallback, though all should be covered
+    }
   }
 
   private criarComparacaoDetalhada(
@@ -250,7 +254,7 @@ export class ComparacaoViagensService {
     globus: ViagemGlobus,
     status: StatusComparacao,
     observacao: string,
-    combinacao: CombinacaoComparacao 
+    combinacao: CombinacaoComparacao
   ): ComparacaoViagem {
     const comparacao = new ComparacaoViagem();
     const normTd = normalizeTransDataTrip(transdata);
@@ -275,11 +279,11 @@ export class ComparacaoViagensService {
 
     comparacao.statusComparacao = status;
     comparacao.observacoes = observacao;
-    comparacao.tipoCombinacao = combinacao; 
+    comparacao.tipoCombinacao = combinacao;
 
     comparacao.sentidoCompativel = normTd.sentido === normGb.sentido;
     comparacao.servicoCompativel = normTd.servico === normGb.servico;
-    const diffHorario = Math.abs( (new Date(`1970-01-01T${normTd.horario}:00`).getTime()) - (new Date(`1970-01-01T${normGb.horario}:00`).getTime()) ) / (1000 * 60);
+    const diffHorario = Math.abs((new Date(`1970-01-01T${normTd.horario}:00`).getTime()) - (new Date(`1970-01-01T${normGb.horario}:00`).getTime())) / (1000 * 60);
     comparacao.diferencaHorarioMinutos = isNaN(diffHorario) ? -1 : diffHorario;
     comparacao.horarioCompativel = diffHorario <= 2;
 
@@ -289,7 +293,7 @@ export class ComparacaoViagensService {
   private criarComparacaoApenasTransdata(dataReferencia: string, transdata: ViagemTransdata): ComparacaoViagem {
     const comparacao = new ComparacaoViagem();
     const normTd = normalizeTransDataTrip(transdata);
-    
+
     comparacao.dataReferencia = dataReferencia;
     comparacao.codigoLinha = normTd.linha;
     comparacao.nomeLinhaTransdata = transdata.NomeLinha;
@@ -297,17 +301,17 @@ export class ComparacaoViagensService {
     comparacao.transdataServico = normTd.servico;
     comparacao.transdataSentido = transdata.SentidoText;
     comparacao.transdataHorarioPrevisto = normTd.horario;
-    
+
     comparacao.statusComparacao = StatusComparacao.APENAS_TRANSDATA;
     comparacao.observacoes = `Viagem encontrada apenas no Transdata - Status: ${transdata.statusCumprimento}`;
-    
+
     return comparacao;
   }
 
   private criarComparacaoApenasGlobus(dataReferencia: string, globus: ViagemGlobus): ComparacaoViagem {
     const comparacao = new ComparacaoViagem();
     const normGb = normalizeGlobusTrip(globus);
-    
+
     comparacao.dataReferencia = dataReferencia;
     comparacao.codigoLinha = normGb.linha;
     comparacao.nomeLinhaGlobus = globus.nomeLinha;
@@ -317,16 +321,16 @@ export class ComparacaoViagensService {
     comparacao.globusSentidoTexto = globus.sentidoTexto;
     comparacao.globusHorarioSaida = normGb.horario;
     comparacao.globusSetor = globus.setorPrincipal;
-    
+
     comparacao.statusComparacao = StatusComparacao.APENAS_GLOBUS;
     comparacao.observacoes = `Viagem encontrada apenas no Globus - Setor: ${globus.setorPrincipal}`;
-    
+
     return comparacao;
   }
 
   private async buscarViagensTransdata(dataReferencia: string): Promise<ViagemTransdata[]> {
     return await this.transdataRepository.find({
-      where: { 
+      where: {
         dataReferencia,
         isAtivo: true
       },
@@ -371,20 +375,20 @@ export class ComparacaoViagensService {
       .where('comp.dataReferencia = :dataReferencia', { dataReferencia });
 
     if (filtros.codigoLinha) {
-      queryBuilder.andWhere('comp.codigoLinha = :codigoLinha', { 
-        codigoLinha: filtros.codigoLinha 
+      queryBuilder.andWhere('comp.codigoLinha = :codigoLinha', {
+        codigoLinha: filtros.codigoLinha
       });
     }
 
     if (filtros.statusComparacao) {
-      queryBuilder.andWhere('comp.statusComparacao = :status', { 
-        status: filtros.statusComparacao 
+      queryBuilder.andWhere('comp.statusComparacao = :status', {
+        status: filtros.statusComparacao
       });
     }
 
     if (filtros.globusSetor) {
-      queryBuilder.andWhere('comp.globusSetor = :setor', { 
-        setor: filtros.globusSetor 
+      queryBuilder.andWhere('comp.globusSetor = :setor', {
+        setor: filtros.globusSetor
       });
     }
 
@@ -402,7 +406,7 @@ export class ComparacaoViagensService {
     const total = await queryBuilder.getCount();
     const limit = filtros.limit || 50;
     const page = filtros.page || 1;
-    
+
     queryBuilder
       .orderBy('comp.statusComparacao', 'ASC')
       .addOrderBy('comp.codigoLinha', 'ASC')
