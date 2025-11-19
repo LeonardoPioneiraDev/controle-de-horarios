@@ -15,7 +15,7 @@ export class ViagensGlobusService {
     @InjectRepository(ViagemGlobus)
     private readonly viagemGlobusRepository: Repository<ViagemGlobus>,
     private readonly oracleService: OracleService,
-  ) {}
+  ) { }
 
   // ✅ BUSCAR VIAGENS POR DATA (POSTGRESQL PRIMEIRO)
   async buscarViagensPorData(
@@ -202,7 +202,7 @@ export class ViagensGlobusService {
     }
 
     const viagens = await queryBuilder.getMany();
-    
+
     this.logger.log(`✅ Encontradas ${viagens.length} viagens no PostgreSQL`);
     return viagens;
   }
@@ -385,7 +385,7 @@ ORDER BY
           JOIN T_ESC_HORARIODIARIA H ON D.DAT_ESCALA = H.DAT_ESCALA AND D.COD_INTESCALA = H.COD_INTESCALA
             AND S.COD_SERVDIARIA = H.COD_INTSERVDIARIA
             AND H.COD_INTTURNO = S.COD_INTTURNO
-          JOIN BGM_CADLINHAS L ON DECODE(H.CODINTLINHA, NULL, D.COD_INTLINHA, H.CODINTLINHA) = L.CODINTLINHA
+          JOIN BGM_CADLINHAS L ON D.COD_INTLINHA = L.CODINTLINHA
           LEFT JOIN T_ESC_LOCALIDADE LCO ON H.COD_LOCALIDADE = LCO.COD_LOCALIDADE
           LEFT JOIN T_ESC_LOCALIDADE NLD ON L.DESTINOLINHA = NLD.COD_LOCALIDADE
           LEFT JOIN FLP_FUNCIONARIOS FM ON S.COD_MOTORISTA = FM.CODINTFUNC
@@ -406,7 +406,7 @@ ORDER BY
       `;
 
       const dadosOracle = await this.oracleService.executeHeavyQuery(fixedSqlQuery);
-      
+
       this.logger.log(`📊 Oracle Globus retornou ${dadosOracle.length} registros`);
 
       if (dadosOracle.length === 0) {
@@ -441,7 +441,7 @@ ORDER BY
 
       const novas = viagensParaSalvar.length;
       const sincronizadas = novas;
-      
+
       this.logger.log(`✅ Sincronização Globus concluída: ${sincronizadas} total (${novas} novas, 0 atualizadas, 0 desativadas, ${erros} erros)`);
 
       return { sincronizadas, novas, atualizadas: 0, erros, desativadas: 0 };
@@ -456,9 +456,9 @@ ORDER BY
     // ✅ PROCESSAR HORÁRIOS (AGORA SÃO STRINGS HH:MI:SS)
     const horSaida = this.processarHorarioOracle(item.HOR_SAIDA, dataReferencia);
     const horChegada = this.processarHorarioOracle(item.HOR_CHEGADA, dataReferencia);
-    
+
     // ✅ CALCULAR DURAÇÃO EM MINUTOS
-    const duracaoMinutos = horChegada && horSaida ? 
+    const duracaoMinutos = horChegada && horSaida ?
       Math.round((horChegada.getTime() - horSaida.getTime()) / (1000 * 60)) : null;
 
     // ✅ DETERMINAR SENTIDO TEXTO
@@ -548,7 +548,7 @@ ORDER BY
     if (!horario) return 'NÃO INFORMADO';
 
     const hora = horario.getHours();
-    
+
     if (hora >= 5 && hora < 12) return 'MANHÃ';
     if (hora >= 12 && hora < 18) return 'TARDE';
     if (hora >= 18 && hora < 24) return 'NOITE';
@@ -563,10 +563,10 @@ ORDER BY
   }> {
     try {
       const isConnected = await this.oracleService.testConnection();
-      
+
       if (isConnected) {
         const connectionInfo = await this.oracleService.getConnectionInfo();
-        
+
         return {
           success: true,
           message: 'Conexão Oracle Globus funcionando',
@@ -633,7 +633,7 @@ ORDER BY
       where: { dataReferencia: dataViagem }
     });
 
-    const ultimaAtualizacao = totalRegistros > 0 ? 
+    const ultimaAtualizacao = totalRegistros > 0 ?
       (await this.viagemGlobusRepository.findOne({
         where: { dataReferencia: dataViagem },
         order: { updatedAt: 'DESC' },
@@ -760,6 +760,52 @@ ORDER BY
         return acc;
       }, {})
     };
+  }
+  // ✅ DEBUG: INSPECIONAR LINHA NO ORACLE
+  async debugLinha(codigoLinha: string, data: string): Promise<any> {
+    try {
+      const query = `
+        SELECT 
+          L.CODIGOLINHA,
+          L.NOMELINHA,
+          L.COD_LOCAL_TERMINAL_SEC,
+          CASE 
+            WHEN L.COD_LOCAL_TERMINAL_SEC = 7000 THEN 'GAMA'
+            WHEN L.COD_LOCAL_TERMINAL_SEC = 6000 THEN 'SANTA MARIA'
+            WHEN L.COD_LOCAL_TERMINAL_SEC = 8000 THEN 'PARANOA'
+            WHEN L.COD_LOCAL_TERMINAL_SEC = 9000 THEN 'SAO SEBASTIAO'
+            ELSE 'OUTROS'
+          END AS SETOR_DECODIFICADO,
+          COUNT(H.HOR_SAIDA) AS TOTAL_VIAGENS
+        FROM BGM_CADLINHAS L
+        LEFT JOIN T_ESC_ESCALADIARIA D ON L.CODINTLINHA = D.COD_INTLINHA
+        LEFT JOIN T_ESC_HORARIODIARIA H ON D.DAT_ESCALA = H.DAT_ESCALA 
+                                       AND D.COD_INTESCALA = H.COD_INTESCALA
+                                       AND (H.CODINTLINHA IS NULL OR H.CODINTLINHA = L.CODINTLINHA)
+        WHERE L.CODIGOLINHA = '${codigoLinha}'
+          AND L.CODIGOEMPRESA = 4
+          AND TRUNC(D.DAT_ESCALA) = TO_DATE('${data}', 'YYYY-MM-DD')
+          AND H.COD_ATIVIDADE = 2
+        GROUP BY 
+          L.CODIGOLINHA, 
+          L.NOMELINHA, 
+          L.COD_LOCAL_TERMINAL_SEC
+        ORDER BY 
+          L.COD_LOCAL_TERMINAL_SEC
+      `;
+
+      const result = await this.oracleService.executeQuery(query);
+      return {
+        success: true,
+        data: result,
+        query
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        message: error.message
+      };
+    }
   }
 }
 

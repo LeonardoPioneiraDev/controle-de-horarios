@@ -1,14 +1,14 @@
 // src/viagens-globus/controllers/viagens-globus.controller.ts
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Param, 
-  Query, 
-  HttpCode, 
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  HttpCode,
   HttpStatus,
   UseGuards,
-  Logger 
+  Logger
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ViagensGlobusService } from '../services/viagens-globus.service';
@@ -27,7 +27,7 @@ export class ViagensGlobusController {
 
   constructor(
     private readonly viagensGlobusService: ViagensGlobusService,
-  ) {}
+  ) { }
 
   // ✅ BUSCAR VIAGENS POR DATA
   @Get(':data')
@@ -193,7 +193,7 @@ export class ViagensGlobusController {
 
     try {
       const resultado = await this.viagensGlobusService.testarConexaoOracle();
-      
+
       return {
         success: resultado.success,
         message: resultado.message,
@@ -205,7 +205,7 @@ export class ViagensGlobusController {
       };
     } catch (error: any) {
       this.logger.error(`❌ Erro ao testar conexão Oracle: ${error.message}`);
-      
+
       return {
         success: false,
         message: 'Erro ao testar conexão Oracle Globus',
@@ -239,7 +239,7 @@ export class ViagensGlobusController {
 
     } catch (error: any) {
       this.logger.error(`❌ Erro ao obter estatísticas Oracle: ${error.message}`);
-      
+
       return {
         success: false,
         message: 'Erro ao obter estatísticas Oracle Globus',
@@ -262,7 +262,7 @@ export class ViagensGlobusController {
 
       // ✅ TESTAR POSTGRESQL
       const statusPostgres = await this.viagensGlobusService.obterStatusDados('2025-10-10');
-      
+
       // ✅ TESTAR ORACLE
       const statusOracle = await this.viagensGlobusService.testarConexaoOracle();
 
@@ -299,13 +299,49 @@ export class ViagensGlobusController {
 
     } catch (error: any) {
       this.logger.error(`❌ Erro no health check: ${error.message}`);
-      
+
       return {
         success: false,
         message: 'Falha no health check Globus',
         status: 'UNHEALTHY',
         error: error.message,
         timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  // ✅ DEBUG ENDPOINT - INSPECIONAR LINHA
+  @Get('debug/linha/:codigo')
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Debug: Inspecionar dados de uma linha específica no Oracle' })
+  async debugLinha(
+    @Param('codigo') codigo: string,
+    @Query('data') data?: string
+  ) {
+    const dataReferencia = data || new Date().toISOString().split('T')[0];
+    this.logger.log(`🔍 Debug linha ${codigo} para data ${dataReferencia}`);
+
+    try {
+      const resultado = await this.viagensGlobusService.debugLinha(codigo, dataReferencia);
+
+      return {
+        success: resultado.success,
+        message: resultado.success ? `Debug executado para linha ${codigo}` : resultado.message,
+        data: resultado.data || [],
+        query: resultado.query,
+        codigoLinha: codigo,
+        dataReferencia
+      };
+    } catch (error: any) {
+      this.logger.error(`❌ Erro no debug da linha: ${error.message}`);
+
+      return {
+        success: false,
+        message: 'Erro ao executar debug da linha',
+        error: error.message,
+        codigoLinha: codigo,
+        dataReferencia
       };
     }
   }
