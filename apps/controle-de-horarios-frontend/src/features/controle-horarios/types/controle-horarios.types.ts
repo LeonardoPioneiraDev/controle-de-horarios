@@ -56,6 +56,7 @@ export interface ControleHorarioItem {
   updatedAt: string; // Timestamp da última atualização do registro de controle local
   isAtivo: boolean; // Indica se o registro de controle está ativo (sempre true para registros válidos)
   jaFoiEditado: boolean; // **IMPORTANTE:** Indica se esta viagem possui um registro de controle salvo localmente (ou seja, se foi editada).
+  historico?: HistoricoEdicao[]; // Histórico de edições associado ao item
 }
 
 // ✅ CORRIGIDO: Interface de filtros apenas com campos suportados pelo backend
@@ -80,6 +81,9 @@ export interface FiltrosControleHorarios {
   pagina?: number;
   ordenarPor?: string;
   ordem?: "ASC" | "DESC";
+  // Backend filters adicionais
+  apenas_editadas?: boolean;
+  editado_por_usuario_email?: string;
 }
 
 // ✅ NOVA: Interface para filtros locais (frontend only) - Mantida para extensibilidade, mas statusEdicao movido
@@ -112,16 +116,22 @@ export interface OpcoesControleHorarios {
 }
 
 export interface SalvarControleHorario {
-  viagemGlobusId: string;
-  numeroCarro?: string;
-  informacaoRecolhe?: string;
-  crachaFuncionario?: string;
-  observacoes?: string;
+  id: string;
+  prefixo_veiculo?: string;
+  motorista_substituto_nome?: string;
+  motorista_substituto_cracha?: string;
+  cobrador_substituto_nome?: string;
+  cobrador_substituto_cracha?: string;
+  observacoes_edicao?: string;
+  hor_saida_ajustada?: string;
+  hor_chegada_ajustada?: string;
+  de_acordo?: boolean;
+  atraso_motivo?: string;
+  atraso_observacao?: string;
 }
 
 export interface SalvarMultiplosControles {
-  dataReferencia: string;
-  controles: SalvarControleHorario[];
+  updates: SalvarControleHorario[];
   usuarioEdicao?: string;
   usuarioEmail?: string;
 }
@@ -182,14 +192,14 @@ export interface ResultadoSalvamento {
 // ✅ NOVAS: Interfaces para histórico e auditoria
 export interface HistoricoEdicao {
   id: string;
-  viagemGlobusId: string;
-  dataEdicao: Date;
-  usuarioEdicao: string;
-  usuarioEmail: string;
-  camposAlterados: string[];
-  valoresAnteriores: Record<string, any>;
-  valoresNovos: Record<string, any>;
-  observacoes?: string;
+  controle_horario_id: string;
+  campo: string;
+  valor_anterior: string | null;
+  valor_novo: string | null;
+  alterado_por_nome: string | null;
+  alterado_por_email: string | null;
+  data_referencia: string | null; // YYYY-MM-DD
+  created_at: string; // ISO timestamp
 }
 
 export interface AuditoriaControleHorarios {
@@ -204,6 +214,17 @@ export interface AuditoriaControleHorarios {
     totalEdicoes: number;
   }>;
   ultimasEdicoes: HistoricoEdicao[];
+}
+
+// Resposta do endpoint de histórico
+export interface HistoricoControleHorarioResponse {
+  success: boolean;
+  data: {
+    total: number;
+    pagina: number;
+    limite: number;
+    items: HistoricoEdicao[];
+  };
 }
 
 // ✅ NOVAS: Interfaces para exportação

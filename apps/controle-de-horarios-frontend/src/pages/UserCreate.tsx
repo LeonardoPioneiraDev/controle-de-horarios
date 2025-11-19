@@ -11,13 +11,31 @@ export const UserCreate: React.FC = () => {
     email: '',
     firstName: '',
     lastName: '',
-    role: UserRole.FUNCIONARIO,
+    role: UserRole.OPERADOR,
     password: undefined,
     status: UserStatus.PENDING,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const roleLabel = (r: UserRole) => {
+    const labels: Record<UserRole, string> = {
+      [UserRole.ADMINISTRADOR]: 'Administrador',
+      [UserRole.DIRETOR]: 'Diretor',
+      [UserRole.GERENTE]: 'Gerente',
+      [UserRole.ANALISTA]: 'Analista',
+      [UserRole.ENCARREGADO]: 'Encarregado',
+      [UserRole.OPERADOR]: 'Operador',
+      [UserRole.PCQC]: 'PCQC',
+      [UserRole.DACN]: 'DACN',
+      [UserRole.INSTRUTORES]: 'Instrutores',
+      [UserRole.DESPACHANTE]: 'Despachante',
+      [UserRole.OPERADOR_CCO]: 'Operador CCO',
+    };
+    return labels[r] ?? String(r);
+  };
+  const roleOptions = (Object.values(UserRole) as UserRole[]).sort((a, b) => roleLabel(a).localeCompare(roleLabel(b)));
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -79,7 +97,7 @@ export const UserCreate: React.FC = () => {
               className={`form-input ${errors.email ? 'border-red-300' : ''}`}
               value={form.email}
               onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-              placeholder="usuario@vpioneira.com.br"
+              placeholder="usuario@example.com"
               autoComplete="email"
             />
             {errors.email && (
@@ -122,8 +140,8 @@ export const UserCreate: React.FC = () => {
               value={form.role}
               onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as unknown as UserRole }))}
             >
-              {Object.values(UserRole).map((r) => (
-                <option key={r} value={r}>{r}</option>
+              {roleOptions.map((r) => (
+                <option key={r} value={r}>{roleLabel(r)}</option>
               ))}
             </select>
           </div>
@@ -140,4 +158,3 @@ export const UserCreate: React.FC = () => {
 };
 
 export default UserCreate;
-

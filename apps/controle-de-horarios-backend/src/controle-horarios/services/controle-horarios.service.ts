@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { ControleHorario } from '../entities/controle-horario.entity';
+import { ControleHorarioChange } from '../entities/controle-horario-change.entity';
 import { FiltrosControleHorarioDto } from '../dto/filtros-controle-horario.dto';
 import { UpdateControleHorarioDto } from '../dto/update-controle-horario.dto';
 import { SingleControleHorarioUpdateDto } from '../dto/update-multiple-controle-horarios.dto';
@@ -17,6 +18,8 @@ export class ControleHorariosService {
   constructor(
     @InjectRepository(ControleHorario)
     private readonly controleHorarioRepository: Repository<ControleHorario>,
+    @InjectRepository(ControleHorarioChange)
+    private readonly controleHorarioChangeRepository: Repository<ControleHorarioChange>,
     private readonly oracleService: OracleService,
     private readonly configService: ConfigService,
   ) {}
@@ -79,6 +82,7 @@ export class ControleHorariosService {
     };
 
     const processedIds = new Set<string>();
+    const originalsById = new Map<string, Partial<ControleHorario>>();
 
     for (const updateDto of updates) {
       const { id, ...fieldsToUpdate } = updateDto;
@@ -118,6 +122,9 @@ export class ControleHorariosService {
 
       if (!isPropagationSafe) {
         this.logger.log(`🚫 Propagação não aplicável para o ID ${id}: serviço ou crachá do motorista ausente. Atualizando apenas este registro.`);
+        if (!originalsById.has(originalControleHorario.id)) {
+          originalsById.set(originalControleHorario.id, { ...originalControleHorario });
+        }
         Object.assign(originalControleHorario, fieldsToUpdate, {
           editado_por_nome: editorNome,
           editado_por_email: normalizedEditorEmail,
@@ -145,6 +152,12 @@ export class ControleHorariosService {
       }
 
       const relatedHorarios = await queryBuilder.getMany();
+      // snapshot before change for all related
+      for (const rh of relatedHorarios) {
+        if (!originalsById.has(rh.id)) {
+          originalsById.set(rh.id, { ...rh });
+        }
+      }
 
       this.logger.log(`[PROPAGAÇÃO ID: ${id}] Encontrados ${relatedHorarios.length} registros para aplicar alterações (Serviço: ${originalControleHorario.cod_servico_numero}, Motorista: ${originalControleHorario.cracha_motorista}).`);
 
@@ -170,6 +183,28 @@ export class ControleHorariosService {
       this.logger.log(`Salvando ${uniqueRecords.length} registros únicos no banco de dados.`);
       await this.controleHorarioRepository.manager.transaction(async (transactionalEntityManager) => {
         await transactionalEntityManager.save(ControleHorario, uniqueRecords);
+
+        // Audit changes per field
+        const changeRows: ControleHorarioChange[] = [];
+        for (const rec of uniqueRecords) {
+          const before = originalsById.get(rec.id);
+          if (!before) continue;
+          const changedFields = this.diffFields(before, rec);
+          for (const { campo, beforeVal, afterVal } of changedFields) {
+            const change = new ControleHorarioChange();
+            change.controle_horario_id = rec.id;
+            change.campo = campo;
+            change.valor_anterior = beforeVal;
+            change.valor_novo = afterVal;
+            change.alterado_por_nome = editorNome || null;
+            change.alterado_por_email = normalizedEditorEmail || null;
+            change.data_referencia = (rec as any).data_referencia || null;
+            changeRows.push(change);
+          }
+        }
+        if (changeRows.length) {
+          await transactionalEntityManager.save(ControleHorarioChange, changeRows);
+        }
       });
 
       this.logger.log(`✅ ${uniqueRecords.length} registros atualizados com sucesso.`);
@@ -190,6 +225,10 @@ export class ControleHorariosService {
       .createQueryBuilder('controle')
       .where('controle.data_referencia = :dataReferencia', { dataReferencia })
       .andWhere('controle.is_ativo = :isAtivo', { isAtivo: true });
+
+    if (filtros?.incluir_historico) {
+      queryBuilder.leftJoinAndSelect('controle.historico', 'historico');
+    }
 
     // Prioridade: quando visualizar escala por crachá do motorista, ignorar demais filtros de escopo
     const isEscala = Boolean(filtros?.cracha_funcionario && String(filtros.cracha_funcionario).trim());
@@ -307,39 +346,32 @@ export class ControleHorariosService {
       );
     }
 
-    // Filtro de Viagens Editadas
-    if (!isEscala && filtros?.apenas_editadas) {
-      queryBuilder.andWhere('controle.editado_por_nome IS NOT NULL');
+    // Filtro de Viagens Editadas (qualquer usuário ou específico)
+    if (!isEscala && (filtros?.apenas_editadas || filtros?.editado_por_usuario_email)) {
+      const subQueryBuilder = this.controleHorarioChangeRepository
+        .createQueryBuilder('change')
+        .select('1')
+        .where('change.controle_horario_id = controle.id');
+
+      if (filtros.editado_por_usuario_email) {
+        subQueryBuilder.andWhere('LOWER(change.alterado_por_email) = LOWER(:email)', {
+          email: filtros.editado_por_usuario_email,
+        });
+      }
+
+      queryBuilder.andWhere(`EXISTS (${subQueryBuilder.getQuery()})`, subQueryBuilder.getParameters());
     }
 
     // Filtro de viagens confirmadas (de_acordo = true)
-    if (!isEscala && filtros?.apenas_confirmadas) {
+    if (!isEscala && filtros?.apenas_confirmadas && !filtros?.apenas_editadas) {
       queryBuilder.andWhere('controle.de_acordo = TRUE');
-    }
-
-    // Visão "editados por": exigir confirmação e pelo menos uma edição relevante
-    const isFiltroEditadosPor = Boolean(
-      filtros?.editado_por_usuario_email && String(filtros.editado_por_usuario_email).trim(),
-    );
-    if (!isEscala && isFiltroEditadosPor) {
-      queryBuilder.andWhere('LOWER(controle.editado_por_email) = LOWER(:editado_por_usuario_email)', {
-        editado_por_usuario_email: filtros!.editado_por_usuario_email!,
-      });
-      queryBuilder.andWhere('controle.de_acordo = TRUE');
-      queryBuilder.andWhere(
-        `(
-          (controle.prefixo_veiculo IS NOT NULL AND controle.prefixo_veiculo <> '')
-          OR (controle.motorista_substituto_nome IS NOT NULL AND controle.motorista_substituto_nome <> '')
-          OR (controle.motorista_substituto_cracha IS NOT NULL AND controle.motorista_substituto_cracha <> '')
-          OR (controle.cobrador_substituto_nome IS NOT NULL AND controle.cobrador_substituto_nome <> '')
-          OR (controle.cobrador_substituto_cracha IS NOT NULL AND controle.cobrador_substituto_cracha <> '')
-        )`,
-      );
     }
 
     // Esconder viagens \"de acordo\" após N segundos (padrão 30s)
     const ocultarSegundos = Number(filtros?.ocultar_de_acordo_apos_segundos ?? 30);
-    if (!isFiltroEditadosPor && ocultarSegundos > 0) {
+    const isApenasEditadas = Boolean((filtros as any)?.apenas_editadas);
+    const isFiltroEditadosPor = Boolean(filtros?.editado_por_usuario_email);
+    if (!isFiltroEditadosPor && !isApenasEditadas && ocultarSegundos > 0) {
       queryBuilder.andWhere(
         `(
           controle.de_acordo = FALSE
@@ -394,11 +426,6 @@ export class ControleHorariosService {
         'controle.cod_servico_numero ILIKE :buscaTexto)',
         { buscaTexto: `%${filtros.buscaTexto}%` },
       );
-    }
-
-    // Filtrar por email do editor
-    if (!isEscala && filtros?.editado_por_usuario_email && !isFiltroEditadosPor) {
-      queryBuilder.andWhere('LOWER(controle.editado_por_email) = LOWER(:editado_por_usuario_email)', { editado_por_usuario_email: filtros.editado_por_usuario_email });
     }
 
     // Filtrar por código do cobrador
@@ -1031,13 +1058,81 @@ export class ControleHorariosService {
       }
 
       const normalizedEditorEmail = (editorEmail || '').toString().trim().toLowerCase();
+      const beforeState = { ...controleHorario };
       Object.assign(controleHorario, updateDto, {
         editado_por_nome: editorNome,
         editado_por_email: normalizedEditorEmail,
         updated_at: new Date(),
       });
 
-      return this.controleHorarioRepository.save(controleHorario);
+      const saved = await this.controleHorarioRepository.save(controleHorario);
+
+      // Audit unitário
+      const changed = this.diffFields(beforeState as any, saved as any);
+      if (changed.length) {
+        const rows = changed.map(({ campo, beforeVal, afterVal }) => {
+          const c = new ControleHorarioChange();
+          c.controle_horario_id = saved.id;
+          c.campo = campo;
+          c.valor_anterior = beforeVal;
+          c.valor_novo = afterVal;
+          c.alterado_por_nome = editorNome || null;
+          c.alterado_por_email = normalizedEditorEmail || null;
+          c.data_referencia = (saved as any).data_referencia || null;
+          return c;
+        });
+        await this.controleHorarioChangeRepository.save(rows);
+      }
+      return saved;
     }
+  }
+
+  // Utilitário para comparar campos relevantes e gerar diffs serializados
+  private diffFields(before: Partial<ControleHorario>, after: Partial<ControleHorario>): { campo: string; beforeVal: string | null; afterVal: string | null }[] {
+    const fields: string[] = [
+      'de_acordo',
+      'de_acordo_em',
+      'hor_saida_ajustada',
+      'hor_chegada_ajustada',
+      'atraso_motivo',
+      'atraso_observacao',
+      'observacoes_edicao',
+      'prefixo_veiculo',
+      'motorista_substituto_nome',
+      'motorista_substituto_cracha',
+      'cobrador_substituto_nome',
+      'cobrador_substituto_cracha',
+    ];
+
+    const serialize = (v: any): string | null => {
+      if (v === null || typeof v === 'undefined') return null;
+      if (v instanceof Date) return v.toISOString();
+      if (typeof v === 'object') return JSON.stringify(v);
+      return String(v);
+    };
+
+    const changes: { campo: string; beforeVal: string | null; afterVal: string | null }[] = [];
+    for (const f of fields) {
+      const b = (before as any)[f];
+      const a = (after as any)[f];
+      const bS = serialize(b);
+      const aS = serialize(a);
+      if (bS !== aS) {
+        changes.push({ campo: f, beforeVal: bS, afterVal: aS });
+      }
+    }
+    return changes;
+  }
+
+  async getHistoricoControleHorario(id: string, pagina = 1, limite = 50) {
+    const skip = (Math.max(1, pagina) - 1) * Math.max(1, limite);
+    const take = Math.max(1, Math.min(500, limite));
+    const [rows, total] = await this.controleHorarioChangeRepository.findAndCount({
+      where: { controle_horario_id: id },
+      order: { created_at: 'DESC' as any },
+      skip,
+      take,
+    });
+    return { total, pagina, limite: take, items: rows };
   }
 }

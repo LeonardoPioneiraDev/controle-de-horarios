@@ -150,7 +150,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                   placeholder="Digite o número do veículo"
                 />
               </div>
-              
+
               <div>
                 <div className="flex items-center mb-1">
                   <Users className="h-4 w-4 mr-2 text-green-400" />
@@ -164,7 +164,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                   disabled={!canEditPerson}
                 />
               </div>
-              
+
               <div>
                 <div className="flex items-center mb-1">
                   <Activity className="h-4 w-4 mr-2 text-blue-400" />
@@ -178,7 +178,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                   disabled={!canEditPerson}
                 />
               </div>
-              
+
               <div>
                 <div className="flex items-center mb-1">
                   <AlertCircle className="h-4 w-4 mr-2 text-orange-400" />
@@ -224,7 +224,7 @@ const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehic
   if (!isOpen || !anchorItem) return null;
   const service = (anchorItem as any).cod_servico_numero || 'N/I';
   const driverBadge = (anchorItem as any).crachaMotoristaGlobus || (anchorItem as any).crachaMotoristaEditado || 'N/I';
-  
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm"
@@ -250,7 +250,7 @@ const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehic
                   Aplicar o veículo <span className="font-semibold text-gray-100">{vehicleNumber}</span> a esta viagem e propagar para as próximas?
                 </p>
               </div>
-              
+
               <div className="border border-neutral-700 bg-neutral-800/60 rounded-md p-3">
                 <div className="flex items-center mb-2">
                   <AlertCircle className="h-4 w-4 mr-2 text-orange-400" />
@@ -335,7 +335,7 @@ const ConfirmPersonPropagationModal: React.FC<{
                   Aplicar a substituição para <span className="font-semibold text-gray-100">{newData.nome} (crachá: {newData.cracha})</span> nesta viagem e propagar para as próximas?
                 </p>
               </div>
-              
+
               <div className="border border-neutral-700 bg-neutral-800/60 rounded-md p-3">
                 <div className="flex items-center mb-2">
                   <AlertCircle className="h-4 w-4 mr-2 text-orange-400" />
@@ -442,10 +442,10 @@ const HorariosModal: React.FC<HorariosModalProps> = ({ item, onClose, onSave }) 
                 <Clock className="h-5 w-5 mr-2 text-cyan-400" />
                 <h3 className="text-lg font-semibold text-cyan-400">Ajustar Horários e Confirmar Viagem</h3>
               </div>
-               <div className="mt-2 space-y-1 text-sm">
-                 <p className="text-gray-400">Linha: <span className="font-semibold text-gray-200">{(item as any).codigoLinha} - {(item as any).nomeLinha}</span></p>
-                 <p className="text-gray-400">Serviço: <span className="font-semibold text-gray-200">{(item as any).cod_servico_numero}</span></p>
-               </div>
+              <div className="mt-2 space-y-1 text-sm">
+                <p className="text-gray-400">Linha: <span className="font-semibold text-gray-200">{(item as any).codigoLinha} - {(item as any).nomeLinha}</span></p>
+                <p className="text-gray-400">Serviço: <span className="font-semibold text-gray-200">{(item as any).cod_servico_numero}</span></p>
+              </div>
             </div>
             <div className="px-6 py-5 space-y-4">
               {/* Horários Previstos */}
@@ -577,7 +577,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   const [showDriverOptionsModal, setShowDriverOptionsModal] = useState<ControleHorarioItem | null>(null);
   const [showCobradorOptionsModal, setShowCobradorOptionsModal] = useState<ControleHorarioItem | null>(null);
   const [horariosModalItem, setHorariosModalItem] = useState<ControleHorarioItem | null>(null);
-  
+
   // Informe o container para ocultar mensagens globais enquanto o modal de horários está aberto
   useEffect(() => {
     if (typeof onHorariosModalOpenChange === 'function') {
@@ -641,8 +641,8 @@ export const DataTable: React.FC<DataTableProps> = ({
   const anchorItem = pendingVehicle.open
     ? (visibleItems.find((it) => it.id === pendingVehicle.anchorId) || null)
     : pendingPerson.open
-    ? (visibleItems.find((it) => it.id === pendingPerson.anchorId) || null)
-    : null;
+      ? (visibleItems.find((it) => it.id === pendingPerson.anchorId) || null)
+      : null;
 
   const propagationTargets: string[] = (() => {
     if (!anchorItem) return [];
@@ -681,11 +681,11 @@ export const DataTable: React.FC<DataTableProps> = ({
 
     // Helper to convert HH:mm string to ISO string for a given date
     const toISOString = (time: string, date: Date): string | undefined => {
-        if (!/^\d{2}:\d{2}$/.test(time)) return undefined;
-        const [hours, minutes] = time.split(':').map(Number);
-        const newDate = new Date(date);
-        newDate.setHours(hours, minutes, 0, 0);
-        return newDate.toISOString();
+      if (!/^\d{2}:\d{2}$/.test(time)) return undefined;
+      const [hours, minutes] = time.split(':').map(Number);
+      const newDate = new Date(date);
+      newDate.setHours(hours, minutes, 0, 0);
+      return newDate.toISOString();
     };
 
     const baseDate = new Date((item as any).hor_saida || Date.now());
@@ -693,12 +693,12 @@ export const DataTable: React.FC<DataTableProps> = ({
     let saidaISO: string | undefined;
     let chegadaISO: string | undefined;
     if (data.hor_saida_ajustada) {
-        saidaISO = toISOString(data.hor_saida_ajustada, baseDate);
-        onInputChange(item.id, 'hor_saida_ajustada' as keyof ControleHorarioItem, saidaISO);
+      saidaISO = toISOString(data.hor_saida_ajustada, baseDate);
+      onInputChange(item.id, 'hor_saida_ajustada' as keyof ControleHorarioItem, saidaISO);
     }
     if (data.hor_chegada_ajustada) {
-        chegadaISO = toISOString(data.hor_chegada_ajustada, baseDate);
-        onInputChange(item.id, 'hor_chegada_ajustada' as keyof ControleHorarioItem, chegadaISO);
+      chegadaISO = toISOString(data.hor_chegada_ajustada, baseDate);
+      onInputChange(item.id, 'hor_chegada_ajustada' as keyof ControleHorarioItem, chegadaISO);
     }
     onInputChange(item.id, 'atraso_motivo' as keyof ControleHorarioItem, data.atraso_motivo as any);
     onInputChange(item.id, 'atraso_observacao' as keyof ControleHorarioItem, data.atraso_observacao as any);
@@ -777,7 +777,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       const d = (item as any).hor_saida; // Use the original ISO date string for reliable parsing
       const dt = d ? new Date(d) : null;
       if (!dt || isNaN(dt.getTime())) return sortOrder === 'asc' ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
-      
+
       const m = dt.getHours() * 60 + dt.getMinutes();
       return dt.getHours() < MIDNIGHT_CUTOFF_HOUR ? m + 24 * 60 : m;
     };
@@ -785,7 +785,7 @@ export const DataTable: React.FC<DataTableProps> = ({
     items.sort((a, b) => {
       const timeA = normMinutes(a);
       const timeB = normMinutes(b);
-      
+
       if (sortOrder === 'asc') {
         return timeA - timeB;
       } else {
@@ -820,8 +820,8 @@ export const DataTable: React.FC<DataTableProps> = ({
             <h3 className="text-lg font-medium text-gray-900">Erro ao carregar dados</h3>
           </div>
           <p className="text-red-600">{error}</p>
-          <button 
-            onClick={onRetry} 
+          <button
+            onClick={onRetry}
             className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <RefreshCw className="h-4 w-4 mr-2" /> Tentar Novamente
@@ -866,7 +866,7 @@ export const DataTable: React.FC<DataTableProps> = ({
             </div>
           </div>
         )}
-        
+
         <table className="min-w-full divide-y divide-gray-800 text-gray-200">
           <thead className="bg-gray-800/60">
             <tr>
@@ -875,11 +875,9 @@ export const DataTable: React.FC<DataTableProps> = ({
                 className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider cursor-pointer"
                 onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               >
-                
                 <div className="flex items-center ">
-                {sortOrder === 'asc' ? '▲' : '▼'}
-                  
-                  Horários 
+                  {sortOrder === 'asc' ? '▲' : '▼'}
+                  Horários
                 </div>
               </th>
               <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -888,6 +886,29 @@ export const DataTable: React.FC<DataTableProps> = ({
                   Linha / Serviço
                 </div>
               </th>
+
+              {!isMobileOrTablet && (
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center">
+                    <Bus className="h-4 w-4 mr-1 text-yellow-400" />
+                    Veículo
+                  </div>
+                </th>
+              )}
+
+              <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                <div className="flex items-center">
+                  <Users className="h-4 w-4 mr-1 text-blue-400" />
+                  Motorista
+                </div>
+              </th>
+              <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
+                <div className="flex items-center">
+                  <Users className="h-4 w-4 mr-1 text-cyan-400" />
+                  Cobrador
+                </div>
+              </th>
+
               {isMobileOrTablet ? (
                 <>
                   <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
@@ -920,39 +941,14 @@ export const DataTable: React.FC<DataTableProps> = ({
                   <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
                     <div className="flex items-center">
                       <Activity className="h-4 w-4 mr-1 text-orange-400" />
-                      Atividade / Tipo
-                    </div>
-                  </th>
-                  <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-1 text-indigo-400" />
-                      Setor
+                      Ativ. / Tipo / Setor
                     </div>
                   </th>
                 </>
               )}
-              <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-1 text-blue-400" />
-                  Motorista
-                </div>
-              </th>
-              <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-1 text-cyan-400" />
-                  Cobrador
-                </div>
-              </th>
-              {!isMobileOrTablet && (
-                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">
-                  <div className="flex items-center">
-                    <Bus className="h-4 w-4 mr-1 text-yellow-400" />
-                    Veículo
-                  </div>
-                </th>
-              )}
             </tr>
           </thead>
+
           <tbody className="bg-transparent divide-y divide-gray-800">
             {sortedVisibleItems.map((item) => {
               if (hiddenRows.has(item.id)) {
@@ -970,10 +966,10 @@ export const DataTable: React.FC<DataTableProps> = ({
               const rowClass = isConfirmed
                 ? 'border-l-4 border-green-500 bg-green-900/20' // Confirmed is always green
                 : (passou && !temVeiculo)
-                ? 'border-l-4 border-red-500 bg-red-900/30'
-                : (passou && (trocouMotorista || trocouCobrador))
-                  ? 'border-l-4 border-yellow-400 bg-yellow-900/25'
-                  : '';
+                  ? 'border-l-4 border-red-500 bg-red-900/30'
+                  : (passou && (trocouMotorista || trocouCobrador))
+                    ? 'border-l-4 border-yellow-400 bg-yellow-900/25'
+                    : '';
               const draft = vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '');
               return (
                 <tr key={item.id} className={`transition-colors hover:bg-gray-800/40 ${rowClass}`}>
@@ -985,14 +981,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                         <Play className="h-4 w-4 mr-2 text-green-400" />
                         <span className="font-mono font-medium text-green-300">{formatTime((item as any).horaSaida)}</span>
                       </div>
-                      
+
                       {/* Duração/Até - Centralizado */}
                       <div className="flex items-center justify-center">
-                        
                         <span className="text-xs text-blue-300 font-medium">até</span>
-                        
                       </div>
-                      
+
                       {/* Horário de Chegada */}
                       <div className="flex items-center">
                         <Square className="h-4 w-4 mr-2 text-red-400" />
@@ -1013,89 +1007,31 @@ export const DataTable: React.FC<DataTableProps> = ({
                       </div>
                     </div>
                   </td>
-                  {isMobileOrTablet ? (
-                    <>
-                      <td className="px-2 py-4 text-sm text-gray-200">
-                        <div className="flex flex-col space-y-2">
-                          {/* Origem */}
-                          <div className="flex items-center">
-                            <Navigation className="h-4 w-4 mr-2 text-green-400" />
-                            <span className="font-medium text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
-                          </div>
-                          
-                          {/* Sentido - Centralizado */}
-                          <div className="flex items-center justify-center">
-                            
-                            <span className="text-xs text-blue-300 font-medium">{(item as any).sentido_texto || ''}</span>
-                           
-                          </div>
-                          
-                          {/* Destino */}
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-2 text-red-400" />
-                            <span className="font-medium text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-4 text-sm text-gray-200">
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex items-center">
-                            <Activity className="h-4 w-4 mr-2 text-orange-400" />
-                            <div className="text-sm text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
-                          </div>
-                          <div className="flex items-center ml-6">
-                            <div className="text-xs text-gray-300">{(item as any).flg_tipo || ''}</div>
-                          </div>
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-neutral-700 text-gray-200">
-                              {(item as any).setorPrincipalLinha}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-2 py-4 text-sm text-gray-200">
-                        <div className="flex flex-col space-y-1">
-                          <div className="flex items-center">
-                            <Navigation className="h-4 w-4 mr-2 text-green-400" />
-                            <span className="font-medium text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
-                          </div>
-                          <div className="flex items-center ml-6">
-                            <ArrowDown className="h-3 w-3 mr-1 text-blue-400" />
-                            <div className="text-xs text-blue-300">{(item as any).sentido_texto || ''}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-4 text-sm text-gray-200">
-                        <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-2 text-red-400" />
-                          <span className="font-medium text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
-                        </div>
-                      </td>
-                      <td className="px-2 py-4 text-sm text-gray-200">
-                        <div className="flex flex-col space-y-1">
-                          <div className="flex items-center">
-                            <Activity className="h-4 w-4 mr-2 text-orange-400" />
-                            <div className="text-sm text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
-                          </div>
-                          <div className="flex items-center ml-6">
-                            <div className="text-xs text-gray-300">{(item as any).flg_tipo || ''}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-4 text-sm text-gray-200">
-                        <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
-                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-neutral-700 text-gray-200">
-                            {(item as any).setorPrincipalLinha}
-                          </span>
-                        </div>
-                      </td>
-                    </>
+
+                  {!isMobileOrTablet && (
+                    <td className="px-2 py-4">
+                      <div className="flex items-center">
+                        <Bus className="h-4 w-4 mr-2 text-yellow-400" />
+                        <input
+                          type="text"
+                          value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
+                          onChange={(e) => {
+                            const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '').slice(0, 7);
+                            setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
+                          }}
+                          onBlur={(e) => {
+                            const val = (e.target.value || '').trim();
+                            if (!val) return;
+                            if (val.length < 6) { e.target.focus(); return; }
+                            if (/^\d{6,7}$/.test(val)) { setPendingVehicle({ open: true, vehicle: val, anchorId: item.id }); return; }
+                          }}
+                          placeholder="Nº Veículo"
+                          className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-colors text-gray-100 ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-500 bg-yellow-900/20' : 'border-neutral-700 bg-neutral-800/60'}`}
+                        />
+                      </div>
+                    </td>
                   )}
+
                   <td className="px-2 py-4">
                     <div className="cursor-pointer" onClick={() => setShowDriverOptionsModal(item)}>
                       <div className="flex items-center">
@@ -1170,7 +1106,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                           {(item as any).crachaCobradorGlobus || 'N/A'}
                         </button>
                       </div>
-                      
+
                       <div className="mt-0.5 leading-tight ml-6">
                         <div className="flex items-center">
                           <Activity className="h-3 w-3 mr-1 text-gray-400" />
@@ -1200,28 +1136,85 @@ export const DataTable: React.FC<DataTableProps> = ({
                       )}
                     </div>
                   </td>
-                  {!isMobileOrTablet && (
-                    <td className="px-2 py-4">
-                      <div className="flex items-center">
-                        <Bus className="h-4 w-4 mr-2 text-yellow-400" />
-                        <input
-                          type="text"
-                          value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
-                          onChange={(e) => {
-                            const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '').slice(0, 7);
-                            setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
-                          }}
-                          onBlur={(e) => {
-                            const val = (e.target.value || '').trim();
-                            if (!val) return;
-                            if (val.length < 6) { e.target.focus(); return; }
-                            if (/^\d{6,7}$/.test(val)) { setPendingVehicle({ open: true, vehicle: val, anchorId: item.id }); return; }
-                          }}
-                          placeholder="Nº Veículo"
-                          className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-colors text-gray-100 ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-500 bg-yellow-900/20' : 'border-neutral-700 bg-neutral-800/60'}`}
-                        />
-                      </div>
-                    </td>
+
+                  {isMobileOrTablet ? (
+                    <>
+                      <td className="px-2 py-4 text-sm text-gray-200">
+                        <div className="flex flex-col space-y-2">
+                          {/* Origem */}
+                          <div className="flex items-center">
+                            <Navigation className="h-4 w-4 mr-2 text-green-400" />
+                            <span className="font-medium text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
+                          </div>
+
+                          {/* Sentido - Centralizado */}
+                          <div className="flex items-center justify-center">
+                            <span className="text-xs text-blue-300 font-medium">{(item as any).sentido_texto || ''}</span>
+                          </div>
+
+                          {/* Destino */}
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-2 text-red-400" />
+                            <span className="font-medium text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-4 text-sm text-gray-200">
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex items-center">
+                            <Activity className="h-4 w-4 mr-2 text-orange-400" />
+                            <div className="text-sm text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
+                          </div>
+                          <div className="flex items-center ml-6">
+                            <div className="text-xs text-gray-300">{(item as any).flg_tipo || ''}</div>
+                          </div>
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-neutral-700 text-gray-200">
+                              {(item as any).setorPrincipalLinha}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-2 py-4 text-sm text-gray-200">
+                        <div className="flex flex-col space-y-1">
+                          <div className="flex items-center">
+                            <Navigation className="h-4 w-4 mr-2 text-green-400" />
+                            <span className="font-medium text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
+                          </div>
+                          <div className="flex items-center ml-6">
+                            <ArrowDown className="h-3 w-3 mr-1 text-blue-400" />
+                            <div className="text-xs text-blue-300">{(item as any).sentido_texto || ''}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-4 text-sm text-gray-200">
+                        <div className="flex items-center">
+                          <MapPin className="h-4 w-4 mr-2 text-red-400" />
+                          <span className="font-medium text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
+                        </div>
+                      </td>
+                      <td className="px-2 py-4 text-sm text-gray-200">
+                        <div className="flex flex-col space-y-1">
+                          <div className="flex items-center">
+                            <Activity className="h-4 w-4 mr-2 text-orange-400" />
+                            <div className="text-sm text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
+                          </div>
+                          <div className="flex items-center ml-6">
+                            <div className="text-xs text-gray-300">{(item as any).flg_tipo || ''}</div>
+                          </div>
+                          <div className="flex items-center mt-1">
+                            <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-neutral-700 text-gray-200">
+                              {(item as any).setorPrincipalLinha}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                    </>
                   )}
                 </tr>
               );

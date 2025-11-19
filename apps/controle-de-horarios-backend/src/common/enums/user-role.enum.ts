@@ -7,7 +7,11 @@ export enum UserRole {
   ANALISTA = 'analista',
   OPERADOR = 'operador',
   ENCARREGADO = 'encarregado',
-  FUNCIONARIO = 'funcionario'
+  PCQC = 'pcqc',
+  DACN = 'dacn',
+  INSTRUTORES = 'instrutores',
+  DESPACHANTE = 'despachante',
+  OPERADOR_CCO = 'operador_cco'
 }
 
 export const UserRoleLabels = {
@@ -17,7 +21,11 @@ export const UserRoleLabels = {
   [UserRole.ANALISTA]: 'Analista',
   [UserRole.OPERADOR]: 'Operador',
   [UserRole.ENCARREGADO]: 'Encarregado',
-  [UserRole.FUNCIONARIO]: 'Funcionário'
+  [UserRole.PCQC]: 'PCQC',
+  [UserRole.DACN]: 'DACN',
+  [UserRole.INSTRUTORES]: 'Instrutores',
+  [UserRole.DESPACHANTE]: 'Despachante',
+  [UserRole.OPERADOR_CCO]: 'Operador CCO'
 };
 
 export const UserRoleHierarchy = {
@@ -26,8 +34,13 @@ export const UserRoleHierarchy = {
   [UserRole.GERENTE]: 3,
   [UserRole.ANALISTA]: 2,
   [UserRole.OPERADOR]: 1,
-  [UserRole.ENCARREGADO]: 1.5, // Assuming 'Encarregado' is between Operador and Analista
-  [UserRole.FUNCIONARIO]: 0.5 // Assuming 'Funcionário' is the lowest role
+  [UserRole.ENCARREGADO]: 1.5,
+  // Novos perfis definidos inicialmente com nível de Operador (1)
+  [UserRole.PCQC]: 1,
+  [UserRole.DACN]: 1,
+  [UserRole.INSTRUTORES]: 1,
+  [UserRole.DESPACHANTE]: 1,
+  [UserRole.OPERADOR_CCO]: 1
 
 };
 

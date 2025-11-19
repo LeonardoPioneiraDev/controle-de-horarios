@@ -32,20 +32,50 @@ export class ControleHorariosController {
 
   constructor(
     private readonly controleHorariosService: ControleHorariosService,
-  ) {}
+  ) { }
 
   @Get(':data')
-  @Roles(UserRole.OPERADOR)
+  @Roles(
+    UserRole.OPERADOR,
+    UserRole.ENCARREGADO,
+    UserRole.PCQC,
+    UserRole.DACN,
+    UserRole.OPERADOR_CCO,
+    UserRole.ANALISTA,
+    UserRole.GERENTE,
+    UserRole.DIRETOR,
+    UserRole.INSTRUTORES,
+    UserRole.ADMINISTRADOR,
+  )
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Buscar controle de horários por data', description: 'Quando o parâmetro editado_por_usuario_email é informado, a resposta é limitada a viagens que foram confirmadas (de_acordo = true) e tiveram edição relevante (veículo e/ou substituições). Nessa visão, a regra de ocultar confirmadas após N segundos não é aplicada.' })
   @ApiResponse({ status: 200, description: 'Horários encontrados com sucesso' })
   async buscarControleHorariosPorData(
     @Param('data') data: string,
     @Query() filtros: FiltrosControleHorarioDto,
+    @Req() req: any,
   ) {
     this.logger.log(`🔍 Buscando controle de horários para ${data}`);
 
     const startTime = Date.now();
+    // Viewer roles devem ver por padrão apenas viagens editadas (se não especificado)
+    const viewerRoles = new Set([
+      UserRole.OPERADOR,
+      UserRole.ENCARREGADO,
+      UserRole.PCQC,
+      UserRole.DACN,
+      UserRole.OPERADOR_CCO,
+      UserRole.ANALISTA,
+      UserRole.GERENTE,
+      UserRole.DIRETOR,
+      UserRole.INSTRUTORES,
+      UserRole.ADMINISTRADOR,
+    ]);
+    const roleAtual: UserRole = req.user?.role || req.user?.perfil || UserRole.OPERADOR;
+    if (viewerRoles.has(roleAtual) && typeof filtros.apenas_editadas === 'undefined') {
+      filtros.apenas_editadas = true as any; // coerção de DTO transform
+    }
+
     const horarios = await this.controleHorariosService.buscarControleHorariosPorData(data, filtros);
     const executionTime = Date.now() - startTime;
 
@@ -111,7 +141,7 @@ export class ControleHorariosController {
 
   // Alias estático adicional para atualização em lote, garantindo prioridade sobre rota dinâmica ':id'
   @Patch('multiples-batch')
-  @Roles(UserRole.FUNCIONARIO)
+  @Roles(UserRole.DESPACHANTE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualizar múltiplos registros de controle de horário (alias estático)' })
   @ApiResponse({ status: 200, description: 'Registros atualizados com sucesso' })
@@ -149,7 +179,7 @@ export class ControleHorariosController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.FUNCIONARIO)
+  @Roles(UserRole.DESPACHANTE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualizar um registro de controle de horário' })
   @ApiResponse({ status: 200, description: 'Registro atualizado com sucesso' })
@@ -172,6 +202,11 @@ export class ControleHorariosController {
           'atraso_motivo',
           'atraso_observacao',
           'observacoes_edicao',
+          'prefixo_veiculo',
+          'motorista_substituto_nome',
+          'motorista_substituto_cracha',
+          'cobrador_substituto_nome',
+          'cobrador_substituto_cracha',
         ];
         const sanitized: any = {};
         for (const key of allowedKeys) {
@@ -216,8 +251,37 @@ export class ControleHorariosController {
     }
   }
 
+  @Get(':id/historico')
+  @Roles(
+    UserRole.OPERADOR,
+    UserRole.ENCARREGADO,
+    UserRole.PCQC,
+    UserRole.DACN,
+    UserRole.OPERADOR_CCO,
+    UserRole.ANALISTA,
+    UserRole.GERENTE,
+    UserRole.DIRETOR,
+    UserRole.INSTRUTORES,
+    UserRole.DESPACHANTE,
+    UserRole.ADMINISTRADOR,
+  )
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Histórico de alterações de um controle de horário' })
+  @ApiResponse({ status: 200, description: 'Histórico retornado com sucesso' })
+  async historicoControleHorario(
+    @Param('id') id: string,
+    @Query('pagina') pagina = 1,
+    @Query('limite') limite = 50,
+  ) {
+    const data = await this.controleHorariosService.getHistoricoControleHorario(id, Number(pagina) || 1, Number(limite) || 50);
+    return {
+      success: true,
+      data,
+    };
+  }
+
   @Patch('multiples')
-  @Roles(UserRole.FUNCIONARIO)
+  @Roles(UserRole.DESPACHANTE)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualizar múltiplos registros de controle de horário com propagação' })
   @ApiResponse({ status: 200, description: 'Registros atualizados com sucesso' })
@@ -239,6 +303,11 @@ export class ControleHorariosController {
           'atraso_motivo',
           'atraso_observacao',
           'observacoes_edicao',
+          'prefixo_veiculo',
+          'motorista_substituto_nome',
+          'motorista_substituto_cracha',
+          'cobrador_substituto_nome',
+          'cobrador_substituto_cracha',
         ];
         const sanitized: any = {};
         for (const key of allowedKeys) {

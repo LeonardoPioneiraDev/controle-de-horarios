@@ -8,6 +8,7 @@ import {
   EstatisticasControleHorarios,
   SincronizarControleHorariosDto,
   SincronizacaoResponse,
+  HistoricoControleHorarioResponse,
 } from '../types/controle-horarios.types';
 
 export class ControleHorariosService extends BaseApiService {
@@ -71,7 +72,25 @@ export class ControleHorariosService extends BaseApiService {
     const response = await this.api.get('/controle-horarios/health');
     return response.data;
   }
+
+  // ===== Novos métodos alinhados ao backend =====
+  // Atualizar controle de horário individual (apenas Despachante)
+  async atualizarControleHorario(id: string, payload: Record<string, unknown>): Promise<{ success: boolean; message: string; data: any }> {
+    const response = await this.api.patch(`/controle-horarios/${id}`, payload);
+    return response.data;
+  }
+
+  // Atualizar múltiplos controles (apenas Despachante)
+  async atualizarMultiplosControles(dados: SalvarMultiplosControles): Promise<{ success: boolean; message: string; salvos?: number; erros?: number; data?: any }> {
+    const response = await this.api.patch('/controle-horarios/multiples-batch', dados);
+    return response.data;
+  }
+
+  // Histórico de alterações por controle de horário
+  async getHistoricoControleHorario(id: string, pagina = 1, limite = 50): Promise<HistoricoControleHorarioResponse> {
+    const response = await this.api.get(`/controle-horarios/${id}/historico`, { params: { pagina, limite } });
+    return response.data;
+  }
 }
 
 export const controleHorariosService = new ControleHorariosService();
-

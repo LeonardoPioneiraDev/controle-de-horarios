@@ -1,0 +1,80 @@
+# =================================================================
+# 🐳 DOCKER-COMPOSE PARA AMBIENTE DE PRODUÇÃO
+# =================================================================
+# Este arquivo é projetado para ser usado no servidor de produção.
+# Ele assume que as imagens Docker já foram construídas e enviadas
+# para um registro (ex: Docker Hub).
+#
+# Para iniciar:
+# 1. Preencha o arquivo .env.prod com as variáveis de ambiente.
+# 2. Execute: docker-compose -f docker-compose.prod.yml up -d
+# =================================================================
+
+services:
+  # ==========================================
+  # 🗄️ POSTGRESQL DATABASE
+  # ==========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: controle-horarios-postgres-prod
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    ports:
+      - "${POSTGRES_PORT_PROD}:5432"
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - controle-network-prod
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # 🚀 BACKEND NESTJS
+  # ==========================================
+  backend:
+    image: felipebatista54/controle-horarios-backend:latest
+    container_name: controle-horarios-backend-prod
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    ports:
+      - "${BACKEND_PORT_PROD}:3355"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - controle-network-prod
+    volumes:
+      - ./logs/backend:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3355/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # 🌐 FRONTEND REACT
+  # ==========================================
+  frontend:
+    image: felipebatista54/controle-horarios-frontend:latest
+    container_name: controle-horarios-frontend-prod
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT_PROD}:80"
+    networks:
+      - controle-network-prod
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data_prod:
+    driver: local
+
+networks:
+  controle-network-prod:
+    driver: bridge

@@ -1,6 +1,6 @@
-﻿﻿﻿import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { controleHorariosService } from '../../../services/controleHorariosService';
-import { isAtLeast, UserRole } from '../../../types/user.types';
+import { isAtLeast, UserRole, canEditControleHorarios } from '../../../types/user.types';
 import {
   ControleHorarioItem,
   FiltrosControleHorarios,
@@ -26,7 +26,7 @@ export const useControleHorarios = () => {
           perfil: u.role || u.perfil || 'OPERADOR',
         };
       }
-    } catch {}
+    } catch { }
     return { id: '1', nome: 'Usuário', email: 'usuario@exemplo.com', perfil: 'OPERADOR' };
   };
 
@@ -52,10 +52,16 @@ export const useControleHorarios = () => {
       }
     }
     const initialLimit = window.innerWidth <= 1208 ? 8 : 50;
+    // Perfis de leitura: por padrão, apenas viagens editadas
+    const roleLower = String(usuario.perfil || '').toLowerCase();
+    const isViewer = [
+      'operador', 'encarregado', 'pcqc', 'dacn', 'operador_cco', 'analista', 'gerente', 'diretor', 'instrutores', 'administrador'
+    ].includes(roleLower);
     return {
       limite: initialLimit,
       pagina: 1,
-    };
+      ...(isViewer ? { apenas_editadas: true } : {}),
+    } as FiltrosControleHorarios;
   });
 
   // Filtros locais (não enviados ao backend)
@@ -64,10 +70,10 @@ export const useControleHorarios = () => {
     const savedTipoLocal = localStorage.getItem(`filtros_controle_horarios_${usuario.id}_tipoLocal`);
     return savedTipoLocal === 'R' || savedTipoLocal === 'S' ? savedTipoLocal : undefined;
   });
-  const [statusEdicaoLocal, setStatusEdicaoLocal] = useState<'todos' | 'editados' | 'nao_editados'>(() => {
+  const [statusEdicaoLocal, setStatusEdicaoLocal] = useState<'todos' | 'minhas_edicoes' | 'nao_editados' | 'apenas_editadas'>(() => {
     const usuario = obterUsuarioAtual();
     const savedStatusEdicaoLocal = localStorage.getItem(`filtros_controle_horarios_${usuario.id}_statusEdicaoLocal`);
-    if (savedStatusEdicaoLocal === 'editados' || savedStatusEdicaoLocal === 'nao_editados') {
+    if (savedStatusEdicaoLocal === 'minhas_edicoes' || savedStatusEdicaoLocal === 'nao_editados' || savedStatusEdicaoLocal === 'apenas_editadas') {
       return savedStatusEdicaoLocal;
     }
     return 'todos';
@@ -145,7 +151,7 @@ export const useControleHorarios = () => {
     try {
       // Preparar filtros para request (injeta cracha_funcionario quando aplicável)
       const reqFilters: FiltrosControleHorarios = { ...filtros };
-      if (!reqFilters.editado_por_usuario_email && statusEdicaoLocal === 'editados') {
+      if (!reqFilters.editado_por_usuario_email && statusEdicaoLocal === 'minhas_edicoes') {
         const u = obterUsuarioAtual();
         if (u?.email) {
           const normalizedEmail = u.email.toString().trim().toLowerCase();
@@ -227,7 +233,7 @@ export const useControleHorarios = () => {
           data: { ...response.data, ultimaAtualizacao: response.data.ultimaAtualizacao ? new Date(response.data.ultimaAtualizacao) : null }
         });
       }
-    } catch {}
+    } catch { }
   }, [dataReferencia]);
 
   const buscarOpcoesFiltros = useCallback(async () => {
@@ -246,7 +252,7 @@ export const useControleHorarios = () => {
         locaisOrigem: Array.from(origemSet.values()).sort(),
         locaisDestino: Array.from(destinoSet.values()).sort(),
       });
-    } catch {}
+    } catch { }
   }, [dataReferencia]);
 
   const salvarTodasAlteracoes = useCallback(async () => {
@@ -290,10 +296,10 @@ export const useControleHorarios = () => {
     try {
       setLoading(true);
 
-      // 1) Apply propagáveis via batch only if user is authorized
+      // 1) Apply propagáveis via batch only if user has permission
       if (propagaveisChanged.length > 0) {
-        if (!isAtLeast(roleNorm, UserRole.ANALISTA)) {
-          setError('Ação não permitida: alterações com propagação exigem perfil Analista ou superior.');
+        if (!canEditControleHorarios(roleNorm)) {
+          setError('Ação não permitida: você não tem permissão para propagar alterações.');
         } else {
           const payload = {
             updates: propagaveisChanged,
@@ -304,10 +310,10 @@ export const useControleHorarios = () => {
         }
       }
 
-      // 2) Apply ajustes/confirm per record (no propagação)
+      // 2) Apply ajustes/confirm per record (sem propagação) - apenas Despachante
       for (const adj of ajustesChanged) {
         const { id, ...data } = adj as any;
-        if (Object.keys(data).length > 0) {
+        if (Object.keys(data).length > 0 && canEditControleHorarios(roleNorm)) {
           await controleHorariosService.atualizarControleHorario(id, data);
         }
       }
@@ -372,29 +378,6 @@ export const useControleHorarios = () => {
     buscarControleHorarios();
   }, [buscarControleHorarios]);
 
-    const aplicarFiltroRapido = useCallback((tipo: 'editados' | 'nao_editados' | 'todos') => {
-    if (tipo === 'editados') {
-      // Editados por mim: aplica filtro de backend apenas com o email do editor
-      const u = obterUsuarioAtual();
-      setFiltros((prev: any) => ({
-        ...prev,
-        editado_por_usuario_email: u?.email,
-      }));
-    } else if (tipo === 'nao_editados') {
-      // Não envia filtro de servidor; filtragem local remove editados
-      setFiltros((prev: any) => ({
-        ...prev,
-        editado_por_usuario_email: undefined,
-      }));
-    } else {
-      // Todos: limpa filtros relacionados a edição
-      setFiltros((prev: any) => ({
-        ...prev,
-        editado_por_usuario_email: undefined,
-      }));
-    }
-  }, []);;
-
   const salvarFiltrosManualmente = useCallback(() => {
     console.log('salvarFiltrosManualmente: Saving filters...', { dataReferencia, filtros, tipoLocal, statusEdicaoLocal });
     const usuario = obterUsuarioAtual();
@@ -433,20 +416,33 @@ export const useControleHorarios = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataReferencia]);
 
-  // Atualiza filtros de "editados por mim" no backend quando statusEdicaoLocal muda
+  // Centraliza a lógica de filtro de edição
   useEffect(() => {
     const u = obterUsuarioAtual();
     const getJwtEmail = (() => { try { const t = localStorage.getItem('token'); if (!t) return ''; const payload = JSON.parse(atob((t.split('.')[1] || ''))); return (payload.email || payload.sub || '').toString(); } catch { return ''; } })();
     const email = getJwtEmail || u?.email;
-    if (statusEdicaoLocal === 'editados' && email) {
-      setFiltros((prev) => ({ ...prev, editado_por_usuario_email: email }));
-    } else {
-      setFiltros((prev) => {
-        const { editado_por_usuario_email, ...rest } = prev as any;
-        return { ...rest } as any;
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    setFiltros((prev) => {
+      const newFiltros = { ...prev };
+
+      // Limpa os filtros de edição anteriores para evitar sobreposição
+      delete (newFiltros as any).editado_por_usuario_email;
+      delete (newFiltros as any).apenas_editadas;
+      // Também limpar incluir_historico, caso não seja mais necessário
+      delete (newFiltros as any).incluir_historico;
+
+      // Aplica o filtro correto com base no status local
+      if (statusEdicaoLocal === 'minhas_edicoes' && email) {
+        (newFiltros as any).editado_por_usuario_email = email;
+        (newFiltros as any).apenas_editadas = true; // Garante que só traga viagens com edições
+        (newFiltros as any).incluir_historico = true;
+      } else if (statusEdicaoLocal === 'apenas_editadas') {
+        (newFiltros as any).apenas_editadas = true;
+        (newFiltros as any).incluir_historico = true;
+      }
+
+      return newFiltros;
+    });
   }, [statusEdicaoLocal]);
 
   // Deriva listas complementares (locais, sentidos) a partir dos dados carregados
@@ -470,7 +466,7 @@ export const useControleHorarios = () => {
       if (statusEdicaoLocal === 'nao_editados' && !!(it as any).editado_por_nome) return false;
       return true;
     });
-  }, [controleHorarios]);
+  }, [controleHorarios, tipoLocal, statusEdicaoLocal]);
 
   return {
     // Estados
@@ -492,7 +488,6 @@ export const useControleHorarios = () => {
     handleInputChange,
     limparFiltros,
     aplicarFiltros,
-    aplicarFiltroRapido,
     contarAlteracoesPendentes,
     tipoLocal, setTipoLocal,
     statusEdicaoLocal, setStatusEdicaoLocal,

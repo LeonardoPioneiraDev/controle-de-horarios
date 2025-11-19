@@ -78,10 +78,12 @@ const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, on
             {testingOracle ? 'Testando...' : 'Testar Oracle'}
           </Button>
         )}
-        <Button onClick={handleSyncClick} disabled={synchronizing} className="w-full sm:w-auto">
-          <RefreshCw className={`h-4 w-4 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
-          {synchronizing ? 'Sincronizando...' : 'Sincronizar'}
-        </Button>
+        {isAdmin && (
+          <Button onClick={handleSyncClick} disabled={synchronizing} className="w-full sm:w-auto">
+            <RefreshCw className={`h-4 w-4 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
+            {synchronizing ? 'Sincronizando...' : 'Sincronizar'}
+          </Button>
+        )}
       </div>
 
       <ConfirmDialog
@@ -519,10 +521,12 @@ const NoDataGlobus = ({ onSync, synchronizing, onTestOracle, testingOracle, isAd
             {testingOracle ? 'Testando...' : 'Testar Oracle'}
           </Button>
         )}
-        <Button onClick={onSync} disabled={synchronizing} size="lg" className="w-full sm:w-auto">
-          <RefreshCw className={`h-5 w-5 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
-          {synchronizing ? 'Sincronizando...' : 'Sincronizar Dados'}
-        </Button>
+        {isAdmin && (
+          <Button onClick={onSync} disabled={synchronizing} size="lg" className="w-full sm:w-auto">
+            <RefreshCw className={`h-5 w-5 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
+            {synchronizing ? 'Sincronizando...' : 'Sincronizar Dados'}
+          </Button>
+        )}
       </div>
     </CardContent>
   </GlowingCard>

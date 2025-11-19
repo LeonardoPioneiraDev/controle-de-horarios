@@ -1,6 +1,7 @@
 // src/entities/controle-horario.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, OneToMany } from 'typeorm';
 import { createHash } from 'crypto';
+import { ControleHorarioChange } from './controle-horario-change.entity';
 
 @Entity('controle_horarios')
 @Index(['data_referencia', 'codigo_linha'], { unique: false })
@@ -15,6 +16,9 @@ import { createHash } from 'crypto';
 export class ControleHorario {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @OneToMany(() => ControleHorarioChange, change => change.controleHorario)
+  historico: ControleHorarioChange[];
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   setor_principal_linha: string;

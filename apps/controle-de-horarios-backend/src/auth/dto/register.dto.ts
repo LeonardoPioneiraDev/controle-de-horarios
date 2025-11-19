@@ -4,8 +4,8 @@ import { UserRole } from '@/common/enums';
 
 export class RegisterDto {
   @ApiProperty({ 
-    example: 'joao.silva@vpioneira.com.br',
-    description: 'E-mail do usuário (deve ser @vpioneira.com.br)'
+    example: 'joao.silva@example.com',
+    description: 'E-mail do usuário'
   })
   @IsEmail()
   email: string;
@@ -30,12 +30,12 @@ export class RegisterDto {
 
   @ApiProperty({ 
     enum: UserRole,
-    example: UserRole.FUNCIONARIO,
+    example: UserRole.OPERADOR,
     description: 'Cargo/função do usuário',
-    default: UserRole.FUNCIONARIO
+    default: UserRole.OPERADOR
   })
   @IsEnum(UserRole)
-  role: UserRole = UserRole.FUNCIONARIO;
+  role: UserRole = UserRole.OPERADOR;
 
   @ApiProperty({ 
     example: 'MinhaSenh@123',
@@ -45,3 +45,4 @@ export class RegisterDto {
   @MinLength(8)
   password: string;
 }
+

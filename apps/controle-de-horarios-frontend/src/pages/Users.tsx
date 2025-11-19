@@ -28,6 +28,24 @@ export const Users: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [roleFilter, setRoleFilter] = useState('all');
+
+  // Role options sorted alphabetically by label
+  const roleLabel = (r: string) => ({
+    administrador: 'Administrador',
+    analista: 'Analista',
+    dacn: 'DACN',
+    despachante: 'Despachante',
+    diretor: 'Diretor',
+    encarregado: 'Encarregado',
+    gerente: 'Gerente',
+    instrutores: 'Instrutores',
+    operador: 'Operador',
+    operador_cco: 'Operador CCO',
+    pcqc: 'PCQC',
+  } as Record<string, string>)[r] || r;
+  const roleOptions = (Object.values(UserRole) as string[])
+    .map((r) => String(r))
+    .sort((a, b) => roleLabel(a).localeCompare(roleLabel(b)));
   
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,7 +107,18 @@ export const Users: React.FC = () => {
       filtered = filtered.filter(user => user.role === roleFilter);
     }
 
-    setFilteredUsers(filtered);
+    // Ordenar alfabeticamente pela Função (papel) e, em caso de empate, pelo Nome
+    const sorted = [...filtered].sort((a, b) => {
+      const roleA = roleLabel(String(a.role));
+      const roleB = roleLabel(String(b.role));
+      const cmpRole = roleA.localeCompare(roleB, 'pt-BR', { sensitivity: 'base' });
+      if (cmpRole !== 0) return cmpRole;
+      const nameA = `${a.firstName} ${a.lastName}`.trim();
+      const nameB = `${b.firstName} ${b.lastName}`.trim();
+      return nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+    });
+
+    setFilteredUsers(sorted);
   };
 
   const handleCreateUser = () => {
@@ -196,8 +225,12 @@ export const Users: React.FC = () => {
       analista: 'role-badge role-analista',
       operador: 'role-badge role-operador',
       encarregado: 'role-badge role-encarregado',
-      funcionario: 'role-badge role-funcionario'
-    };
+      pcqc: 'role-badge role-operador',
+      dacn: 'role-badge role-operador',
+      instrutores: 'role-badge role-operador',
+      despachante: 'role-badge role-operador',
+      operador_cco: 'role-badge role-operador'
+    } as Record<string, string>;
     
     const roleLabels = {
       administrador: 'Administrador',
@@ -206,8 +239,12 @@ export const Users: React.FC = () => {
       analista: 'Analista',
       operador: 'Operador',
       encarregado: 'Encarregado',
-      funcionario: 'Funcionário'
-    };
+      pcqc: 'PCQC',
+      dacn: 'DACN',
+      instrutores: 'Instrutores',
+      despachante: 'Despachante',
+      operador_cco: 'Operador CCO'
+    } as Record<string, string>;
     
     return (
       <span className={roleClasses[role as keyof typeof roleClasses]}>
@@ -334,13 +371,9 @@ export const Users: React.FC = () => {
               onChange={(e) => setRoleFilter(e.target.value)}
             >
               <option value="all">Todas as Funções</option>
-              <option value="administrador">Administrador</option>
-              <option value="diretor">Diretor</option>
-              <option value="gerente">Gerente</option>
-              <option value="analista">Analista</option>
-              <option value="operador">Operador</option>
-              <option value="encarregado">Encarregado</option>
-              <option value="funcionario">Funcionário</option>
+              {roleOptions.map((r) => (
+                <option key={r} value={r}>{roleLabel(r)}</option>
+              ))}
             </select>
           </div>
 

@@ -41,8 +41,8 @@ RUN mkdir -p /opt/oracle
 
 # Baixar e instalar Oracle Instant Client
 WORKDIR /tmp
-RUN wget https://download.oracle.com/otn_software/linux/instantclient/1923000/instantclient-basic-linux.x64-19.23.0.0.0dbru.zip \
-    && wget https://download.oracle.com/otn_software/linux/instantclient/1923000/instantclient-sqlplus-linux.x64-19.23.0.0.0dbru.zip \
+RUN curl -L -O https://download.oracle.com/otn_software/linux/instantclient/1923000/instantclient-basic-linux.x64-19.23.0.0.0dbru.zip \
+    && curl -L -O https://download.oracle.com/otn_software/linux/instantclient/1923000/instantclient-sqlplus-linux.x64-19.23.0.0.0dbru.zip \
     && unzip -o instantclient-basic-linux.x64-19.23.0.0.0dbru.zip -d /opt/oracle/ \
     && unzip -o instantclient-sqlplus-linux.x64-19.23.0.0.0dbru.zip -d /opt/oracle/ \
     && rm -f instantclient-*.zip
@@ -77,7 +77,7 @@ RUN mkdir -p logs uploads \
 # Environment
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
-ENV PORT=3355
+ENV PORT=3335
 
 # Oracle environment
 ENV ORACLE_HOME=/opt/oracle/instantclient
@@ -85,9 +85,9 @@ ENV LD_LIBRARY_PATH=/opt/oracle/instantclient
 ENV PATH=/opt/oracle/instantclient:$PATH
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:3355/api/health || exit 1
+    CMD curl -f https://horariosapi.vpioneira.com.br/api/health || exit 1
 
-EXPOSE 3355
+EXPOSE 3335
 USER nestjs
 
 CMD ["node", "dist/main.js"]

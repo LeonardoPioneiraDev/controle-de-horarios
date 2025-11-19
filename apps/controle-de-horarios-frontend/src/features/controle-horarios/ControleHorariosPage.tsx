@@ -4,6 +4,7 @@ import { UserRole, canSyncControleHorarios, canEditControleHorarios } from '../.
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { useControleHorarios } from './hooks/useControleHorarios';
 import { FiltersPanel } from './components/FiltersPanel/FiltersPanel';
+import { HistoryDrawerList } from './components/HistoryDrawerList/HistoryDrawerList';
 import { DataTable } from './components/DataTable';
 import { FloatingActionButton } from './components/FloatingActionButton/FloatingActionButton';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
@@ -19,6 +20,7 @@ export const ControleHorariosPage: React.FC = () => {
   const [showLinhaMultiSelect, setShowLinhaMultiSelect] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [openConfirmSync, setOpenConfirmSync] = useState(false);
+  const [showHistorico, setShowHistorico] = useState(false);
 
   const [isHorariosModalOpen, setIsHorariosModalOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -54,7 +56,6 @@ export const ControleHorariosPage: React.FC = () => {
     sincronizarControleHorarios,
     limparFiltros,
     aplicarFiltros,
-    aplicarFiltroRapido,
     tipoLocal,
     setTipoLocal,
     statusEdicaoLocal,
@@ -81,7 +82,7 @@ export const ControleHorariosPage: React.FC = () => {
     name: string;
     filtros: any;
     tipoLocal?: 'R' | 'S';
-    statusEdicaoLocal?: 'todos' | 'editados' | 'nao_editados';
+    statusEdicaoLocal?: 'todos' | 'minhas_edicoes' | 'nao_editados' | 'apenas_editadas';
     createdAt: number;
   };
   const savedFiltersKey = useMemo(() => {
@@ -150,10 +151,31 @@ export const ControleHorariosPage: React.FC = () => {
       String(v ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]!));
     const items = Array.isArray(sortedControleHorarios) ? sortedControleHorarios : [];
 
-    // Logo em base64
     const logoBase64 =  '../assets/logo.png'
-    const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const renderAdjustedTime = (originalTime?: string, adjustedTime?: string) => {
+      if (!adjustedTime) {
+        return `<td>${safe(originalTime ? new Date(originalTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '')}</td>`;
+      }
+      const originalFormatted = originalTime ? new Date(originalTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+      const adjustedFormatted = new Date(adjustedTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      return `<td class="cell-adjusted"><div class="original">${originalFormatted}</div><div class="adjusted">${adjustedFormatted}</div></td>`;
+    };
+
+    const renderPerson = (originalName?: string, substitutedName?: string, originalCracha?: string, substitutedCracha?: string) => {
+      if (!substitutedName && !substitutedCracha) {
+        return `<td><div>${safe(originalName)}</div><div class="cracha">${safe(originalCracha)}</div></td>`;
+      }
+      return `<td class="cell-substitute"><div class="original">${safe(originalName)} (${safe(originalCracha)})</div><div class="substituted">${safe(substitutedName)} (${safe(substitutedCracha)})</div></td>`;
+    };
+
+    const renderCarro = (originalCarro?: string, editedCarro?: string) => {
+      if (!editedCarro || originalCarro === editedCarro) {
+        return `<td>${safe(originalCarro)}</td>`;
+      }
+      return `<td class="cell-substitute"><div class="original">${safe(originalCarro)}</div><div class="substituted">${safe(editedCarro)}</div></td>`;
+    }
+
     const rows = items
       .map((it: any) => {
         const hasAdjust = Boolean(it.hor_saida_ajustada || it.hor_chegada_ajustada);
@@ -162,59 +184,22 @@ export const ControleHorariosPage: React.FC = () => {
           it.crachaMotoristaEditado ||
           it.nomeCobradorEditado ||
           it.crachaCobradorEditado ||
+          (it.prefixo_veiculo_editado && it.prefixo_veiculo_editado !== it.prefixo_veiculo) ||
           hasAdjust
         );
-        const hasVehicle = Boolean(it.numeroCarro);
-        const m = String(it.horaSaida || '').match(/^(\d{1,2}):(\d{2})/);
-        const hm = m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
-        const isLateNoVehicle = hm !== null && hm < nowMinutes && !hasVehicle;
-        const rowClass = isLateNoVehicle ? 'row-danger' : (hasAdjust ? 'row-adjusted' : (hasEdits ? 'row-warning' : 'row-ok'));
-
-        const motoristaNomeOriginal = it.nomeMotoristaGlobus || '';
-        const motoristaCrachaOriginal = it.crachaMotoristaGlobus || '';
-        const isMotoristaSubstituted = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus);
-        const motoristaNomeSubstituto = isMotoristaSubstituted ? (it.nomeMotoristaEditado || '') : '';
-        const motoristaCrachaSubstituto = isMotoristaSubstituted ? (it.crachaMotoristaEditado || '') : '';
-
-        const cobradorNomeOriginal = it.nomeCobradorGlobus || '';
-        const cobradorCrachaOriginal = it.crachaCobradorGlobus || '';
-        const isCobradorSubstituted = (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) || (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus);
-        const cobradorNomeSubstituto = isCobradorSubstituted ? (it.nomeCobradorEditado || '') : '';
-        const cobradorCrachaSubstituto = isCobradorSubstituted ? (it.crachaCobradorEditado || '') : '';
-
-        const hasCobrador = cobradorNomeOriginal || cobradorNomeSubstituto;
-
-        const cobradorCells = hasCobrador
-          ? `
-          <td>${safe(cobradorNomeOriginal)}</td>
-          <td class="center">${safe(cobradorCrachaOriginal)}</td>
-          <td class="${cobradorNomeSubstituto ? 'cell-substitute' : ''}">${safe(cobradorNomeSubstituto)}</td>
-          <td class="center ${cobradorCrachaSubstituto ? 'cell-substitute' : ''}">${safe(cobradorCrachaSubstituto)}</td>
-        `
-          : '<td colspan="4" class="cell-no-cobrador">SEM COBRADOR</td>';
-
-        const fmtAdj = (v?: string) => {
-          if (!v) return '';
-          try { const d = new Date(v); if (isNaN(d.getTime())) return ''; return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
-        };
-        const saidaAdj = fmtAdj(it.hor_saida_ajustada);
-        const chegadaAdj = fmtAdj(it.hor_chegada_ajustada);
+        const rowClass = hasEdits ? 'row-warning' : 'row-ok';
 
         return `
         <tr class="${rowClass}">
-          <td>${safe(it.setorPrincipalLinha)}</td>
-          <td>${safe(it.codigoLinha)} - ${safe(it.nomeLinha)}</td>
+          <td><div>${safe(it.codigoLinha)} - ${safe(it.nomeLinha)}</div><div class="setor">${safe(it.setorPrincipalLinha)}</div></td>
           <td class="center">${safe(it.codServicoNumero ?? it.cod_servico_numero ?? '')}</td>
-          <td class="center">${safe(it.horaSaida)}</td>
-          <td class="center">${safe(it.horaChegada)}</td>
-          <td class="center ${saidaAdj ? 'cell-adjusted' : ''}">${safe(saidaAdj || '')}</td>
-          <td class="center ${chegadaAdj ? 'cell-adjusted' : ''}">${safe(chegadaAdj || '')}</td>
-          <td class="center">${safe(it.numeroCarro)}</td>
-          <td>${safe(motoristaNomeOriginal)}</td>
-          <td class="center">${safe(motoristaCrachaOriginal)}</td>
-          <td class="${motoristaNomeSubstituto ? 'cell-substitute' : ''}">${safe(motoristaNomeSubstituto)}</td>
-          <td class="center ${motoristaCrachaSubstituto ? 'cell-substitute' : ''}">${safe(motoristaCrachaSubstituto)}</td>
-          ${cobradorCells}
+          ${renderAdjustedTime(it.hor_saida, it.hor_saida_ajustada)}
+          ${renderAdjustedTime(it.hor_chegada, it.hor_chegada_ajustada)}
+          ${renderCarro(it.prefixo_veiculo, it.prefixo_veiculo_editado)}
+          ${renderPerson(it.nome_motorista, it.nome_motorista_editado, it.cracha_motorista, it.cracha_motorista_editado)}
+          ${renderPerson(it.nome_cobrador, it.nome_cobrador_editado, it.cracha_cobrador, it.cracha_cobrador_editado)}
+          <td>${safe(it.editado_por_nome || '')}</td>
+          <td>${safe(it.observacao || '')}</td>
         </tr>`;
       })
       .join('');
@@ -232,7 +217,6 @@ export const ControleHorariosPage: React.FC = () => {
     body { font-family: 'Roboto', system-ui, -apple-system, Segoe UI, sans-serif; color: #333; margin: 0; background-color: #f4f4f9; }
     .container { max-width: 1600px; margin: 24px auto; padding: 24px; background-color: #fff; box-shadow: 0 4px 8px rgba(0,0,0,0.1); border-radius: 8px; }
     .report-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #fbcc2c; padding-bottom: 16px; margin-bottom: 16px; }
-     
     .report-header .title-block { text-align: right; }
     h1 { margin: 0 0 4px; color: #1a1a1a; font-size: 28px; }
     .muted { color: #555; font-size: 14px; }
@@ -244,23 +228,16 @@ export const ControleHorariosPage: React.FC = () => {
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
     th, td { border: 1px solid #dee2e6; padding: 10px 12px; text-align: left; vertical-align: middle; }
     thead th { background: #343a40; color: #fff; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-    thead .group-header { background-color: #495057; text-align: center; }
     tbody tr:nth-child(even) { background-color: #f8f9fa; }
     tbody tr:hover { background-color: #e9ecef; }
     tfoot td { background: #e9ecef; font-weight: 700; }
     .row-warning { background-color: #fff3cd; }
-    .row-adjusted { background-color: #ecfdf5; }
-    .row-danger { background-color: #f8d7da; color: #721c24; }
-    .row-danger td { border-color: #f5c6cb; }
-    .cell-substitute { background-color: #fff9c4; font-weight: 700; color: #333; }
-    .cell-adjusted { background-color: #d1fae5; color: #065f46; font-weight: 700; border: 1px solid #a7f3d0; }
-    .cell-no-cobrador { text-align: center; color: #6c757d; background-color: #f8f9fa; font-style: italic; }
+    .cell-substitute .original { text-decoration: line-through; color: #dc3545; }
+    .cell-substitute .substituted { font-weight: bold; color: #ffc107; }
+    .cell-adjusted .original { text-decoration: line-through; color: #6c757d; }
+    .cell-adjusted .adjusted { font-weight: bold; color: #28a745; }
     .center { text-align: center; }
-    .col-setor { width: 5%; }
-    .col-linha { width: 18%; }
-    .col-servico, .col-saida, .col-chegada, .col-carro { width: 6%; text-align: center; }
-    .col-motorista, .col-cobrador { width: 12%; }
-    .col-cracha { width: 7%; text-align: center; }
+    .cracha, .setor { font-size: 0.9em; color: #6c757d; }
     @media print { 
       body { margin: 0; font-size: 10px; } 
       .container { box-shadow: none; margin: 0; padding: 10px; border-radius: 0; }
@@ -272,7 +249,6 @@ export const ControleHorariosPage: React.FC = () => {
   <body>
     <div class="container">
       <div class="report-header">
-        
         <div class="title-block">
           <h1>Relatório de Controle de Horários</h1>
           <div class="muted">Data de referência: <b>${safe(dataReferencia)}</b> • Tipo do dia: <b>${safe(dayType)}</b></div>
@@ -285,31 +261,20 @@ export const ControleHorariosPage: React.FC = () => {
       <table>
         <thead>
           <tr>
-            <th rowspan="2" class="col-setor">Setor</th>
-            <th rowspan="2" class="col-linha">Linha</th>
-            <th rowspan="2" class="col-servico">Serviço</th>
-            <th rowspan="2" class="col-saida">Saída</th>
-            <th rowspan="2" class="col-chegada">Chegada</th>
-            <th rowspan="2" class="col-saida">Saída Ajustada</th>
-            <th rowspan="2" class="col-chegada">Chegada Ajustada</th>
-            <th rowspan="2" class="col-carro">Carro</th>
-            <th colspan="4" class="group-header">Motorista</th>
-            <th colspan="4" class="group-header">Cobrador</th>
-          </tr>
-          <tr>
-            <th class="col-motorista">Original</th>
-            <th class="col-cracha">Crachá</th>
-            <th class="col-motorista">Substituto</th>
-            <th class="col-cracha">Crachá</th>
-            <th class="col-cobrador">Original</th>
-            <th class="col-cracha">Crachá</th>
-            <th class="col-cobrador">Substituto</th>
-            <th class="col-cracha">Crachá</th>
+            <th>Linha</th>
+            <th>Serviço</th>
+            <th>Saída</th>
+            <th>Chegada</th>
+            <th>Carro</th>
+            <th>Motorista</th>
+            <th>Cobrador</th>
+            <th>Editado por</th>
+            <th>Observações</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
         <tfoot>
-          <tr><td colspan="16">Total de registros: ${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</td></tr>
+          <tr><td colspan="9">Total de registros: ${Array.isArray(controleHorarios) ? controleHorarios.length : 0}</td></tr>
         </tfoot>
       </table>
     </div>
@@ -334,20 +299,27 @@ export const ControleHorariosPage: React.FC = () => {
 
     const header = [
       'Setor', 'Linha', 'Serviço', 'Saída', 'Chegada', 'Saída Ajustada', 'Chegada Ajustada', 'Carro',
-      'Motorista (Original)', 'Crachá (Original)', 'Motorista (Substituto)', 'Crachá (Substituto)',
-      'Cobrador (Original)', 'Crachá (Original)', 'Cobrador (Substituto)', 'Crachá (Substituto)'
+      'Motorista', 'Cobrador', 'Observações'
     ];
 
     const data = items.map((it: any) => {
-      const isMotoristaSubstituted = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus);
-      const isCobradorSubstituted = (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) || (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus);
-
-      const hasCobrador = it.nomeCobradorGlobus || isCobradorSubstituted;
-
       const fmtAdj = (v?: string) => {
         if (!v) return '';
         try { const d = new Date(v); if (isNaN(d.getTime())) return ''; return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
       };
+
+      const motorista = (it.nome_motorista_editado && it.nome_motorista_editado !== it.nome_motorista) || (it.cracha_motorista_editado && it.cracha_motorista_editado !== it.cracha_motorista)
+        ? `DE: ${it.nome_motorista} (${it.cracha_motorista}) PARA: ${it.nome_motorista_editado} (${it.cracha_motorista_editado})`
+        : `${it.nome_motorista} (${it.cracha_motorista})`;
+
+      const cobrador = (it.nome_cobrador_editado && it.nome_cobrador_editado !== it.nome_cobrador) || (it.cracha_cobrador_editado && it.cracha_cobrador_editado !== it.cracha_cobrador)
+        ? `DE: ${it.nome_cobrador} (${it.cracha_cobrador}) PARA: ${it.nome_cobrador_editado} (${it.cracha_cobrador_editado})`
+        : (it.nome_cobrador ? `${it.nome_cobrador} (${it.cracha_cobrador})` : 'SEM COBRADOR');
+
+      const carro = (it.prefixo_veiculo_editado && it.prefixo_veiculo_editado !== it.prefixo_veiculo)
+        ? `DE: ${it.prefixo_veiculo} PARA: ${it.prefixo_veiculo_editado}`
+        : it.prefixo_veiculo;
+
       return [
         it.setorPrincipalLinha,
         `${it.codigoLinha} - ${it.nomeLinha}`,
@@ -356,15 +328,10 @@ export const ControleHorariosPage: React.FC = () => {
         it.horaChegada,
         fmtAdj(it.hor_saida_ajustada as any),
         fmtAdj(it.hor_chegada_ajustada as any),
-        it.numeroCarro,
-        it.nomeMotoristaGlobus || '',
-        it.crachaMotoristaGlobus || '',
-        isMotoristaSubstituted ? (it.nomeMotoristaEditado || '') : '',
-        isMotoristaSubstituted ? (it.crachaMotoristaEditado || '') : '',
-        hasCobrador ? (it.nomeCobradorGlobus || '') : 'SEM COBRADOR',
-        hasCobrador ? (it.crachaCobradorGlobus || '') : '',
-        isCobradorSubstituted ? (it.nomeCobradorEditado || '') : '',
-        isCobradorSubstituted ? (it.crachaCobradorEditado || '') : '',
+        carro,
+        motorista,
+        cobrador,
+        it.observacao || ''
       ];
     });
 
@@ -503,7 +470,7 @@ export const ControleHorariosPage: React.FC = () => {
             setShowLinhaMultiSelect={setShowLinhaMultiSelect}
             onLimparFiltros={limparFiltros}
             onAplicarFiltros={aplicarFiltros}
-            onAplicarFiltroRapido={aplicarFiltroRapido}
+            onMostrarHistorico={() => setShowHistorico(true)}
             tipoLocal={tipoLocal}
             setTipoLocal={setTipoLocal}
             statusEdicaoLocal={statusEdicaoLocal}
@@ -546,7 +513,7 @@ export const ControleHorariosPage: React.FC = () => {
                   setShowLinhaMultiSelect={setShowLinhaMultiSelect}
                   onLimparFiltros={limparFiltros}
                   onAplicarFiltros={aplicarFiltros}
-                  onAplicarFiltroRapido={aplicarFiltroRapido}
+                  onMostrarHistorico={() => setShowHistorico(true)}
                   tipoLocal={tipoLocal}
                   setTipoLocal={setTipoLocal}
                   statusEdicaoLocal={statusEdicaoLocal}
@@ -605,6 +572,7 @@ export const ControleHorariosPage: React.FC = () => {
             <p className="text-gray-400">Nenhuma viagem encontrada</p>
           </div>
         )}
+        <HistoryDrawerList open={showHistorico} date={dataReferencia} filtros={filtros} onClose={() => setShowHistorico(false)} />
 
         {/* Relatório - preview simples */}
         {showReport && (
@@ -644,66 +612,79 @@ export const ControleHorariosPage: React.FC = () => {
                   <table className="min-w-full text-sm">
                     <thead>
                       <tr className="bg-gray-800/60">
-                        <th className="px-3 py-2 text-left font-semibold">Setor</th>
                         <th className="px-3 py-2 text-left font-semibold">Linha</th>
                         <th className="px-3 py-2 text-left font-semibold">Serviço</th>
                         <th className="px-3 py-2 text-left font-semibold">Saída</th>
                         <th className="px-3 py-2 text-left font-semibold">Chegada</th>
-                        <th className="px-3 py-2 text-left font-semibold">Saída Ajustada</th>
-                        <th className="px-3 py-2 text-left font-semibold">Chegada Ajustada</th>
                         <th className="px-3 py-2 text-left font-semibold">Carro</th>
-                        <th className="px-3 py-2 text-left font-semibold">Motorista Original</th>
-                        <th className="px-3 py-2 text-left font-semibold">Crachá Original</th>
-                        <th className="px-3 py-2 text-left font-semibold">Motorista Substituto</th>
-                        <th className="px-3 py-2 text-left font-semibold">Crachá Substituto</th>
-                        <th className="px-3 py-2 text-left font-semibold">Cobrador Original</th>
-                        <th className="px-3 py-2 text-left font-semibold">Crachá Original</th>
-                        <th className="px-3 py-2 text-left font-semibold">Cobrador Substituto</th>
-                        <th className="px-3 py-2 text-left font-semibold">Crachá Substituto</th>
+                        <th className="px-3 py-2 text-left font-semibold">Motorista</th>
+                        <th className="px-3 py-2 text-left font-semibold">Cobrador</th>
+                        <th className="px-3 py-2 text-left font-semibold">Observações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {sortedControleHorarios.map((it: any) => {
-                        const fmtAdj = (v?: string) => {
-                          if (!v) return '';
-                          try { const d = new Date(v); if (isNaN(d.getTime())) return ''; return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
+                        const renderAdjustedTime = (originalTime?: string, adjustedTime?: string) => {
+                          if (!adjustedTime) {
+                            return <span>{originalTime ? new Date(originalTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>;
+                          }
+                          const originalFormatted = originalTime ? new Date(originalTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+                          const adjustedFormatted = new Date(adjustedTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                          return (
+                            <div className="flex flex-col">
+                              <span className="text-gray-500 line-through">{originalFormatted}</span>
+                              <span className="text-emerald-400 font-bold">{adjustedFormatted}</span>
+                            </div>
+                          );
                         };
-                        const saidaAdj = fmtAdj(it.hor_saida_ajustada);
-                        const chegadaAdj = fmtAdj(it.hor_chegada_ajustada);
-                        const isMotoristaSubstituted = (it.nomeMotoristaEditado && it.nomeMotoristaEditado !== it.nomeMotoristaGlobus) || (it.crachaMotoristaEditado && it.crachaMotoristaEditado !== it.crachaMotoristaGlobus);
-                        const motoristaNomeSubstituto = isMotoristaSubstituted ? (it.nomeMotoristaEditado || '') : '';
-                        const motoristaCrachaSubstituto = isMotoristaSubstituted ? (it.crachaMotoristaEditado || '') : '';
 
-                        const isCobradorSubstituted = (it.nomeCobradorEditado && it.nomeCobradorEditado !== it.nomeCobradorGlobus) || (it.crachaCobradorEditado && it.crachaCobradorEditado !== it.crachaCobradorGlobus);
-                        const cobradorNomeSubstituto = isCobradorSubstituted ? (it.nomeCobradorEditado || '') : '';
-                        const cobradorCrachaSubstituto = isCobradorSubstituted ? (it.crachaCobradorEditado || '') : '';
-                        const hasCobrador = it.nomeCobradorGlobus || cobradorNomeSubstituto;
+                        const renderPerson = (originalName?: string, substitutedName?: string, originalCracha?: string, substitutedCracha?: string) => {
+                          if (!substitutedName && !substitutedCracha) {
+                            return (
+                              <div>
+                                <div>{originalName || ''}</div>
+                                {originalCracha && <div className="text-xs text-gray-400">Crachá: {originalCracha}</div>}
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col">
+                              <div className="text-gray-500 line-through">
+                                <div>{originalName || ''}</div>
+                                {originalCracha && <div className="text-xs">Crachá: {originalCracha}</div>}
+                              </div>
+                              <div className="text-yellow-400 font-bold">
+                                <div>{substitutedName || ''}</div>
+                                {substitutedCracha && <div className="text-xs">Crachá: {substitutedCracha}</div>}
+                              </div>
+                            </div>
+                          );
+                        };
 
-                        const hasAdjust = Boolean(saidaAdj || chegadaAdj);
+                        const isCarroEdited = it.prefixo_veiculo_editado && it.prefixo_veiculo_editado !== it.prefixo_veiculo;
+
                         return (
-                          <tr key={it.id} className={`border-b border-gray-800 hover:bg-gray-800/40 ${hasAdjust ? 'bg-emerald-900/10' : ''}`}>
-                            <td className="px-3 py-2">{it.setorPrincipalLinha}</td>
-                            <td className="px-3 py-2">{it.codigoLinha} - {it.nomeLinha}</td>
+                          <tr key={it.id} className="border-b border-gray-800 hover:bg-gray-800/40">
+                            <td className="px-3 py-2">
+                              <div>{it.codigoLinha} - {it.nomeLinha}</div>
+                              <div className="text-xs text-gray-400">{it.setorPrincipalLinha}</div>
+                            </td>
                             <td className="px-3 py-2">{it.codServicoNumero ?? it.cod_servico_numero}</td>
-                            <td className="px-3 py-2">{it.horaSaida}</td>
-                            <td className="px-3 py-2">{it.horaChegada}</td>
-                            <td className="px-3 py-2">{saidaAdj ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">{saidaAdj}<span className="text-[10px] uppercase">ajustado</span></span> : <span className="text-gray-500">—</span>}</td>
-                            <td className="px-3 py-2">{chegadaAdj ? <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">{chegadaAdj}<span className="text-[10px] uppercase">ajustado</span></span> : <span className="text-gray-500">—</span>}</td>
-                            <td className="px-3 py-2">{it.numeroCarro}</td>
-                            <td className="px-3 py-2">{it.nomeMotoristaGlobus}</td>
-                            <td className="px-3 py-2">{it.crachaMotoristaGlobus}</td>
-                            <td className={`px-3 py-2 ${motoristaNomeSubstituto ? 'text-yellow-300 font-bold' : ''}`}>{motoristaNomeSubstituto}</td>
-                            <td className={`px-3 py-2 ${motoristaCrachaSubstituto ? 'text-yellow-300 font-bold' : ''}`}>{motoristaCrachaSubstituto}</td>
-                            {hasCobrador ? (
-                              <>
-                                <td className="px-3 py-2">{it.nomeCobradorGlobus}</td>
-                                <td className="px-3 py-2">{it.crachaCobradorGlobus}</td>
-                                <td className={`px-3 py-2 ${cobradorNomeSubstituto ? 'text-yellow-300 font-bold' : ''}`}>{cobradorNomeSubstituto}</td>
-                                <td className={`px-3 py-2 ${cobradorCrachaSubstituto ? 'text-yellow-300 font-bold' : ''}`}>{cobradorCrachaSubstituto}</td>
-                              </>
-                            ) : (
-                              <td colSpan={4} className="px-3 py-2 text-center text-gray-500">SEM COBRADOR</td>
-                            )}
+                            <td className="px-3 py-2">{renderAdjustedTime(it.hor_saida, it.hor_saida_ajustada)}</td>
+                            <td className="px-3 py-2">{renderAdjustedTime(it.hor_chegada, it.hor_chegada_ajustada)}</td>
+                            <td className={`px-3 py-2 ${isCarroEdited ? 'text-yellow-400 font-bold' : ''}`}>
+                              {isCarroEdited ? (
+                                <div className="flex flex-col">
+                                  <span className="text-gray-500 line-through">{it.prefixo_veiculo}</span>
+                                  <span>{it.prefixo_veiculo_editado}</span>
+                                </div>
+                              ) : (
+                                it.prefixo_veiculo
+                              )}
+                            </td>
+                            <td className="px-3 py-2">{renderPerson(it.nome_motorista, it.nome_motorista_editado, it.cracha_motorista, it.cracha_motorista_editado)}</td>
+                            <td className="px-3 py-2">{renderPerson(it.nome_cobrador, it.nome_cobrador_editado, it.cracha_cobrador, it.cracha_cobrador_editado)}</td>
+                            <td className="px-3 py-2">{it.observacao || ''}</td>
                           </tr>
                         );
                       })}
