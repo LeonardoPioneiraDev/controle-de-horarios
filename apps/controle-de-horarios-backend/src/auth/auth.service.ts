@@ -74,7 +74,7 @@ export class AuthService {
         email: registerDto.email,
         firstName: registerDto.firstName,
         lastName: registerDto.lastName,
-        role: registerDto.role || UserRole.FUNCIONARIO,
+        role: registerDto.role || UserRole.OPERADOR,
       };
 
       // Criar usuário (sem senha - será definida depois)

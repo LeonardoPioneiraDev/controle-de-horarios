@@ -25,6 +25,9 @@ import { Label } from '../components/ui/label';
 import { Alert, AlertDescription, AlertTitle, AlertIcon } from '../components/ui/alert';
 import { ConfirmDialog } from '../components/ui/confirm-dialog';
 import { ViagensFiltersPanel } from '@/features/viagens/components/FiltersPanel';
+import { HistoryDrawerCH } from '@/features/viagens/components/HistoryDrawerCH/HistoryDrawerCH';
+import { useAuth } from '../contexts/AuthContext';
+import { UserRole } from '../types/user.types';
 
 // Helper for glowing card effect
 const GlowingCard = ({ children, className }: { children: React.ReactNode, className?: string }) => (
@@ -38,7 +41,7 @@ const GlowingCard = ({ children, className }: { children: React.ReactNode, class
 
 
 // Componente para o cabeçalho da página
-const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, hasData }: any) => {
+const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, hasData, isAdmin }: any) => {
     const [openConfirm, setOpenConfirm] = useState(false);
 
     const handleSyncClick = () => {
@@ -67,14 +70,16 @@ const PageHeader = ({ onSync, onToggleFilters, filtersVisible, synchronizing, ha
                     Filtros
                     <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${filtersVisible ? 'rotate-180' : ''}`} />
                 </Button>
-                <Button
-                    onClick={handleSyncClick}
-                    disabled={synchronizing}
-                    className="w-full sm:w-auto"
-                >
-                    <RefreshCw className={`h-4 w-4 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
-                    {synchronizing ? 'Sincronizando...' : 'Sincronizar'}
-                </Button>
+                {isAdmin && (
+                  <Button
+                      onClick={handleSyncClick}
+                      disabled={synchronizing}
+                      className="w-full sm:w-auto"
+                  >
+                      <RefreshCw className={`h-4 w-4 mr-2 ${synchronizing ? 'animate-spin' : ''}`} />
+                      {synchronizing ? 'Sincronizando...' : 'Sincronizar'}
+                  </Button>
+                )}
             </div>
 
             <ConfirmDialog
@@ -353,6 +358,8 @@ const initialFilters: FiltrosViagem = {
 };
 
 export const Viagens: React.FC = () => {
+    const { user } = useAuth();
+    const isAdmin = ['administrador', 'admin'].includes(String(user?.role || '').toLowerCase());
     const [viagens, setViagens] = useState<ViagemTransdata[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -364,6 +371,7 @@ export const Viagens: React.FC = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [total, setTotal] = useState(0);
     const [sincronizando, setSincronizando] = useState(false);
+    const [showHistorico, setShowHistorico] = useState(false);
 
     const loadInitialData = useCallback(async () => {
         setLoading(true);
@@ -440,6 +448,7 @@ export const Viagens: React.FC = () => {
                     filtersVisible={showFilters}
                     synchronizing={sincronizando}
                     hasData={!!statusDados?.existemDados}
+                    isAdmin={isAdmin}
                 />
 
                 {error && (
@@ -468,6 +477,8 @@ export const Viagens: React.FC = () => {
                         filters={filtros}
                         onFilterChange={handleFilterChange}
                         onClearFilters={clearFilters}
+                        onApplyFilters={loadInitialData}
+                        onShowHistorico={() => setShowHistorico(true)}
                         services={servicos}
                     />
                 )}
@@ -489,6 +500,7 @@ export const Viagens: React.FC = () => {
                 ) : (
                     <NoData onSync={handleSincronizar} synchronizing={sincronizando} />
                 )}
+                <HistoryDrawerCH open={showHistorico} date={selectedDate} filtros={filtros} onClose={() => setShowHistorico(false)} />
             </div>
         </div>
     );

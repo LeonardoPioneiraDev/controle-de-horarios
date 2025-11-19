@@ -23,7 +23,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     email: '',
     firstName: '',
     lastName: '',
-    role: UserRole.FUNCIONARIO,
+    role: UserRole.OPERADOR,
     status: UserStatus.PENDING
   });
   
@@ -57,7 +57,7 @@ export const UserModal: React.FC<UserModalProps> = ({
         email: '',
         firstName: '',
         lastName: '',
-        role: UserRole.FUNCIONARIO,
+        role: UserRole.OPERADOR,
         status: UserStatus.PENDING
       });
     }
@@ -378,7 +378,11 @@ export const UserModal: React.FC<UserModalProps> = ({
               onChange={(e) => handleInputChange('role', e.target.value)}
               disabled={loading}
             >
-              <option value={UserRole.FUNCIONARIO}>Funcionário</option>
+              <option value={UserRole.PCQC}>PCQC</option>
+              <option value={UserRole.DACN}>DACN</option>
+              <option value={UserRole.INSTRUTORES}>Instrutores</option>
+              <option value={UserRole.DESPACHANTE}>Despachante</option>
+              <option value={UserRole.OPERADOR_CCO}>Operador CCO</option>
               <option value={UserRole.OPERADOR}>Operador</option>
               <option value={UserRole.ENCARREGADO}>Encarregado</option>
               <option value={UserRole.ANALISTA}>Analista</option>

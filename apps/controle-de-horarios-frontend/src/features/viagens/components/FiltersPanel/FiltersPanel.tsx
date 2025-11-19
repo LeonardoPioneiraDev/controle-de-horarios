@@ -13,6 +13,8 @@ export interface ViagensFiltersPanelProps {
   services: number[];
   onFilterChange: (key: FilterKey, value: FiltrosViagem[FilterKey] | undefined) => void;
   onClearFilters: () => void;
+  onApplyFilters?: () => void;
+  onShowHistorico?: () => void;
 }
 
 export const FiltersPanel: React.FC<ViagensFiltersPanelProps> = ({
@@ -20,6 +22,8 @@ export const FiltersPanel: React.FC<ViagensFiltersPanelProps> = ({
   services,
   onFilterChange,
   onClearFilters,
+  onApplyFilters,
+  onShowHistorico,
 }) => {
   const handleChange = (key: FilterKey, raw: unknown) => {
     let value: FiltrosViagem[FilterKey] | undefined;
@@ -101,9 +105,15 @@ export const FiltersPanel: React.FC<ViagensFiltersPanelProps> = ({
              
           </div>
 
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex flex-wrap gap-2 justify-end">
             <Button variant="outline" onClick={onClearFilters}>
               Limpar Filtros
+            </Button>
+            <Button variant="default" onClick={onApplyFilters}>
+              Aplicar
+            </Button>
+            <Button variant="outline" onClick={onShowHistorico}>
+              Histórico
             </Button>
           </div>
         </CardContent>

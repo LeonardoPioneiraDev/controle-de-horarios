@@ -7,6 +7,7 @@ import { ViagemTransdata } from '../viagens-transdata/entities/viagem-transdata.
 import { ViagemGlobus } from '../viagens-globus/entities/viagem-globus.entity';
 import { ComparacaoViagensService } from './services/comparacao-viagens.service';
 import { ComparacaoViagensController } from './controllers/comparacao-viagens.controller';
+import { ComparacaoViagensScheduler } from './services/comparacao-viagens.scheduler';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { ComparacaoViagensController } from './controllers/comparacao-viagens.co
     ])
   ],
   controllers: [ComparacaoViagensController],
-  providers: [ComparacaoViagensService],
+  providers: [ComparacaoViagensService, ComparacaoViagensScheduler],
   exports: [ComparacaoViagensService]
 })
 export class ComparacaoViagensModule {}

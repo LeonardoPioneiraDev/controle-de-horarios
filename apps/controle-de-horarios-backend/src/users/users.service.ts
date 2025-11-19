@@ -32,11 +32,7 @@ export class UsersService {
       throw new ConflictException('E-mail já está em uso');
     }
 
-    // Verificar domínio do e-mail
-    const allowedDomain = this.configService.get('ALLOWED_EMAIL_DOMAIN');
-    if (allowedDomain && !createUserDto.email.endsWith(`@${allowedDomain}`)) {
-      throw new BadRequestException(`E-mail deve ser do domínio @${allowedDomain}`);
-    }
+    // Regra de domínio de e-mail desabilitada temporariamente (permitir qualquer domínio)
 
     // Gerar senha temporária e token de reset
     const tempPassword = this.generateTempPassword();
@@ -90,7 +86,7 @@ export class UsersService {
     console.log(`   👤 Nome: ${savedUser.firstName}`);
     console.log(`   🔑 Senha Temporária: ${tempPassword}`);
     console.log(`   🔗 Token de Reset: ${resetToken}`);
-    console.log(`   🌐 Link: ${this.configService.get('FRONTEND_URL', 'http://localhost:3000')}/first-login?token=${resetToken}`);
+    console.log(`   🌐 Link: ${this.configService.get('FRONTEND_URL', 'https://horarios.vpioneira.com.br')}/first-login?token=${resetToken}`);
 
     return savedUser;
   }

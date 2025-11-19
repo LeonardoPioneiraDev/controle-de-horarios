@@ -15,6 +15,24 @@ export const UserEdit: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const roleLabel = (r: UserRole) => {
+    const labels: Record<UserRole, string> = {
+      [UserRole.ADMINISTRADOR]: 'Administrador',
+      [UserRole.DIRETOR]: 'Diretor',
+      [UserRole.GERENTE]: 'Gerente',
+      [UserRole.ANALISTA]: 'Analista',
+      [UserRole.ENCARREGADO]: 'Encarregado',
+      [UserRole.OPERADOR]: 'Operador',
+      [UserRole.PCQC]: 'PCQC',
+      [UserRole.DACN]: 'DACN',
+      [UserRole.INSTRUTORES]: 'Instrutores',
+      [UserRole.DESPACHANTE]: 'Despachante',
+      [UserRole.OPERADOR_CCO]: 'Operador CCO',
+    };
+    return labels[r] ?? String(r);
+  };
+  const roleOptions = (Object.values(UserRole) as UserRole[]).sort((a, b) => roleLabel(a).localeCompare(roleLabel(b)));
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -148,8 +166,8 @@ export const UserEdit: React.FC = () => {
               value={form.role || user.role}
               onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as unknown as UserRole }))}
             >
-              {Object.values(UserRole).map((r) => (
-                <option key={r} value={r}>{r}</option>
+              {roleOptions.map((r) => (
+                <option key={r} value={r}>{roleLabel(r)}</option>
               ))}
             </select>
           </div>
@@ -179,4 +197,3 @@ export const UserEdit: React.FC = () => {
 };
 
 export default UserEdit;
-

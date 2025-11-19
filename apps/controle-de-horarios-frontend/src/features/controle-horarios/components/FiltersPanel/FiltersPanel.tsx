@@ -13,12 +13,12 @@ interface FiltersPanelProps {
   setShowLinhaMultiSelect: React.Dispatch<React.SetStateAction<boolean>>;
   onLimparFiltros: () => void;
   onAplicarFiltros: () => void;
-  onAplicarFiltroRapido: (tipo: 'editados' | 'nao_editados' | 'todos') => void;
+  onMostrarHistorico?: () => void;
   // Filtros locais
   tipoLocal?: 'R' | 'S';
   setTipoLocal?: (v: 'R' | 'S' | undefined) => void;
-  statusEdicaoLocal?: 'todos' | 'editados' | 'nao_editados';
-  setStatusEdicaoLocal?: (v: 'todos' | 'editados' | 'nao_editados') => void;
+  statusEdicaoLocal?: 'todos' | 'minhas_edicoes' | 'nao_editados' | 'apenas_editadas';
+  setStatusEdicaoLocal?: (v: 'todos' | 'minhas_edicoes' | 'nao_editados' | 'apenas_editadas') => void;
 }
 
 export const FiltersPanel: React.FC<FiltersPanelProps> = ({
@@ -31,7 +31,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
   setShowLinhaMultiSelect,
   onLimparFiltros,
   onAplicarFiltros,
-  onAplicarFiltroRapido,
+  onMostrarHistorico,
   tipoLocal,
   setTipoLocal,
   statusEdicaoLocal,
@@ -54,7 +54,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
     name: string;
     filtros: FiltrosControleHorarios;
     tipoLocal?: 'R' | 'S';
-    statusEdicaoLocal?: 'todos' | 'editados' | 'nao_editados';
+    statusEdicaoLocal?: 'todos' | 'minhas_edicoes' | 'nao_editados' | 'apenas_editadas';
     createdAt: number;
   };
 
@@ -362,18 +362,16 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <select
             value={statusEdicaoLocal || 'todos'}
             onChange={(e) => {
-              const v = e.target.value as 'todos' | 'editados' | 'nao_editados';
+              const v = e.target.value as 'todos' | 'minhas_edicoes' | 'nao_editados' | 'apenas_editadas';
               if (setStatusEdicaoLocal) setStatusEdicaoLocal(v);
-              // Aplica filtro rápido diretamente quando selecionar uma opção
-              if (onAplicarFiltroRapido) onAplicarFiltroRapido(v);
-              // Dispara busca imediatamente para experiência responsiva
               onAplicarFiltros();
             }}
             className="w-full min-w-[150px] border border-gray-700 bg-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
           >
             <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="todos">Todos</option>
-            <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="editados">Editados por mim (confirmados)</option>
-            <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="nao_editados">Não editados</option>
+            <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="apenas_editadas">Apenas Editadas (qualquer usuário)</option>
+            <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="minhas_edicoes">Minhas Edições</option>
+            <option className="ml-2 text-sm text-gray-300 bg-gray-900" value="nao_editados">Não Editados</option>
           </select>
         </div>
       </div>
@@ -455,6 +453,13 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
             >
               <CheckCheck className="h-4 w-4" />
               Aplicar Filtros
+            </button>
+            <button
+              onClick={onMostrarHistorico}
+              className="px-4 py-2 text-sm text-yellow-300 hover:text-yellow-200 flex items-center gap-2 rounded-md border border-yellow-400/30 hover:bg-yellow-400/10"
+              title="Ver histórico (viagens editadas) com filtros atuais"
+            >
+              Histórico
             </button>
           </div>
         </div>

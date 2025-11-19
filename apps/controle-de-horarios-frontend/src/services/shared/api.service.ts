@@ -44,7 +44,7 @@ export class BaseApiService {
     };
 
     this.baseURL = resolveApiBase();
-    this.timeout = 12000000;
+    this.timeout = 29000000;
     this.debug = true; // process.env.NODE_ENV !== 'production';
 
     this.api = axios.create({

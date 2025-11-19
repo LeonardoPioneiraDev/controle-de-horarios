@@ -48,7 +48,7 @@ export class User {
   @Column({
     type: 'enum',
     enum: UserRole,
-    default: UserRole.FUNCIONARIO
+    default: UserRole.OPERADOR
   })
   role: UserRole;
 
@@ -215,9 +215,9 @@ export class User {
       return targetUser.role !== UserRole.ADMINISTRADOR;
     }
     
-    // Gerente pode gerenciar analista, operador e funcionario
+    // Gerente pode gerenciar analista, operador e operador CCO
     if (this.role === UserRole.GERENTE) {
-      return [UserRole.ANALISTA, UserRole.OPERADOR, UserRole.FUNCIONARIO].includes(targetUser.role);
+      return [UserRole.ANALISTA, UserRole.OPERADOR, UserRole.OPERADOR_CCO].includes(targetUser.role);
     }
     
     return false;

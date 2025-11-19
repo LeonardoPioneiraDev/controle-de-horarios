@@ -208,4 +208,9 @@ export class FiltrosControleHorarioDto {
   @IsOptional()
   @Transform(({ value }) => value === 'true')
   apenas_confirmadas?: boolean = false;
+
+  @ApiPropertyOptional({ description: 'Incluir o histórico de alterações na resposta', default: false })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true')
+  incluir_historico?: boolean = false;
 }

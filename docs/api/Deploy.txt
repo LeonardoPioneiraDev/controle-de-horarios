@@ -1,0 +1,69 @@
+# =================================================================
+#       GUIA DE DEPLOY - CONTROLE DE HORÁRIOS
+# =================================================================
+# Este guia descreve o processo de build (local) e deploy (servidor).
+#
+# - Build (Local): Usa `docker-compose.yml` para construir as imagens.
+# - Deploy (Servidor): Usa `docker-compose.prod.yml` para executar as imagens.
+# =================================================================
+
+# --- URLs de Produção (Exemplos) ---
+# Frontend: https://horarios.vpioneira.com.br
+# Backend:  https://horariosapi.vpioneira.com.br
+
+# =================================================================
+# PASSO 1: BUILD (Executar na máquina de desenvolvimento)
+# =================================================================
+# O comando `build` usa o arquivo `docker-compose.yml` por padrão.
+# Ele cria as imagens com os nomes locais (ex: 'controle-de-horarios-backend').
+
+# Construir as imagens de ambos os serviços:
+docker-compose build
+
+# =================================================================
+# PASSO 2: TAG & PUSH (Executar na máquina de desenvolvimento)
+# =================================================================
+# Após o build, crie as tags para o Docker Hub e envie as imagens.
+# Substitua 'v1.0.0' pela versão atual.
+
+# --- BACKEND ---
+docker tag controle-de-horarios-backend felipebatista54/controle-de-horarios-backend:latest
+docker tag controle-de-horarios-backend felipebatista54/controle-de-horarios-backend:v1.0.0
+docker push felipebatista54/controle-de-horarios-backend:latest
+docker push felipebatista54/controle-de-horarios-backend:v1.0.0
+
+# --- FRONTEND ---
+docker tag controle-de-horarios-frontend felipebatista54/controle-de-horarios-frontend:latest
+docker tag controle-de-horarios-frontend felipebatista54/controle-de-horarios-frontend:v1.0.0
+docker push felipebatista54/controle-de-horarios-frontend:latest
+docker push felipebatista54/controle-de-horarios-frontend:v1.0.0
+
+# =================================================================
+# PASSO 3: DEPLOY (Executar no servidor de produção)
+# =================================================================
+# No servidor, todos os comandos DEVEM usar o arquivo `docker-compose.prod.yml`.
+# Certifique-se de que os arquivos 'docker-compose.prod.yml' e '.env.prod'
+# estão no servidor.
+
+# 1. Baixar as imagens mais recentes do Docker Hub:
+docker-compose -f docker-compose.prod.yml pull
+
+# 2. Iniciar/Recriar os containers com as novas imagens:
+docker-compose -f docker-compose.prod.yml up -d --force-recreate
+
+# COMANDO COMBINADO (Pull e Up):
+docker-compose -f docker-compose.prod.yml pull && docker-compose -f docker-compose.prod.yml up -d --force-recreate
+
+# =================================================================
+# COMANDOS ÚTEIS (Executar no servidor de produção)
+# =================================================================
+
+# Acessar o banco de dados Postgres:
+docker exec -it controle-horarios-postgres-prod psql -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+
+# Ver logs de um container em tempo real:
+docker-compose -f docker-compose.prod.yml logs -f backend
+docker-compose -f docker-compose.prod.yml logs -f frontend
+
+# Parar todos os serviços de produção:
+docker-compose -f docker-compose.prod.yml down

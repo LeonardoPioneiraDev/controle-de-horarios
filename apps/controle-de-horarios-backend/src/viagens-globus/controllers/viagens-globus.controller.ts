@@ -94,9 +94,9 @@ export class ViagensGlobusController {
 
   // ✅ SINCRONIZAR VIAGENS MANUALMENTE
   @Post('sincronizar/:data')
-  @Roles(UserRole.ANALISTA)
+  @Roles(UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Sincronizar viagens Globus manualmente' })
+  @ApiOperation({ summary: 'Sincronizar viagens Globus manualmente (ADMINISTRADOR)' })
   async sincronizarViagens(@Param('data') data: string) {
     this.logger.log(`�� Iniciando sincronização manual para ${data}`);
 

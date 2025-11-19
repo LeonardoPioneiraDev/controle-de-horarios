@@ -5,6 +5,7 @@ import { ViagemGlobus } from './entities/viagem-globus.entity';
 import { ViagensGlobusService } from './services/viagens-globus.service';
 import { ViagensGlobusController } from './controllers/viagens-globus.controller';
 import { OracleModule } from '../database/oracle/oracle.module';
+import { ViagensGlobusScheduler } from './services/viagens-globus.scheduler';
 
 @Module({
   imports: [
@@ -12,7 +13,7 @@ import { OracleModule } from '../database/oracle/oracle.module';
     OracleModule, // ✅ IMPORTAR ORACLE MODULE
   ],
   controllers: [ViagensGlobusController],
-  providers: [ViagensGlobusService],
+  providers: [ViagensGlobusService, ViagensGlobusScheduler],
   exports: [ViagensGlobusService],
 })
 export class ViagensGlobusModule {}

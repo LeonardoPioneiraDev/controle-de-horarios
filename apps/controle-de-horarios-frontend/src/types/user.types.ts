@@ -6,8 +6,12 @@ export enum UserRole {
   GERENTE = 'gerente',
   DIRETOR = 'diretor',
   ADMINISTRADOR = 'administrador',
-  // Aliases legados para compatibilidade
-  FUNCIONARIO = 'funcionario',
+  // Novos perfis
+  PCQC = 'pcqc',
+  DACN = 'dacn',
+  INSTRUTORES = 'instrutores',
+  DESPACHANTE = 'despachante',
+  OPERADOR_CCO = 'operador_cco',
 }
 
 export enum UserStatus {
@@ -87,7 +91,11 @@ export const UserRoleHierarchy: Record<UserRole, number> = {
   [UserRole.OPERADOR]: 1,
   // Aliases (mesmo n��vel)
   // [UserRole.ADMIN]: 6, // removido para evitar chave duplicada (mesmo valor string)
-  [UserRole.FUNCIONARIO]: 1,
+  [UserRole.PCQC]: 1,
+  [UserRole.DACN]: 1,
+  [UserRole.INSTRUTORES]: 1,
+  [UserRole.DESPACHANTE]: 1,
+  [UserRole.OPERADOR_CCO]: 1,
 };
 
 export const isAtLeast = (role: UserRole | undefined, min: UserRole): boolean => {
@@ -100,7 +108,10 @@ export const isAtLeast = (role: UserRole | undefined, min: UserRole): boolean =>
 // Permiss��es derivadas de neg��cio
 export const canViewUsers = (role?: UserRole) => isAtLeast(role, UserRole.ADMINISTRADOR);
 export const canViewControleHorarios = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.OPERADOR);
-export const canSyncControleHorarios = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.ENCARREGADO);
+export const canSyncControleHorarios = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.ADMINISTRADOR);
 export const canViewViagens = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.ANALISTA);
-export const canSyncViagens = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.ANALISTA);
-export const canEditControleHorarios = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.ANALISTA);
+export const canSyncViagens = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.ADMINISTRADOR);
+// Apenas Despachantes podem editar controle de horários
+export const canEditControleHorarios = (role?: UserRole) => {
+  return [UserRole.DESPACHANTE, UserRole.OPERADOR, UserRole.ADMINISTRADOR].includes(role as UserRole);
+};

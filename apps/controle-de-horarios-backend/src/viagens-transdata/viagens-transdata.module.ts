@@ -7,6 +7,7 @@ import { ViagemTransdata } from './entities/viagem-transdata.entity';
 import { ViagensTransdataController } from './controllers/viagens-transdata.controller';
 import { ViagensTransdataService } from './services/viagens-transdata.service';
 import { TransdataApiService } from './services/transdata-api.service';
+import { ViagensTransdataScheduler } from './services/viagens-transdata.scheduler';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TransdataApiService } from './services/transdata-api.service';
   providers: [
     ViagensTransdataService,
     TransdataApiService,
+    ViagensTransdataScheduler,
   ],
   exports: [
     ViagensTransdataService,

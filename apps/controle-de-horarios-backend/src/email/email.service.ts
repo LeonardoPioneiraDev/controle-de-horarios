@@ -8,7 +8,8 @@ import { first } from 'rxjs';
 function normalizeFrontendBaseUrl(raw: string | undefined): string {
   let base = (raw || '').trim();
   //if (!base) return 'http://localhost:3005';  //Desenvolvimento
-  if (!base) return 'http://10.10.100.176:3000';  //Produção
+  //if (!base) return 'http://10.10.100.176:3000';  //Dcoker
+  if (!base) return 'https://horarios.vpioneira.com.br';  //Produção
   if (!/^https?:\/\//i.test(base)) base = `http://${base.replace(/^\/+/, '')}`;
   return base.replace(/\/+$/, '');
 }

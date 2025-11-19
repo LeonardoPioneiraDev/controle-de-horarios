@@ -77,7 +77,7 @@ RUN mkdir -p logs uploads \
 # Environment
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
-ENV PORT=3335
+ENV PORT=3355
 
 # Oracle environment
 ENV ORACLE_HOME=/opt/oracle/instantclient
@@ -85,9 +85,9 @@ ENV LD_LIBRARY_PATH=/opt/oracle/instantclient
 ENV PATH=/opt/oracle/instantclient:$PATH
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f https://horariosapi.vpioneira.com.br/api/health || exit 1
+    CMD curl -f http://localhost:3355/api/health || exit 1
 
-EXPOSE 3335
+EXPOSE 3355
 USER nestjs
 
 CMD ["node", "dist/main.js"]
