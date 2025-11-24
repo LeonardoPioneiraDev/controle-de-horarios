@@ -6,6 +6,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class', // Enable class-based dark mode
   theme: {
     extend: {
       screens: {
@@ -40,6 +41,18 @@ export default {
           700: '#bf9f00',
           800: '#8c7300',
           900: '#594a00',
+        },
+        brand: { // New refined palette for soft UI
+          50: '#FFFDF5', // Very pale yellow/white for backgrounds
+          100: '#FEF3C7', // Soft yellow for hovers
+          200: '#FDE68A',
+          300: '#FCD34D',
+          400: '#FBBF24', // Readable yellow for icons/text
+          500: '#F59E0B', // Primary brand color
+          600: '#D97706',
+          700: '#B45309',
+          800: '#92400E',
+          900: '#78350F',
         },
         secondary: { // Keeping a neutral secondary for text/borders
           DEFAULT: '#6c757d',

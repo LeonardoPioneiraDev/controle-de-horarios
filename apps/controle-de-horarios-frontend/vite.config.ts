@@ -14,5 +14,13 @@ export default defineConfig({
     //port: 3000, // Docker
     port: 3008, // Produção
   },
+  build: {
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,  // Remove todos os console.* em produção
+        drop_debugger: true, // Remove debugger statements
+      },
+    },
+  },
 })
-

@@ -1,14 +1,14 @@
-ï»¿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Alert, AlertDescription, AlertIcon, AlertTitle } from '../components/ui/alert';
+import { Card, CardContent, CardHeader } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Alert, AlertDescription, AlertIcon, AlertTitle } from '../../components/ui/alert';
 import { Lock, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
-import { authService } from '../services/api';
-import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import logo from '../assets/logo.png';
+import { authService } from '../../services/api';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
+import logo from '../../assets/logo.png';
 
 const useQuery = () => new URLSearchParams(useLocation().search);
 
@@ -62,7 +62,7 @@ export const SetPassword: React.FC = () => {
         const res = await authService.validateResetToken(token);
         setValidated(res.valid);
         setValidationMsg(res.message);
-        if (!res.valid) setError(res.message || 'Token invÃ¡lido ou expirado.');
+        if (!res.valid) setError(res.message || 'Token inválido ou expirado.');
       } catch (e: any) {
         setError('Falha ao validar token.');
       }
@@ -75,13 +75,13 @@ export const SetPassword: React.FC = () => {
     setError('');
     setSuccess('');
     if (!checks.length || !checks.upper || !checks.lower || !checks.number || !checks.special) {
-      return setError('A senha nÃ£o atende aos requisitos de seguranÃ§a.');
+      return setError('A senha não atende aos requisitos de segurança.');
     }
-    if (!checks.match) return setError('As senhas nÃ£o conferem.');
+    if (!checks.match) return setError('As senhas não conferem.');
     try {
       setLoading(true);
       await authService.resetPassword(token, password);
-      setSuccess('Senha definida com sucesso. VocÃª jÃ¡ pode fazer login.');
+      setSuccess('Senha definida com sucesso. Você já pode fazer login.');
       setModalTitle('Senha definida com sucesso');
       setModalDescription('Sua senha foi atualizada. Clique em continuar para ir ao login.');
       setModalVariant('info');
@@ -89,7 +89,7 @@ export const SetPassword: React.FC = () => {
     } catch (e: any) {
       const message = e?.response?.data?.message || 'Falha ao definir senha.';
       setError(message);
-      setModalTitle('NÃ£o foi possÃ­vel definir sua senha');
+      setModalTitle('Não foi possível definir sua senha');
       setModalDescription(message);
       setModalVariant('danger');
       setModalOpen(true);
@@ -121,9 +121,9 @@ export const SetPassword: React.FC = () => {
             <div className="flex flex-col items-center mb-2">
               <div className="relative">
                 <div className="absolute inset-0 rounded-full bg-yellow-400/30 blur-xl" />
-                <img src={logo} alt="ViaÃ§Ã£o Pioneira" className="relative mx-auto h-16 w-16 sm:h-20 sm:w-20 object-contain rounded-full ring-2 ring-yellow-400/40" />
+                <img src={logo} alt="Viação Pioneira" className="relative mx-auto h-16 w-16 sm:h-20 sm:w-20 object-contain rounded-full ring-2 ring-yellow-400/40" />
               </div>
-              <div className="mt-2 text-xs text-gray-300">ViaÃ§Ã£o Pioneira Ltda</div>
+              <div className="mt-2 text-xs text-gray-300">Viação Pioneira Ltda</div>
             </div>
             <h1 className="text-2xl font-bold">
               {isFirstLogin ? 'Definir senha (primeiro acesso)' : 'Redefinir senha'}
@@ -140,7 +140,7 @@ export const SetPassword: React.FC = () => {
               <Alert className="mb-4">
                 <AlertIcon />
                 <div>
-                  <AlertTitle>NÃ£o foi possÃ­vel continuar</AlertTitle>
+                  <AlertTitle>Não foi possível continuar</AlertTitle>
                   <AlertDescription>{error}</AlertDescription>
                 </div>
               </Alert>
@@ -197,7 +197,7 @@ export const SetPassword: React.FC = () => {
                     type="button"
                     onClick={() => setShowConfirm((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                    aria-label={showConfirm ? 'Ocultar confirmaÃ§Ã£o' : 'Mostrar confirmaÃ§Ã£o'}
+                    aria-label={showConfirm ? 'Ocultar confirmação' : 'Mostrar confirmação'}
                   >
                     {showConfirm ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -207,9 +207,9 @@ export const SetPassword: React.FC = () => {
                 <p className="mb-2 text-gray-300">A senha deve conter:</p>
                 <ul className="space-y-1">
                   <Requirement ok={checks.length} text="Pelo menos 8 caracteres" />
-                  <Requirement ok={checks.upper} text="Letra maiÃºscula (A-Z)" />
-                  <Requirement ok={checks.lower} text="Letra minÃºscula (a-z)" />
-                  <Requirement ok={checks.number} text="NÃºmero (0-9)" />
+                  <Requirement ok={checks.upper} text="Letra maiúscula (A-Z)" />
+                  <Requirement ok={checks.lower} text="Letra minúscula (a-z)" />
+                  <Requirement ok={checks.number} text="Número (0-9)" />
                   <Requirement ok={checks.special} text="Caractere especial (!@#$%...)" />
                   <Requirement ok={checks.match} text="As senhas coincidem" />
                 </ul>

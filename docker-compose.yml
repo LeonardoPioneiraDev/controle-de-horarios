@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_DB: controle_horarios_db
       POSTGRES_USER: horarios_user
-      POSTGRES_PASSWORD: horarios@@Vpioneira25
+      POSTGRES_PASSWORD: horarios_Vpioneira25
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=pt_BR.UTF-8 --lc-ctype=pt_BR.UTF-8"
       TZ: America/Sao_Paulo
     ports:
@@ -35,7 +35,7 @@ services:
     container_name: controle-horarios-backend
     restart: unless-stopped
     ports:
-      - "3355:3355"
+      - "3335:3335"
     env_file:
       - ./apps/controle-de-horarios-backend/.env
     environment:
@@ -54,7 +54,7 @@ services:
     volumes:
       - ./apps/controle-de-horarios-backend/logs:/app/logs
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3355/api/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3335/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

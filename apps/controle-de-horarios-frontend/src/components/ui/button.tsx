@@ -14,8 +14,8 @@ const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
   default:
     'bg-yellow-500 text-gray-900 hover:bg-yellow-600 focus-visible:ring-yellow-500 border border-yellow-400',
   outline:
-    'border border-gray-600 text-gray-100 hover:bg-gray-800 focus-visible:ring-gray-600',
-  ghost: 'text-gray-200 hover:bg-gray-800/60',
+    'border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-gray-400 dark:focus-visible:ring-gray-600',
+  ghost: 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/60',
 };
 
 const sizes: Record<NonNullable<ButtonProps['size']>, string> = {
