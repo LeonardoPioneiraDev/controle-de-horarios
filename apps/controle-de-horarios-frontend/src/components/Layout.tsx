@@ -37,7 +37,7 @@ export const Layout: React.FC = () => {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-primary-900 flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-neutral-900 transition-colors duration-500">
       <Header
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
@@ -55,8 +55,8 @@ export const Layout: React.FC = () => {
           handleLogout={handleLogout}
         />
 
-        <main className={`flex-1 overflow-y-auto p-4 bg-primary-800 custom-md:ml-0 `}>
-                      <div className="mx-auto max-w-[1800px] w-full rounded-lg shadow-md bg-primary-700 p-4">            <Outlet />
+        <main className={`flex-1 overflow-y-auto p-4 custom-md:ml-0 transition-all duration-300`}>
+          <div className="mx-auto max-w-[1800px] w-full rounded-lg shadow-md bg-white/80 dark:bg-gray-900/95 backdrop-blur-lg p-4 border border-white/20 dark:border-yellow-500/20 transition-all duration-300">            <Outlet />
           </div>
         </main>
       </div>

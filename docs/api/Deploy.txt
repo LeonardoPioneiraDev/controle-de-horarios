@@ -28,15 +28,19 @@ docker-compose build
 
 # --- BACKEND ---
 docker tag controle-de-horarios-backend felipebatista54/controle-de-horarios-backend:latest
-docker tag controle-de-horarios-backend felipebatista54/controle-de-horarios-backend:v1.0.1
 docker push felipebatista54/controle-de-horarios-backend:latest
-docker push felipebatista54/controle-de-horarios-backend:v1.0.1
+
+docker tag controle-de-horarios-backend felipebatista54/controle-de-horarios-backend:v1.0.2
+docker push felipebatista54/controle-de-horarios-backend:v1.0.2
+
+
 
 # --- FRONTEND ---
 docker tag controle-de-horarios-frontend felipebatista54/controle-de-horarios-frontend:latest
-docker tag controle-de-horarios-frontend felipebatista54/controle-de-horarios-frontend:v1.0.1
 docker push felipebatista54/controle-de-horarios-frontend:latest
-docker push felipebatista54/controle-de-horarios-frontend:v1.0.1
+
+docker tag controle-de-horarios-frontend felipebatista54/controle-de-horarios-frontend:v1.0.2
+docker push felipebatista54/controle-de-horarios-frontend:v1.0.2
 
 # =================================================================
 # PASSO 3: DEPLOY (Executar no servidor de produção)

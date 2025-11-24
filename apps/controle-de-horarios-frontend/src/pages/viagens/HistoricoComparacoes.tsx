@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { comparacaoViagensService } from '../services/comparacao/comparacao.service';
-import { HistoricoComparacaoResumo } from '../types/comparacao.types';
-import { TrendingUp, Calendar, FileText, X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { comparacaoViagensService } from '../../services/comparacao/comparacao.service';
+import { HistoricoComparacaoResumo } from '../../types/comparacao.types';
+import { TrendingUp, Calendar, FileText, X, ChevronLeft, ChevronRight, Download, Filter } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const startOfWeek = (d: Date) => {
   const date = new Date(d);
@@ -21,11 +25,9 @@ const downloadCsvReport = (item: HistoricoComparacaoResumo) => {
   const headers = ['Métrica', 'Valor'];
   const fmt = (v?: string) => (v ? new Date(v).toLocaleString() : '');
   const rows = [
-    
     ['Data de Referência', item.dataReferencia],
     ['Executado em', fmt(item.createdAt)],
     ['Executor', item.executedByEmail ?? ''],
-    
     ['Duration (ms)', `${item.durationMs}`],
     ['Linhas Analisadas', `${item.linhasAnalisadas}`],
     ['Total de Comparações', `${item.totalComparacoes}`],
@@ -69,15 +71,15 @@ const downloadHtmlReport = (item: HistoricoComparacaoResumo) => {
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Relatório de Comparação - ${item.dataReferencia}</title>
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: #0b0b0b; color: #e5e7eb; }
-        .container { max-width: 900px; margin: 24px auto; background: #111827; border-radius: 12px; padding: 28px; border: 1px solid #374151; }
-        h1 { color: #f59e0b; border-bottom: 1px solid #374151; padding-bottom: 12px; margin-bottom: 20px; font-size: 22px; }
-        .meta-info { margin-bottom: 20px; font-size: 14px; color: #9ca3af; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: #f9fafb; color: #1f2937; }
+        .container { max-width: 900px; margin: 24px auto; background: #ffffff; border-radius: 12px; padding: 28px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1); }
+        h1 { color: #111827; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 20px; font-size: 22px; }
+        .meta-info { margin-bottom: 20px; font-size: 14px; color: #6b7280; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
-        .stat { background: #0f172a; padding: 16px; border-radius: 8px; border-left: 4px solid #f59e0b; }
+        .stat { background: #f3f4f6; padding: 16px; border-radius: 8px; border-left: 4px solid #fbcc2c; }
         .stat p { margin: 0; }
-        .stat .label { font-size: 12px; color: #9ca3af; margin-bottom: 6px; }
-        .stat .value { font-size: 18px; font-weight: 600; color: #f3f4f6; }
+        .stat .label { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+        .stat .value { font-size: 18px; font-weight: 600; color: #111827; }
         .footer { text-align: center; margin-top: 24px; font-size: 12px; color: #9ca3af; }
       </style>
     </head>
@@ -88,10 +90,8 @@ const downloadHtmlReport = (item: HistoricoComparacaoResumo) => {
             <p><strong>Data de Referência:</strong> ${item.dataReferencia}</p>
             <p><strong>Executado em:</strong> ${item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}</p>
             <p><strong>Executor:</strong> ${item.executedByEmail ?? ''}</p>
-          
         </div>
         <div class="grid">
-           
           <div class="stat"><p class="label">Total de Comparações</p><p class="value">${item.totalComparacoes}</p></div>
           <div class="stat"><p class="label">Compatíveis</p><p class="value">${item.compativeis}</p></div>
           <div class="stat"><p class="label">Divergentes</p><p class="value">${item.divergentes}</p></div>
@@ -124,51 +124,48 @@ const ReportModal = ({ isOpen, onClose, item }: { isOpen: boolean, onClose: () =
   if (!isOpen || !item) return null;
 
   const stats: Array<{ label: string; value: React.ReactNode; className?: string }> = [
-    
     { label: 'Data de Referência', value: item.dataReferencia },
     { label: 'Executado em', value: item.createdAt ? new Date(item.createdAt).toLocaleString() : '' },
-     
- 
     { label: 'Linhas Analisadas', value: item.linhasAnalisadas },
-    { label: 'Total de Comparações', value: item.totalComparacoes, className: 'text-blue-300' },
-    { label: 'Compatíveis', value: item.compativeis, className: 'text-green-400' },
-    { label: 'Divergentes', value: item.divergentes, className: 'text-red-400' },
-    { label: 'Percentual de Compatibilidade', value: `${item.percentualCompatibilidade}%`, className: 'text-yellow-400' },
+    { label: 'Total de Comparações', value: item.totalComparacoes, className: 'text-blue-600 dark:text-blue-400' },
+    { label: 'Compatíveis', value: item.compativeis, className: 'text-green-600 dark:text-green-400' },
+    { label: 'Divergentes', value: item.divergentes, className: 'text-red-600 dark:text-red-400' },
+    { label: 'Percentual de Compatibilidade', value: `${item.percentualCompatibilidade}%`, className: 'text-yellow-600 dark:text-yellow-400' },
     { label: 'Apenas Transdata', value: item.apenasTransdata },
     { label: 'Apenas Globus', value: item.apenasGlobus },
     { label: 'Horário Divergente', value: item.horarioDivergente },
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
-      <div className="bg-neutral-900 border border-yellow-700/30 rounded-2xl shadow-lg shadow-yellow-700/10 w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex justify-between items-center p-4 border-b border-neutral-800">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <FileText className="text-yellow-500" />
+    <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <FileText className="text-[#fbcc2c] dark:text-yellow-400" />
             Relatório da Comparação
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white" aria-label="Fechar">
-            <X size={24} />
-          </button>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fechar">
+            <X className="h-5 w-5" />
+          </Button>
         </div>
         <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6 overflow-y-auto">
           {stats.map(({ label, value, className }) => (
-            <div key={label} className="bg-neutral-800/50 p-4 rounded-lg">
-              <p className="text-sm text-gray-400">{label}</p>
-              <p className={`text-lg font-semibold ${className || 'text-white'}`}>{value}</p>
+            <div key={label} className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-100 dark:border-gray-700">
+              <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+              <p className={`text-lg font-semibold ${className || 'text-gray-900 dark:text-gray-100'}`}>{value}</p>
             </div>
           ))}
         </div>
-        <div className="p-4 mt-auto border-t border-neutral-800">
+        <div className="p-6 mt-auto border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 rounded-b-2xl">
           <div className="flex justify-between items-center">
-            <p className="text-sm text-gray-500">Exportar relatório:</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Exportar relatório:</p>
             <div className="flex gap-2">
-              <button onClick={() => downloadHtmlReport(item)} className="inline-flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-2 text-xs font-medium text-gray-200 hover:bg-neutral-600 transition-colors">
-                <Download size={14}/> HTML
-              </button>
-              <button onClick={() => downloadCsvReport(item)} className="inline-flex items-center gap-2 rounded-md bg-neutral-700 px-3 py-2 text-xs font-medium text-gray-200 hover:bg-neutral-600 transition-colors">
-                <Download size={14}/> Excel (CSV)
-              </button>
+              <Button variant="outline" size="sm" onClick={() => downloadHtmlReport(item)}>
+                <Download className="h-4 w-4 mr-2" /> HTML
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => downloadCsvReport(item)}>
+                <Download className="h-4 w-4 mr-2" /> Excel (CSV)
+              </Button>
             </div>
           </div>
         </div>
@@ -184,8 +181,8 @@ export const HistoricoComparacoes: React.FC = () => {
   const [page, setPage] = useState<number>(1);
   const [limit, setLimit] = useState<number>(31);
   const [totalItems, setTotalItems] = useState<number>(0);
-  const [dataInicial, setDataInicial] = useState<string>(() => startOfMonth(new Date()).toISOString().slice(0,10));
-  const [dataFinal, setDataFinal] = useState<string>(() => endOfMonth(new Date()).toISOString().slice(0,10));
+  const [dataInicial, setDataInicial] = useState<string>(() => startOfMonth(new Date()).toISOString().slice(0, 10));
+  const [dataFinal, setDataFinal] = useState<string>(() => endOfMonth(new Date()).toISOString().slice(0, 10));
 
   const [isReportModalOpen, setReportModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<HistoricoComparacaoResumo | null>(null);
@@ -218,22 +215,22 @@ export const HistoricoComparacoes: React.FC = () => {
     setLoading(true);
     setError(null);
     comparacaoViagensService.listarHistorico({
-        page,
-        limit,
-        dataInicial,
-        dataFinal,
+      page,
+      limit,
+      dataInicial,
+      dataFinal,
     })
-    .then(({ items: fetchedItems, total }) => {
+      .then(({ items: fetchedItems, total }) => {
         setItems(fetchedItems);
         setTotalItems(total);
-    })
-    .catch((err: unknown) => {
+      })
+      .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : 'Falha ao carregar histórico.';
         setError(message);
-    })
-    .finally(() => {
+      })
+      .finally(() => {
         setLoading(false);
-    });
+      });
   }, [page, limit, dataInicial, dataFinal, fetchTrigger]);
 
   const sortedItems = useMemo(() => {
@@ -255,7 +252,7 @@ export const HistoricoComparacoes: React.FC = () => {
             comparison = String(valA).localeCompare(String(valB));
           }
         }
-        
+
         return sortConfig.direction === 'descending' ? -comparison : comparison;
       });
     }
@@ -267,7 +264,6 @@ export const HistoricoComparacoes: React.FC = () => {
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
       direction = 'descending';
     } else if (sortConfig.key === key && sortConfig.direction === 'descending') {
-      // Optional: cycle back to ascending or remove sort
       direction = 'ascending';
     }
     setSortConfig({ key, direction });
@@ -277,8 +273,10 @@ export const HistoricoComparacoes: React.FC = () => {
     const isSorted = sortConfig.key === sortKey;
     const icon = isSorted ? (sortConfig.direction === 'ascending' ? '▲' : '▼') : '';
     return (
-      <th className={`py-3 px-4 cursor-pointer ${className || ''}`} onClick={() => requestSort(sortKey)}>
-        {title} <span className="text-yellow-500">{icon}</span>
+      <th className={`py-3 px-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors ${className || ''}`} onClick={() => requestSort(sortKey)}>
+        <div className="flex items-center gap-1">
+          {title} <span className="text-[#fbcc2c] dark:text-yellow-400 text-xs">{icon}</span>
+        </div>
       </th>
     );
   };
@@ -296,20 +294,20 @@ export const HistoricoComparacoes: React.FC = () => {
 
   const renderContent = () => {
     if (loading) {
-      return <div className="text-center p-10 text-gray-400">Carregando histórico...</div>;
+      return <div className="text-center p-10 text-gray-500 dark:text-gray-400">Carregando histórico...</div>;
     }
     if (error) {
-      return <div className="text-center p-10 text-red-400">{error}</div>;
+      return <div className="text-center p-10 text-red-500 dark:text-red-400">{error}</div>;
     }
     if (items.length === 0) {
-      return <div className="text-center p-10 text-gray-400">Nenhum registro encontrado.</div>;
+      return <div className="text-center p-10 text-gray-500 dark:text-gray-400">Nenhum registro encontrado.</div>;
     }
 
     const desktopView = (
       <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full text-sm">
-          <thead className="text-left text-gray-400">
-            <tr className="border-b border-yellow-700/20">
+          <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-medium">
+            <tr className="border-b border-gray-200 dark:border-gray-700">
               <SortableHeader title="Data Ref." sortKey="dataReferencia" />
               <SortableHeader title="Linhas" sortKey="linhasAnalisadas" className="text-center" />
               <SortableHeader title="Total" sortKey="totalComparacoes" className="text-center" />
@@ -319,25 +317,25 @@ export const HistoricoComparacoes: React.FC = () => {
               <SortableHeader title="Apenas GB" sortKey="apenasGlobus" className="text-center" />
               <SortableHeader title="Horário Dif." sortKey="horarioDivergente" className="text-center" />
               <SortableHeader title="% Compat." sortKey="percentualCompatibilidade" className="text-center" />
-              <th className="py-3 px-4">Ações</th>
+              <th className="py-3 px-4 text-right">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-neutral-800">
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
             {sortedItems.map((h) => (
-              <tr key={h.id} className="hover:bg-neutral-800/50">
-                <td className="py-3 px-4">{h.dataReferencia}</td>
-                <td className="py-3 px-4 text-center">{h.linhasAnalisadas}</td>
-                <td className="py-3 px-4 text-center font-semibold text-blue-300">{h.totalComparacoes}</td>
-                <td className="py-3 px-4 text-center font-semibold text-green-400">{h.compativeis}</td>
-                <td className="py-3 px-4 text-center font-semibold text-red-400">{h.divergentes}</td>
-                <td className="py-3 px-4 text-center">{h.apenasTransdata}</td>
-                <td className="py-3 px-4 text-center">{h.apenasGlobus}</td>
-                <td className="py-3 px-4 text-center">{h.horarioDivergente}</td>
-                <td className="py-3 px-4 text-center font-semibold text-yellow-400">{h.percentualCompatibilidade}%</td>
-                <td className="py-3 px-4">
-                  <button onClick={() => handleViewReport(h)} className="bg-yellow-600 text-black px-3 py-1 rounded-md text-xs font-bold hover:bg-yellow-500">
+              <tr key={h.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+                <td className="py-3 px-4 text-gray-900 dark:text-gray-100 font-medium">{h.dataReferencia}</td>
+                <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{h.linhasAnalisadas}</td>
+                <td className="py-3 px-4 text-center font-semibold text-blue-600 dark:text-blue-400">{h.totalComparacoes}</td>
+                <td className="py-3 px-4 text-center font-semibold text-green-600 dark:text-green-400">{h.compativeis}</td>
+                <td className="py-3 px-4 text-center font-semibold text-red-600 dark:text-red-400">{h.divergentes}</td>
+                <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{h.apenasTransdata}</td>
+                <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{h.apenasGlobus}</td>
+                <td className="py-3 px-4 text-center text-gray-600 dark:text-gray-300">{h.horarioDivergente}</td>
+                <td className="py-3 px-4 text-center font-semibold text-yellow-600 dark:text-yellow-400">{h.percentualCompatibilidade}%</td>
+                <td className="py-3 px-4 text-right">
+                  <Button size="sm" variant="outline" onClick={() => handleViewReport(h)} className="h-8 text-xs font-bold">
                     Visualizar
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -349,40 +347,40 @@ export const HistoricoComparacoes: React.FC = () => {
     const mobileView = (
       <div className="block md:hidden space-y-4">
         {sortedItems.map((h) => (
-          <div key={h.id} className="bg-neutral-800/50 rounded-lg p-4 border border-neutral-700">
-            <div className="flex justify-between items-start">
+          <div key={h.id} className="bg-white/50 dark:bg-gray-800/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <div className="flex justify-between items-start mb-4">
               <div>
-                <p className="text-sm text-gray-400">Data Ref: <span className="font-bold text-white">{h.dataReferencia}</span></p>
-                <p className="text-xs text-gray-500">Executado: {h.createdAt ? new Date(h.createdAt).toLocaleString() : ''}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Data Ref: <span className="font-bold text-gray-900 dark:text-gray-100">{h.dataReferencia}</span></p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">Executado: {h.createdAt ? new Date(h.createdAt).toLocaleString() : ''}</p>
               </div>
-              <button onClick={() => handleViewReport(h)} className="bg-yellow-600 text-black px-3 py-1 rounded-md text-xs font-bold hover:bg-yellow-500">
+              <Button size="sm" variant="outline" onClick={() => handleViewReport(h)} className="h-8 text-xs">
                 Relatório
-              </button>
+              </Button>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-center mt-4 pt-4 border-t border-neutral-700">
+            <div className="grid grid-cols-3 gap-4 text-center pt-4 border-t border-gray-100 dark:border-gray-700">
               <div>
-                <p className="text-xs text-gray-400">Compatíveis</p>
-                <p className="font-bold text-lg text-green-400">{h.compativeis}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Compatíveis</p>
+                <p className="font-bold text-lg text-green-600 dark:text-green-400">{h.compativeis}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Divergentes</p>
-                <p className="font-bold text-lg text-red-400">{h.divergentes}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Divergentes</p>
+                <p className="font-bold text-lg text-red-600 dark:text-red-400">{h.divergentes}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">% Compat.</p>
-                <p className="font-bold text-lg text-yellow-400">{h.percentualCompatibilidade}%</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">% Compat.</p>
+                <p className="font-bold text-lg text-yellow-600 dark:text-yellow-400">{h.percentualCompatibilidade}%</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Apenas TD</p>
-                <p className="font-bold text-lg text-blue-300">{h.apenasTransdata}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Apenas TD</p>
+                <p className="font-bold text-lg text-blue-600 dark:text-blue-400">{h.apenasTransdata}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Apenas GB</p>
-                <p className="font-bold text-lg text-blue-300">{h.apenasGlobus}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Apenas GB</p>
+                <p className="font-bold text-lg text-purple-600 dark:text-purple-400">{h.apenasGlobus}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Horário Dif.</p>
-                <p className="font-bold text-lg text-blue-300">{h.horarioDivergente}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Horário Dif.</p>
+                <p className="font-bold text-lg text-orange-600 dark:text-orange-400">{h.horarioDivergente}</p>
               </div>
             </div>
           </div>
@@ -397,83 +395,92 @@ export const HistoricoComparacoes: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-neutral-900 to-yellow-950 text-white p-4 sm:p-6 lg:p-8">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
-          <TrendingUp className="h-8 w-8 text-yellow-500" />
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+      <header className="pb-4">
+        <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-[#6b5d1a] via-[#7d6b1e] to-[#6b5d1a] dark:from-gray-100 dark:via-white dark:to-gray-100 bg-clip-text text-transparent flex items-center gap-3">
+          <TrendingUp className="h-8 w-8 text-[#fbcc2c] dark:text-yellow-400" />
           Histórico de Comparações
         </h1>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 font-medium">
+          Visualize o histórico de execuções e relatórios de comparações passadas.
+        </p>
       </header>
 
-      <div className="bg-gray-900/50 border border-yellow-700/30 rounded-xl p-4 mb-8 shadow-lg shadow-yellow-700/10">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="flex-1 min-w-[150px]">
-            <label className="text-sm font-medium text-gray-300 flex items-center gap-2 mb-1">
-              <Calendar className="h-4 w-4" /> Período (início)
-            </label>
-            <input
-              type="date"
-              className="w-full mt-1 px-3 py-2 rounded-md bg-neutral-800 border border-neutral-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              value={dataInicial}
-              onChange={(e) => { setPage(1); setDataInicial(e.target.value); }}
-            />
-          </div>
-          <div className="flex-1 min-w-[150px]">
-            <label className="text-sm font-medium text-gray-300 flex items-center gap-2 mb-1">
-              <Calendar className="h-4 w-4" /> Período (fim)
-            </label>
-            <input
-              type="date"
-              className="w-full mt-1 px-3 py-2 rounded-md bg-neutral-800 border border-neutral-700 text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              value={dataFinal}
-              onChange={(e) => { setPage(1); setDataFinal(e.target.value); }}
-            />
-          </div>
+      <Card className="border-none shadow-lg bg-white/60 dark:bg-gray-900/60 backdrop-blur-md">
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row items-end gap-4">
+            <div className="flex-1 w-full md:w-auto">
+              <Label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Calendar className="h-4 w-4 inline mr-2" /> Período (início)
+              </Label>
+              <Input
+                type="date"
+                className="bg-white dark:bg-gray-800/50 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                value={dataInicial}
+                onChange={(e) => { setPage(1); setDataInicial(e.target.value); }}
+              />
+            </div>
+            <div className="flex-1 w-full md:w-auto">
+              <Label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Calendar className="h-4 w-4 inline mr-2" /> Período (fim)
+              </Label>
+              <Input
+                type="date"
+                className="bg-white dark:bg-gray-800/50 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100"
+                value={dataFinal}
+                onChange={(e) => { setPage(1); setDataFinal(e.target.value); }}
+              />
+            </div>
 
-          <div className="flex items-end gap-2">
-            <button
-              onClick={() => {
-                if (page !== 1) {
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <Button
+                onClick={() => {
+                  if (page !== 1) {
+                    setPage(1);
+                  } else {
+                    setFetchTrigger(t => t + 1);
+                  }
+                }}
+                className="flex-1 md:flex-none bg-[#fbcc2c] text-[#6b5d1a] hover:bg-[#e6cd4a]"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Filtrar
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const di = startOfMonth(new Date());
+                  const df = endOfMonth(new Date());
                   setPage(1);
-                } else {
-                  setFetchTrigger(t => t + 1);
-                }
-              }}
-              className="inline-flex items-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-sm font-bold text-black hover:bg-yellow-500 transition-colors"
-            >
-              Filtrar
-            </button>
-            <button
-              onClick={() => {
-                const di = startOfMonth(new Date());
-                const df = endOfMonth(new Date());
-                setPage(1);
-                setDataInicial(di.toISOString().slice(0, 10));
-                setDataFinal(df.toISOString().slice(0, 10));
-              }}
-              className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium border border-neutral-700 text-gray-300 hover:bg-neutral-800 transition-colors"
-            >
-              Mês atual
-            </button>
+                  setDataInicial(di.toISOString().slice(0, 10));
+                  setDataFinal(df.toISOString().slice(0, 10));
+                }}
+                className="flex-1 md:flex-none border-gray-200 dark:border-gray-700"
+              >
+                Mês atual
+              </Button>
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <main className="bg-gray-900/50 border border-yellow-700/30 rounded-xl shadow-lg shadow-yellow-700/10 overflow-hidden">
-        {renderContent()}
-      </main>
+      <Card className="border-none shadow-lg bg-white/60 dark:bg-gray-900/60 backdrop-blur-md overflow-hidden">
+        <CardContent className="p-0">
+          {renderContent()}
+        </CardContent>
+      </Card>
 
       {items.length > 0 && (
         <footer className="flex justify-center items-center gap-4 mt-8">
-          <button onClick={() => handlePageChange(page - 1)} disabled={page <= 1} className="p-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-full bg-neutral-800 hover:bg-yellow-600 hover:text-black transition-colors">
-            <ChevronLeft />
-          </button>
-          <span className="text-sm text-gray-400">
+          <Button variant="outline" size="icon" onClick={() => handlePageChange(page - 1)} disabled={page <= 1} className="rounded-full">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
             Página {page} de {Math.ceil(totalItems / limit)}
           </span>
-          <button onClick={() => handlePageChange(page + 1)} disabled={page >= Math.ceil(totalItems / limit)} className="p-2 disabled:opacity-50 disabled:cursor-not-allowed rounded-full bg-neutral-800 hover:bg-yellow-600 hover:text-black transition-colors">
-            <ChevronRight />
-          </button>
+          <Button variant="outline" size="icon" onClick={() => handlePageChange(page + 1)} disabled={page >= Math.ceil(totalItems / limit)} className="rounded-full">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </footer>
       )}
 

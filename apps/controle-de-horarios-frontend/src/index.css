@@ -8,136 +8,133 @@
   .btn {
     @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
-  
+
   .btn-primary {
     @apply bg-accent-500 text-primary-900 hover:bg-accent-600 focus:ring-accent-500;
   }
-  
+
   .btn-secondary {
     @apply bg-primary-700 text-primary-100 hover:bg-primary-600 focus:ring-primary-700;
   }
-  
+
   .btn-danger {
     @apply bg-red-500 text-white hover:bg-red-600 focus:ring-red-500;
   }
-  
+
   .btn-success {
     @apply bg-green-500 text-white hover:bg-green-600 focus:ring-green-500;
   }
-  
-  .btn-sm {
-    @apply px-3 py-1 text-sm;
-  }
-  
-  .form-input {
-    @apply w-full px-3 py-2 border border-primary-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent text-primary-100 bg-primary-800;
-  }
-  
-  .form-select {
-    @apply w-full px-3 py-2 border border-primary-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent bg-primary-800 text-primary-100;
-  }
-  
-  .card {
-    @apply bg-primary-800 rounded-lg shadow-md p-6 text-primary-100;
-  }
-  
+
   /* Status Badges */
   .status-badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
-  
+
   .status-active {
     @apply bg-green-500 text-white;
   }
-  
+
   .status-pending {
     @apply bg-yellow-500 text-white;
   }
-  
+
   .status-inactive {
     @apply bg-red-500 text-white;
   }
-  
+
   .status-blocked {
     @apply bg-gray-500 text-white;
   }
-  
+
   /* Role Badges */
   .role-badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize;
   }
-  
+
   .role-administrador {
     @apply bg-accent-500 text-primary-900;
   }
-  
+
   .role-diretor {
     @apply bg-primary-600 text-primary-100;
   }
-  
+
   .role-gerente {
     @apply bg-primary-500 text-primary-100;
   }
-  
+
   .role-analista {
     @apply bg-accent-300 text-primary-900;
   }
-  
+
   .role-operador {
     @apply bg-primary-700 text-primary-100;
   }
-  
+
   .role-encarregado {
     @apply bg-yellow-500 text-primary-900;
   }
-  
+
   .role-funcionario {
     @apply bg-primary-600 text-primary-100;
   }
-  
+
   /* Form improvements */
+  .form-input,
+  .form-select,
+  .form-textarea {
+    @apply block w-full rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 shadow-sm focus:border-yellow-500 focus:ring-yellow-500;
+  }
+
   .form-input:disabled {
     @apply bg-primary-700 text-primary-400 cursor-not-allowed;
   }
-  
+
   .form-select:disabled {
     @apply bg-primary-700 text-primary-400 cursor-not-allowed;
   }
-  
+
   /* Focus states for error inputs */
   .form-input:focus {
     @apply outline-none ring-2 ring-offset-2;
   }
-  
+
   .form-input.border-red-300:focus {
     @apply border-red-500 ring-red-500;
   }
-  
+
   /* Modal scrollbar */
   .max-h-\[90vh\]::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   .max-h-\[90vh\]::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 3px;
   }
-  
+
   .max-h-\[90vh\]::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 3px;
   }
-  
+
   .max-h-\[90vh\]::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
   }
-  
+
   /* Animation for status indicators */
   @keyframes pulse-success {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.8; }
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.8;
+    }
   }
-  
+
   .animate-pulse-success {
     animation: pulse-success 2s infinite;
   }

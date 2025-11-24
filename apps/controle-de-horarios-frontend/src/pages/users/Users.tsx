@@ -1,23 +1,25 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { usersService } from '../services/api';
-import { User, CreateUserRequest, UpdateUserRequest, UserRole, UserStatus } from '../types';
-import { UserModal } from '../components/UserModal';
-import { ConfirmDialog } from '../components/ui/confirm-dialog';
-import { useAuth } from '../contexts/AuthContext';
-import { 
-  Users as UsersIcon, 
-  Plus, 
-  Search, 
-  Edit, 
-  Trash2, 
+import { usersService } from '../../services/api';
+import { User, CreateUserRequest, UpdateUserRequest, UserRole, UserStatus } from '../../types';
+import { UserModal } from '../../components/UserModal';
+import { ConfirmDialog } from '../../components/ui/confirm-dialog';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  Users as UsersIcon,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
   MoreVertical,
   RefreshCw,
   Shield,
-  AlertTriangle
+  AlertTriangle,
+  Filter
 } from 'lucide-react';
-import { Logs } from './Logs';
-import { Alert, AlertDescription, AlertIcon, AlertTitle } from '../components/ui/alert';
+import { Card, CardContent } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
 
 export const Users: React.FC = () => {
   const { user: currentUser } = useAuth();
@@ -46,17 +48,17 @@ export const Users: React.FC = () => {
   const roleOptions = (Object.values(UserRole) as string[])
     .map((r) => String(r))
     .sort((a, b) => roleLabel(a).localeCompare(roleLabel(b)));
-  
+
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionError, setActionError] = useState('');
-  
+
   const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  
+
   // Dropdown states
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
@@ -173,7 +175,7 @@ export const Users: React.FC = () => {
       const normalizeRole = (r?: string) => (r ? r.toLowerCase() : r);
       const payload: any = { ...userData };
       if ((payload as any).role) payload.role = normalizeRole((payload as any).role);
-      
+
       const wasUpdate = Boolean(selectedUser);
       if (wasUpdate) {
         if (!selectedUser) {
@@ -183,7 +185,7 @@ export const Users: React.FC = () => {
       } else {
         await usersService.createUser(payload as CreateUserRequest);
       }
-      
+
       setIsModalOpen(false);
       await loadUsers();
       setActionSuccess(wasUpdate ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
@@ -197,41 +199,27 @@ export const Users: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const statusClasses = {
-      active: 'status-badge status-active',
-      pending: 'status-badge status-pending',
-      inactive: 'status-badge status-inactive',
-      blocked: 'status-badge status-blocked'
+      active: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+      pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+      inactive: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
+      blocked: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
     };
-    
+
     const statusLabels = {
       active: 'Ativo',
       pending: 'Pendente',
       inactive: 'Inativo',
       blocked: 'Bloqueado'
     };
-    
+
     return (
-      <span className={statusClasses[status as keyof typeof statusClasses]}>
+      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClasses[status as keyof typeof statusClasses]}`}>
         {statusLabels[status as keyof typeof statusLabels]}
       </span>
     );
   };
 
   const getRoleBadge = (role: string) => {
-    const roleClasses = {
-      administrador: 'role-badge role-administrador',
-      diretor: 'role-badge role-diretor',
-      gerente: 'role-badge role-gerente',
-      analista: 'role-badge role-analista',
-      operador: 'role-badge role-operador',
-      encarregado: 'role-badge role-encarregado',
-      pcqc: 'role-badge role-operador',
-      dacn: 'role-badge role-operador',
-      instrutores: 'role-badge role-operador',
-      despachante: 'role-badge role-operador',
-      operador_cco: 'role-badge role-operador'
-    } as Record<string, string>;
-    
     const roleLabels = {
       administrador: 'Administrador',
       diretor: 'Diretor',
@@ -245,10 +233,10 @@ export const Users: React.FC = () => {
       despachante: 'Despachante',
       operador_cco: 'Operador CCO'
     } as Record<string, string>;
-    
+
     return (
-      <span className={roleClasses[role as keyof typeof roleClasses]}>
-        {roleLabels[role as keyof typeof roleLabels]}
+      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-[#fbcc2c]/20 text-[#6b5d1a] dark:bg-yellow-500/20 dark:text-yellow-300 border border-[#fbcc2c]/30 dark:border-yellow-500/30">
+        {roleLabels[role as keyof typeof roleLabels] || role}
       </span>
     );
   };
@@ -266,55 +254,61 @@ export const Users: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#fbcc2c] dark:border-yellow-400"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-400">Usuários</h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-[#6b5d1a] via-[#7d6b1e] to-[#6b5d1a] dark:from-gray-100 dark:via-white dark:to-gray-100 bg-clip-text text-transparent">
+            Usuários
+          </h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400 font-medium">
             Gerencie os usuários do sistema
           </p>
         </div>
-        <button
+        <Button
           onClick={handleCreateUser}
-          className={`btn ${isAdmin ? 'btn-primary' : 'btn-secondary'} flex items-center w-full sm:w-auto`}
+          className={`w-full sm:w-auto gap-2 ${isAdmin
+              ? 'bg-gradient-to-r from-[#fbcc2c] to-[#ecd43c] hover:from-[#e6cd4a] hover:to-[#d4cc54] dark:from-yellow-600 dark:to-amber-600 text-gray-900'
+              : 'bg-gray-200 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
+            }`}
+          disabled={!isAdmin}
           title={!isAdmin ? 'Apenas administradores podem criar usuários' : ''}
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4" />
           Novo Usuário
           {!isAdmin && <Shield className="h-4 w-4 ml-2" />}
-        </button>
+        </Button>
       </div>
 
       {/* Feedback de ações */}
       {actionSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-4">
-          <p className="text-green-800">{actionSuccess}</p>
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 rounded-lg p-4">
+          <p className="text-green-800 dark:text-green-300 font-medium">{actionSuccess}</p>
         </div>
       )}
 
       {actionError && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-800">{actionError}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg p-4">
+          <p className="text-red-800 dark:text-red-300 font-medium">{actionError}</p>
         </div>
       )}
 
       {/* Aviso de Permissão */}
       {!isAdmin && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/50 rounded-lg p-4">
           <div className="flex">
-            <AlertTriangle className="h-5 w-5 text-yellow-400" />
+            <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
             <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">
+              <h3 className="text-sm font-bold text-yellow-800 dark:text-yellow-300">
                 Acesso Limitado
               </h3>
-              <p className="mt-1 text-sm text-yellow-700">
+              <p className="mt-1 text-sm text-yellow-700 dark:text-yellow-400/80">
                 Você pode visualizar os usuários, mas apenas administradores podem criar, editar ou excluir usuários.
               </p>
             </div>
@@ -324,112 +318,119 @@ export const Users: React.FC = () => {
 
       {/* Error Alert */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-800">{error}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 rounded-lg p-4">
+          <p className="text-red-800 dark:text-red-300 font-medium">{error}</p>
         </div>
       )}
 
       {/* Filters */}
-      <div className="card">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+      <Card className="border-none shadow-lg bg-white/60 dark:bg-gray-900/60 backdrop-blur-md">
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Search */}
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  type="text"
+                  className="pl-10 bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+                  placeholder="Buscar por nome ou e-mail..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
-              <input
-                type="text"
-                className="form-input pl-10"
-                placeholder="Buscar usuários..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
             </div>
-          </div>
 
-          {/* Status Filter */}
-          <div className="w-full sm:w-48">
-            <select
-              className="form-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+            {/* Status Filter */}
+            <div className="w-full lg:w-48">
+              <div className="relative">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <select
+                  className="w-full h-10 pl-10 pr-3 rounded-md border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm focus:ring-2 focus:ring-[#fbcc2c] dark:focus:ring-yellow-400 focus:border-transparent outline-none transition-all text-gray-900 dark:text-gray-100"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">Todos os Status</option>
+                  <option value="active">Ativo</option>
+                  <option value="pending">Pendente</option>
+                  <option value="inactive">Inativo</option>
+                  <option value="blocked">Bloqueado</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Role Filter */}
+            <div className="w-full lg:w-48">
+              <div className="relative">
+                <UsersIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <select
+                  className="w-full h-10 pl-10 pr-3 rounded-md border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 text-sm focus:ring-2 focus:ring-[#fbcc2c] dark:focus:ring-yellow-400 focus:border-transparent outline-none transition-all text-gray-900 dark:text-gray-100"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                >
+                  <option value="all">Todas as Funções</option>
+                  {roleOptions.map((r) => (
+                    <option key={r} value={r}>{roleLabel(r)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Refresh Button */}
+            <Button
+              onClick={loadUsers}
+              variant="outline"
+              className="border-[#fbcc2c]/50 dark:border-yellow-500/30 hover:bg-[#fbcc2c]/10 dark:hover:bg-yellow-500/10 text-[#6b5d1a] dark:text-yellow-400"
+              disabled={loading}
             >
-              <option value="all">Todos os Status</option>
-              <option value="active">Ativo</option>
-              <option value="pending">Pendente</option>
-              <option value="inactive">Inativo</option>
-              <option value="blocked">Bloqueado</option>
-            </select>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
           </div>
-
-          {/* Role Filter */}
-          <div className="w-full sm:w-48">
-            <select
-              className="form-select"
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-            >
-              <option value="all">Todas as Funções</option>
-              {roleOptions.map((r) => (
-                <option key={r} value={r}>{roleLabel(r)}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Refresh Button */}
-          <button
-            onClick={loadUsers}
-            className="btn btn-secondary flex items-center"
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Atualizar
-          </button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Users Table */}
-      <div className="card overflow-hidden">
+      <Card className="overflow-hidden border-none shadow-xl bg-white/60 dark:bg-gray-900/60 backdrop-blur-md">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50/50 dark:bg-gray-800/50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Usuário
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Função
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Último Login
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Criado em
                 </th>
                 {isAdmin && (
-                  <th className="relative px-6 py-3">
+                  <th className="relative px-6 py-4">
                     <span className="sr-only">Ações</span>
                   </th>
                 )}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-transparent">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className="hover:bg-[#fbcc2c]/5 dark:hover:bg-yellow-500/5 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-primary-500 text-red rounded-full flex items-center justify-center text-sm font-medium">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#fbcc2c] to-[#ecd43c] dark:from-yellow-600 dark:to-amber-600 flex items-center justify-center text-sm font-bold text-gray-900 shadow-md">
                         {user.firstName.charAt(0)}{user.lastName.charAt(0)}
                       </div>
                       <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-bold text-gray-900 dark:text-gray-100">
                           {user.firstName} {user.lastName}
                         </div>
-                        <div className="text-sm text-gray-500">
+                        <div className="text-sm text-gray-500 dark:text-gray-400">
                           {user.email}
                         </div>
                       </div>
@@ -441,10 +442,10 @@ export const Users: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(user.status)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {user.lastLogin ? formatDate(user.lastLogin.toISOString()) : 'Nunca'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {formatDate(user.createdAt.toISOString())}
                   </td>
                   {isAdmin && (
@@ -452,25 +453,25 @@ export const Users: React.FC = () => {
                       <div className="relative">
                         <button
                           onClick={() => setOpenDropdown(openDropdown === user.id ? null : user.id)}
-                          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 dark:text-gray-400"
                         >
-                          <MoreVertical className="h-4 w-4 text-gray-500" />
+                          <MoreVertical className="h-4 w-4" />
                         </button>
-                        
+
                         {openDropdown === user.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl z-10 border border-gray-200 dark:border-gray-700 overflow-hidden">
                             <div className="py-1">
                               <Link
                                 to={`/users/${user.id}/edit`}
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                                className="flex items-center px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 w-full text-left transition-colors"
                                 onClick={() => setOpenDropdown(null)}
                               >
-                                <Edit className="h-4 w-4 mr-2" />
+                                <Edit className="h-4 w-4 mr-2 text-blue-500" />
                                 Editar
                               </Link>
                               <button
                                 onClick={() => handleDeleteUser(user)}
-                                className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
+                                className="flex items-center px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 w-full text-left transition-colors"
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Excluir
@@ -488,9 +489,11 @@ export const Users: React.FC = () => {
 
           {filteredUsers.length === 0 && (
             <div className="text-center py-12">
-              <UsersIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">Nenhum usuário encontrado</h3>
-              <p className="mt-1 text-sm text-gray-500">
+              <div className="mx-auto w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                <UsersIcon className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Nenhum usuário encontrado</h3>
+              <p className="mt-1 text-gray-500 dark:text-gray-400">
                 {searchTerm || statusFilter !== 'all' || roleFilter !== 'all'
                   ? 'Tente ajustar os filtros de busca.'
                   : isAdmin ? 'Comece criando um novo usuário.' : 'Nenhum usuário cadastrado no sistema.'}
@@ -498,7 +501,7 @@ export const Users: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
+      </Card>
 
       {/* User Modal */}
       {isAdmin && (

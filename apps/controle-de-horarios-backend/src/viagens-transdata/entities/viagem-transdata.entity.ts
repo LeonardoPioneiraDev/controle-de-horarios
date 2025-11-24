@@ -211,8 +211,10 @@ export class ViagemTransdata {
     if (!this.NomeLinha) return null;
     
     // Remove pontos, traços e espaços, pega só números
-    const numerosSo = this.NomeLinha.replace(/[.\-\s]/g, '');
-    return numerosSo.substring(0, 6);
+    const somenteDigitos = this.NomeLinha.replace(/[^0-9]/g, '');
+    if (!somenteDigitos) return null;
+    const normalizado = String(parseInt(somenteDigitos, 10));
+    return normalizado;
   }
 
   /**
@@ -225,3 +227,4 @@ export class ViagemTransdata {
     return 'PENDENTE';
   }
 }
+
