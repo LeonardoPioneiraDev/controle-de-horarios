@@ -1,54 +1,31 @@
-﻿import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ComparacaoViagem, StatusComparacao, CombinacaoComparacao } from '../entities/comparacao-viagem.entity'; // ? Importar CombinacaoComparacao da entidade
+import { ComparacaoViagem, StatusComparacao, CombinacaoComparacao } from '../entities/comparacao-viagem.entity'; // ✅ Importar CombinacaoComparacao da entidade
 import { ViagemTransdata } from '../../viagens-transdata/entities/viagem-transdata.entity';
 import { ViagemGlobus } from '../../viagens-globus/entities/viagem-globus.entity';
 import { HistoricoComparacaoViagens } from '../entities/historico-comparacao.entity';
 import { FiltrosComparacaoDto, ResultadoComparacaoDto } from '../dto';
-import { hungarian, buildCostMatrix } from '../utils/optimal-matching.util';
-import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, NormalizedTransDataTrip, NormalizedGlobusTrip } from '../utils/trip-comparator.util'; // ? Remover CombinacaoComparacao daqui
+import { normalizeTransDataTrip, normalizeGlobusTrip, compareTrips, NormalizedTransDataTrip, NormalizedGlobusTrip } from '../utils/trip-comparator.util'; // ✅ Remover CombinacaoComparacao daqui
 
 const COMBINACAO_PRIORITY: Record<CombinacaoComparacao, number> = {
-  // --- GRUPO A: Mesma Linha e Mesmo Serviço (Melhores Matches) ---
   [CombinacaoComparacao.TUDO_IGUAL]: 0,
   [CombinacaoComparacao.SO_HORARIO_DIFERENTE]: 1,
-  [CombinacaoComparacao.SO_SENTIDO_DIFERENTE]: 2,
-  [CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES]: 3,
-
-  // --- GRUPO B: Linha Diferente mas Mesmo Serviço (Cross-over) ---
-  // O usuário prefere assumir que a linha está errada no cadastro se o serviço/horário baterem
-  [CombinacaoComparacao.SO_LINHA_DIFERENTE]: 4,
-  [CombinacaoComparacao.LINHA_E_HORARIO_DIFERENTES]: 5,
-  [CombinacaoComparacao.LINHA_E_SENTIDO_DIFERENTES]: 6,
-  [CombinacaoComparacao.SO_SERVICO_IGUAL]: 7, // Apenas serviço igual (Linha, Sentido, Horário diferentes) - ainda melhor que nada?
-
-  // --- GRUPO C: Mesma Linha mas Serviço Diferente (Fallback) ---
-  [CombinacaoComparacao.SO_SERVICO_DIFERENTE]: 8,
-  [CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES]: 9,
-  [CombinacaoComparacao.SENTIDO_E_SERVICO_DIFERENTES]: 10,
-  [CombinacaoComparacao.SO_LINHA_IGUAL]: 11,
-  [CombinacaoComparacao.LINHA_E_SERVICO_DIFERENTES]: 12, // Adicionado para corrigir erro de build
-
-  // --- GRUPO D: Resto (Provavelmente não deve dar match, mas está aqui por completude) ---
-  [CombinacaoComparacao.SO_SENTIDO_IGUAL]: 13,
+  [CombinacaoComparacao.SO_SERVICO_DIFERENTE]: 2,
+  [CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES]: 3,
+  [CombinacaoComparacao.SO_SENTIDO_DIFERENTE]: 4,
+  [CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES]: 5,
+  [CombinacaoComparacao.SENTIDO_E_SERVICO_DIFERENTES]: 6,
+  [CombinacaoComparacao.SO_LINHA_IGUAL]: 7,
+  [CombinacaoComparacao.SO_LINHA_DIFERENTE]: 8,
+  [CombinacaoComparacao.LINHA_E_HORARIO_DIFERENTES]: 9,
+  [CombinacaoComparacao.LINHA_E_SERVICO_DIFERENTES]: 10,
+  [CombinacaoComparacao.SO_SENTIDO_IGUAL]: 11,
+  [CombinacaoComparacao.LINHA_E_SENTIDO_DIFERENTES]: 12,
+  [CombinacaoComparacao.SO_SERVICO_IGUAL]: 13,
   [CombinacaoComparacao.SO_HORARIO_IGUAL]: 14,
   [CombinacaoComparacao.TUDO_DIFERENTE]: 15,
 };
-
-// Configurações de comparação via env (com valores padrão seguros)
-const TIME_EQUAL_MIN = Number.isFinite(parseInt(process.env.COMPARE_TIME_EQUAL_MIN || '', 10))
-  ? parseInt(process.env.COMPARE_TIME_EQUAL_MIN!, 10)
-  : 2;
-const PASS1_WINDOW_MIN = Number.isFinite(parseInt(process.env.COMPARE_PASS1_WINDOW_MIN || '', 10))
-  ? parseInt(process.env.COMPARE_PASS1_WINDOW_MIN!, 10)
-  : 120; // serviço+sentido
-const PASS2_WINDOW_MIN = Number.isFinite(parseInt(process.env.COMPARE_PASS2_WINDOW_MIN || '', 10))
-  ? parseInt(process.env.COMPARE_PASS2_WINDOW_MIN!, 10)
-  : 180; // linha+sentido
-const PASS3_WINDOW_MIN = Number.isFinite(parseInt(process.env.COMPARE_PASS3_WINDOW_MIN || '', 10))
-  ? parseInt(process.env.COMPARE_PASS3_WINDOW_MIN!, 10)
-  : 240; // linha
 
 @Injectable()
 export class ComparacaoViagensService {
@@ -67,7 +44,7 @@ export class ComparacaoViagensService {
 
   async executarComparacao(dataReferencia: string): Promise<ResultadoComparacaoDto> {
     const inicioProcessamento = Date.now();
-    this.logger.log(`?? Iniciando comparação detalhada para data: ${dataReferencia}`);
+    this.logger.log(`🔄 Iniciando comparação detalhada para data: ${dataReferencia}`);
 
     await this.limparComparacoesExistentes(dataReferencia);
 
@@ -76,7 +53,7 @@ export class ComparacaoViagensService {
       this.buscarViagensGlobus(dataReferencia)
     ]);
 
-    this.logger.log(`?? Dados encontrados - Transdata: ${viagensTransdata.length}, Globus: ${viagensGlobus.length}`);
+    this.logger.log(`📊 Dados encontrados - Transdata: ${viagensTransdata.length}, Globus: ${viagensGlobus.length}`);
 
     if (viagensGlobus.length === 0 || viagensTransdata.length === 0) {
       this.logger.warn(`Dados insuficientes para comparação. Abortando.`);
@@ -102,7 +79,7 @@ export class ComparacaoViagensService {
     }));
 
     // --- FASE 1: BUSCAR MATCHES EXATOS ---
-    this.logger.log(`?? [FASE 1] Buscando matches exatos (TUDO_IGUAL)...`);
+    this.logger.log(`🔍 [FASE 1] Buscando matches exatos (TUDO_IGUAL)...`);
     for (const viagemTd of viagensTransdata) {
       if (transdataProcessedIds.has(viagemTd.id.toString())) continue;
 
@@ -116,7 +93,6 @@ export class ComparacaoViagensService {
         if (globusMatchedIds.has(viagemGb.id)) continue;
 
         const combinacao = compareTrips(normTd, normGb);
-        if (!(normTd.servico === normGb.servico && normTd.sentido === normGb.sentido)) { continue; }
 
         if (combinacao === CombinacaoComparacao.TUDO_IGUAL) {
           const comparacao = this.criarComparacaoDetalhada(
@@ -132,196 +108,76 @@ export class ComparacaoViagensService {
         }
       }
     }
-    this.logger.log(`? [FASE 1] Matches exatos encontrados: ${estatisticas.compativeis}`);
+    this.logger.log(`✅ [FASE 1] Matches exatos encontrados: ${estatisticas.compativeis}`);
 
-    const columnsToCompare = ['linha', 'servico', 'sentido', 'horario'];
-    const tdLeftovers = viagensTransdata
-      .filter(t => !transdataProcessedIds.has(t.id.toString()))
-      .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
-    const gbLeftovers = normalizedGlobusTrips
-      .filter(gw => !globusMatchedIds.has(gw.original.id))
-      .map(gw => ({ original: gw.original, norm: gw.normalized }));
-    this.logger.log(`[FASE 2] Segunda comparacao entre sobras: ${tdLeftovers.length} Transdata / ${gbLeftovers.length} Globus usando colunas ${columnsToCompare.join(', ')}`);
-    const extraMatches = this.compareLeftovers(dataReferencia, tdLeftovers, gbLeftovers, transdataProcessedIds, globusMatchedIds);
-    for (const match of extraMatches) {
-      todasComparacoes.push(match);
-      estatisticas.matches++;
-      if (match.statusComparacao === StatusComparacao.COMPATIVEL) estatisticas.compativeis++;
-      else if (match.statusComparacao === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
-      else estatisticas.divergentes++;
-    }
-    if (extraMatches.length > 0) {
-      this.logger.log(`[FASE 2] Matches encontrados nessa segunda comparacao: ${extraMatches.length}`);
-    }
-    // Greedy desativado ap?s Hungarian; manter estrutura vazia
-    const potentialMatches: any[] = [];
-    //       tdTrip: ViagemTransdata;
-    //       gbTrip: ViagemGlobus;
-    //       combinacao: CombinacaoComparacao;
-    //       normTd: NormalizedTransDataTrip;
-    //       normGb: NormalizedGlobusTrip;
-    //       diffMinutos: number;
-    //       score: number; // Score calculado para ordenação
-    //     }[] = [];
+    // --- FASE 2: COLETAR POTENCIAIS MATCHES DIVERGENTES ---
+    this.logger.log(`🔍 [FASE 2] Coletando potenciais matches divergentes...`);
+    const potentialDivergentMatches: {
+      tdTrip: ViagemTransdata;
+      gbTrip: ViagemGlobus;
+      combinacao: CombinacaoComparacao;
+      normTd: NormalizedTransDataTrip;
+      normGb: NormalizedGlobusTrip;
+    }[] = [];
 
-    //     for (const viagemTd of viagensTransdata) {
-    //       if (transdataProcessedIds.has(viagemTd.id.toString())) continue;
-    // 
-    //       const normTd = normalizeTransDataTrip(viagemTd);
-    // 
-    //       for (const globusWrapper of normalizedGlobusTrips) {
-    //         const viagemGb = globusWrapper.original;
-    //         const normGb = globusWrapper.normalized;
-    // 
-    //         if (globusMatchedIds.has(viagemGb.id)) continue;
-    // 
-    // 1. Calcula a combinação (ex: TUDO_IGUAL, SO_LINHA_DIFERENTE, etc)
-    //         const combinacao = compareTrips(normTd, normGb);
-    // 
-    // 2. Se for TUDO_DIFERENTE, ignora para não poluir a memória (salvo se quisermos ser muito agressivos)
-    //         if (combinacao === CombinacaoComparacao.TUDO_DIFERENTE) continue;
-    // 
-    // 3. Calcula diferença de tempo
-    //         const diffMinutos = Math.abs(
-    //           (new Date(`1970-01-01T${normTd.horario}:00`).getTime()) -
-    //           (new Date(`1970-01-01T${normGb.horario}:00`).getTime())
-    //         ) / (1000 * 60);
-    // 
-    // 4. Calcula Score (Menor é melhor)
-    // Base: Prioridade da Combinação * 1000
-    // Ajuste: Diferença de minutos
-    //         const baseScore = (COMBINACAO_PRIORITY[combinacao] || 99) * 1000;
-    //         const timeScore = isNaN(diffMinutos) ? 999 : diffMinutos;
-    //         const finalScore = baseScore + timeScore;
-    // 
-    //         potentialMatches.push({
-    //           tdTrip: viagemTd,
-    //           gbTrip: viagemGb,
-    //           combinacao: combinacao,
-    //           normTd: normTd,
-    //           normGb: normGb,
-    //           diffMinutos: isNaN(diffMinutos) ? 9999 : diffMinutos,
-    //           score: finalScore
-    //         });
-    //       }
-    //     }
-    //     this.logger.log(`? [FASE 2] Combinações possíveis encontradas: ${potentialMatches.length}`);
-    // 
-    // --- FASE 3: PROCESSAR MATCHES DO MELHOR PARA O PIOR ---
-    // Greedy removido; casamento ?timo j? realizado acima
-    // 
-    // Ordena pelo Score (Menor score = Melhor match)
-    // Isso garante que um match "Perfeito" (Score ~0) seja processado antes de um "Mais ou menos" (Score ~4000)
-    // (removido) potentialMatches.sort((a, b) => a.score - b.score);
-    // 
-    //     let matchesRealizados = 0;
-    // 
-    // (removido) for (const match of potentialMatches) {
-    //       const { tdTrip, gbTrip, combinacao, normTd, normGb } = match;
-    // 
-    // Verifica se as viagens AINDA estão disponíveis (não foram casadas com um par melhor anteriormente)
-    //       if (!transdataProcessedIds.has(tdTrip.id.toString()) && !globusMatchedIds.has(gbTrip.id)) {
-    // 
-    //         const status = this.determinarStatusComparacao(combinacao);
-    //         const observacao = this.gerarObservacao(combinacao, normTd, normGb);
-    // 
-    //         const comparacao = this.criarComparacaoDetalhada(
-    //           dataReferencia, tdTrip, gbTrip, status, observacao, combinacao
-    //         );
-    // 
-    //         todasComparacoes.push(comparacao);
-    // 
-    // Marca como processado para ninguém mais usar essas viagens
-    //         globusMatchedIds.add(gbTrip.id);
-    //         transdataProcessedIds.add(tdTrip.id.toString());
-    // 
-    //         matchesRealizados++;
-    //         estatisticas.matches++;
-    //         if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
-    //         else estatisticas.divergentes++;
-    //       }
-    //     }
-    //     this.logger.log(`? [FASE 3] Matches realizados após análise exaustiva: ${matchesRealizados}`);
-    // 
-    // --- FASE 4: TENTAR PARES ENTRE "APENAS" (RELAXANDO REGRAS) ---
-    // Recalcula sobras após a segunda comparação
-    const tdRemaining = viagensTransdata
-      .filter(t => !transdataProcessedIds.has(t.id.toString()))
-      .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
-    const gbRemaining = normalizedGlobusTrips
-      .filter(gw => !globusMatchedIds.has(gw.original.id))
-      .map(gw => ({ original: gw.original, norm: gw.normalized }));
+    for (const viagemTd of viagensTransdata) {
+      if (transdataProcessedIds.has(viagemTd.id.toString())) continue;
 
-    this.logger.log(`?? [FASE 4] Comparando apenas Transdata (${tdRemaining.length}) x apenas Globus (${gbRemaining.length})`);
+      const normTd = normalizeTransDataTrip(viagemTd);
 
-    const fase4Matches: ComparacaoViagem[] = [];
+      for (const globusWrapper of normalizedGlobusTrips) {
+        const viagemGb = globusWrapper.original;
+        const normGb = globusWrapper.normalized;
 
-    // Passo 4.1: linha+serviço (ignora sentido), janela PASS1_WINDOW_MIN
-    fase4Matches.push(
-      ...this.compareLeftoversRelaxed(
-        dataReferencia,
-        tdRemaining,
-        gbRemaining,
-        transdataProcessedIds,
-        globusMatchedIds,
-        (n) => `${this.normalizeLineForKey(n.linha)}|${n.servico}`,
-        PASS1_WINDOW_MIN,
-      )
-    );
+        if (globusMatchedIds.has(viagemGb.id)) continue;
 
-    // Passo 4.2: linha+sentido (ignora serviço), janela PASS2_WINDOW_MIN
-    // Recalcula arrays de sobras com os sets atualizados
-    const tdRemaining2 = viagensTransdata
-      .filter(t => !transdataProcessedIds.has(t.id.toString()))
-      .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
-    const gbRemaining2 = normalizedGlobusTrips
-      .filter(gw => !globusMatchedIds.has(gw.original.id))
-      .map(gw => ({ original: gw.original, norm: gw.normalized }));
+        // ✅ IMPORTANTE: Só comparar viagens da MESMA LINHA
+        // Isso evita matches incorretos entre linhas diferentes
+        if (normTd.linha !== normGb.linha) continue;
 
-    fase4Matches.push(
-      ...this.compareLeftoversRelaxed(
-        dataReferencia,
-        tdRemaining2,
-        gbRemaining2,
-        transdataProcessedIds,
-        globusMatchedIds,
-        (n) => `${this.normalizeLineForKey(n.linha)}|${n.sentido}`,
-        PASS2_WINDOW_MIN,
-      )
-    );
+        const combinacao = compareTrips(normTd, normGb);
 
-    // Passo 4.3: apenas linha, janela PASS3_WINDOW_MIN
-    const tdRemaining3 = viagensTransdata
-      .filter(t => !transdataProcessedIds.has(t.id.toString()))
-      .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
-    const gbRemaining3 = normalizedGlobusTrips
-      .filter(gw => !globusMatchedIds.has(gw.original.id))
-      .map(gw => ({ original: gw.original, norm: gw.normalized }));
-
-    fase4Matches.push(
-      ...this.compareLeftoversRelaxed(
-        dataReferencia,
-        tdRemaining3,
-        gbRemaining3,
-        transdataProcessedIds,
-        globusMatchedIds,
-        (n) => `${this.normalizeLineForKey(n.linha)}`,
-        PASS3_WINDOW_MIN,
-      )
-    );
-
-    for (const match of fase4Matches) {
-      todasComparacoes.push(match);
-      estatisticas.matches++;
-      if (match.statusComparacao === StatusComparacao.COMPATIVEL) estatisticas.compativeis++;
-      else if (match.statusComparacao === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
-      else estatisticas.divergentes++;
+        if (combinacao !== CombinacaoComparacao.TUDO_DIFERENTE) {
+          potentialDivergentMatches.push({
+            tdTrip: viagemTd,
+            gbTrip: viagemGb,
+            combinacao: combinacao,
+            normTd: normTd,
+            normGb: normGb,
+          });
+        }
+      }
     }
+    this.logger.log(`✅ [FASE 2] Potenciais matches divergentes coletados: ${potentialDivergentMatches.length}`);
 
-    this.logger.log(`? [FASE 4] Matches adicionais entre 'apenas' encontrados: ${fase4Matches.length}`);
+    // --- FASE 2.1: PROCESSAR MATCHES DIVERGENTES PRIORIZANDO OS MELHORES ---
+    this.logger.log(`🔍 [FASE 2.1] Processando matches divergentes priorizados...`);
+    // Sort by combination (lower enum value is a 'better' match)
+    potentialDivergentMatches.sort((a, b) => COMBINACAO_PRIORITY[a.combinacao] - COMBINACAO_PRIORITY[b.combinacao]);
 
-    // --- FASE 5: REGISTRAR O QUE SOBROU (SEM PAR) ---
-    this.logger.log(`?? [FASE 5] Registrando viagens sem par (Divergentes Reais)...`);
+    for (const potentialMatch of potentialDivergentMatches) {
+      const { tdTrip, gbTrip, combinacao, normTd, normGb } = potentialMatch;
+
+      // Only process if both trips are still unmatched
+      if (!transdataProcessedIds.has(tdTrip.id.toString()) && !globusMatchedIds.has(gbTrip.id)) {
+        const status = this.determinarStatusComparacao(combinacao);
+        const observacao = this.gerarObservacao(combinacao, normTd, normGb);
+
+        const comparacao = this.criarComparacaoDetalhada(
+          dataReferencia, tdTrip, gbTrip, status, observacao, combinacao
+        );
+        todasComparacoes.push(comparacao);
+        globusMatchedIds.add(gbTrip.id);
+        transdataProcessedIds.add(tdTrip.id.toString());
+        estatisticas.matches++;
+        if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
+        else estatisticas.divergentes++;
+      }
+    }
+    this.logger.log(`✅ [FASE 2.1] Matches divergentes processados: ${estatisticas.divergentes + estatisticas.horarioDivergente}`);
+
+    // --- FASE 3: REGISTRAR VIAGENS NÃO COMBINADAS ---
+    this.logger.log(`🔍 [FASE 3] Registrando viagens não combinadas...`);
     for (const viagemTd of viagensTransdata) {
       if (!transdataProcessedIds.has(viagemTd.id.toString())) {
         estatisticas.apenasTransdata++;
@@ -336,10 +192,10 @@ export class ComparacaoViagensService {
         todasComparacoes.push(this.criarComparacaoApenasGlobus(dataReferencia, viagemGb));
       }
     }
-    this.logger.log(`? [FASE 5] Viagens apenas Transdata: ${estatisticas.apenasTransdata}, apenas Globus: ${estatisticas.apenasGlobus}`);
+    this.logger.log(`✅ [FASE 3] Viagens apenas Transdata: ${estatisticas.apenasTransdata}, apenas Globus: ${estatisticas.apenasGlobus}`);
 
     await this.salvarComparacoes(todasComparacoes);
-    this.logger.log(`?? ${todasComparacoes.length} comparações salvas.`);
+    this.logger.log(`💾 ${todasComparacoes.length} comparações salvas.`);
 
     const tempoProcessamento = ((Date.now() - inicioProcessamento) / 1000).toFixed(2);
     return {
@@ -360,6 +216,9 @@ export class ComparacaoViagensService {
       case CombinacaoComparacao.TUDO_IGUAL:
         return StatusComparacao.COMPATIVEL;
       case CombinacaoComparacao.SO_HORARIO_DIFERENTE:
+      case CombinacaoComparacao.SERVICO_E_HORARIO_DIFERENTES: // If service and horario differ, but line/sentido are same
+      case CombinacaoComparacao.SENTIDO_E_HORARIO_DIFERENTES: // If sentido and horario differ, but line/service are same
+      case CombinacaoComparacao.SO_LINHA_IGUAL:
         return StatusComparacao.HORARIO_DIVERGENTE;
       default:
         return StatusComparacao.DIVERGENTE;
@@ -410,17 +269,6 @@ export class ComparacaoViagensService {
     comparacao.transdataServico = normTd.servico;
     comparacao.transdataSentido = transdata.SentidoText;
     comparacao.transdataHorarioPrevisto = normTd.horario;
-    // Preencher horário realizado quando disponível
-    const realizado: any = (transdata as any).InicioRealizadoText ?? (transdata as any).InicioRealizado ?? null;
-    if (realizado instanceof Date && !isNaN(realizado.getTime())) {
-      comparacao.transdataHorarioRealizado = realizado.toTimeString().substring(0, 5);
-    } else if (typeof realizado === 'string') {
-      if (realizado.includes(' ')) {
-        comparacao.transdataHorarioRealizado = realizado.split(' ')[1]?.substring(0, 5) || null;
-      } else {
-        comparacao.transdataHorarioRealizado = realizado.substring(0, 5) || null;
-      }
-    }
 
     comparacao.globusId = globus.id;
     comparacao.globusServico = normGb.servico;
@@ -440,120 +288,6 @@ export class ComparacaoViagensService {
     comparacao.horarioCompativel = diffHorario <= 2;
 
     return comparacao;
-  }
-
-  private compareLeftovers(
-    dataReferencia: string,
-    transLeft: Array<{ original: ViagemTransdata; norm: NormalizedTransDataTrip }>,
-    globusLeft: Array<{ original: ViagemGlobus; norm: NormalizedGlobusTrip }>,
-    transdataProcessedIds: Set<string>,
-    globusMatchedIds: Set<string>,
-  ): ComparacaoViagem[] {
-    if (transLeft.length === 0 || globusLeft.length === 0) return [];
-    const matches: ComparacaoViagem[] = [];
-    const buckets = new Map<string, Array<{ original: ViagemGlobus; norm: NormalizedGlobusTrip }>>();
-    for (const gb of globusLeft) {
-      const key = `${gb.norm.linha}|${gb.norm.servico}|${gb.norm.sentido}`;
-      const arr = buckets.get(key) || [];
-      arr.push(gb);
-      buckets.set(key, arr);
-    }
-    for (const td of transLeft) {
-      if (transdataProcessedIds.has(td.original.id.toString())) continue;
-      const key = `${td.norm.linha}|${td.norm.servico}|${td.norm.sentido}`;
-      const candidates = buckets.get(key) || [];
-      let chosen: typeof candidates[number] | null = null;
-      let bestDiff = Number.POSITIVE_INFINITY;
-      for (const candidate of candidates) {
-        if (globusMatchedIds.has(candidate.original.id)) continue;
-        const diff = this.computeMinuteDiff(td.norm.horario, candidate.norm.horario);
-        if (Number.isNaN(diff)) continue;
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          chosen = candidate;
-        }
-      }
-      if (!chosen) continue;
-
-      // Na fase relaxada, compara ignorando zeros à esquerda nas linhas
-      const tdAdj = { ...td.norm, linha: this.normalizeLineForKey(td.norm.linha) } as NormalizedTransDataTrip;
-      const gbAdj = { ...chosen.norm, linha: this.normalizeLineForKey(chosen.norm.linha) } as NormalizedGlobusTrip;
-      const comb = compareTrips(tdAdj, gbAdj);
-      const status = this.determinarStatusComparacao(comb);
-      const obs = this.gerarObservacao(comb, td.norm, chosen.norm);
-      const comparacao = this.criarComparacaoDetalhada(dataReferencia, td.original, chosen.original, status, obs, comb);
-      matches.push(comparacao);
-      transdataProcessedIds.add(td.original.id.toString());
-      globusMatchedIds.add(chosen.original.id);
-    }
-    return matches;
-  }
-
-  private computeMinuteDiff(a: string, b: string): number {
-    if (!a || !b) return Number.NaN;
-    const t1 = new Date(`1970-01-01T${a}:00`);
-    const t2 = new Date(`1970-01-01T${b}:00`);
-    if (Number.isNaN(t1.getTime()) || Number.isNaN(t2.getTime())) return Number.NaN;
-    return Math.abs(t1.getTime() - t2.getTime()) / (1000 * 60);
-  }
-
-  private compareLeftoversRelaxed(
-    dataReferencia: string,
-    transLeft: Array<{ original: ViagemTransdata; norm: NormalizedTransDataTrip }>,
-    globusLeft: Array<{ original: ViagemGlobus; norm: NormalizedGlobusTrip }>,
-    transdataProcessedIds: Set<string>,
-    globusMatchedIds: Set<string>,
-    groupKeyFn: (n: NormalizedGlobusTrip | NormalizedTransDataTrip) => string,
-    maxTimeWindowMin: number,
-  ): ComparacaoViagem[] {
-    if (transLeft.length === 0 || globusLeft.length === 0) return [];
-    const matches: ComparacaoViagem[] = [];
-
-    // Bucketize Globus by the chosen grouping key
-    const buckets = new Map<string, Array<{ original: ViagemGlobus; norm: NormalizedGlobusTrip }>>();
-    for (const gb of globusLeft) {
-      const key = groupKeyFn(gb.norm);
-      const arr = buckets.get(key) || [];
-      arr.push(gb);
-      buckets.set(key, arr);
-    }
-
-    for (const td of transLeft) {
-      if (transdataProcessedIds.has(td.original.id.toString())) continue;
-      const key = groupKeyFn(td.norm);
-      const candidates = buckets.get(key) || [];
-
-      let chosen: typeof candidates[number] | null = null;
-      let bestDiff = Number.POSITIVE_INFINITY;
-
-      for (const candidate of candidates) {
-        if (globusMatchedIds.has(candidate.original.id)) continue;
-        const diff = this.computeMinuteDiff(td.norm.horario, candidate.norm.horario);
-        if (Number.isNaN(diff)) continue;
-        if (diff <= maxTimeWindowMin && diff < bestDiff) {
-          bestDiff = diff;
-          chosen = candidate;
-        }
-      }
-
-      if (!chosen) continue;
-
-      const comb = compareTrips(td.norm, chosen.norm);
-      const status = this.determinarStatusComparacao(comb);
-      const obs = this.gerarObservacao(comb, td.norm, chosen.norm);
-      const comparacao = this.criarComparacaoDetalhada(dataReferencia, td.original, chosen.original, status, obs, comb);
-      matches.push(comparacao);
-      transdataProcessedIds.add(td.original.id.toString());
-      globusMatchedIds.add(chosen.original.id);
-    }
-
-    return matches;
-  }
-
-  private normalizeLineForKey(value: string): string {
-    const digits = String(value || '').replace(/[^0-9]/g, '');
-    const noLead = digits.replace(/^0+/, '');
-    return noLead.length > 0 ? noLead : '0';
   }
 
   private criarComparacaoApenasTransdata(dataReferencia: string, transdata: ViagemTransdata): ComparacaoViagem {
@@ -602,7 +336,7 @@ export class ComparacaoViagensService {
       },
       select: [
         'id', 'codigoLinha', 'NomeLinha', 'Servico', 'SentidoText',
-        'InicioPrevistoText', 'InicioRealizadoText', 'statusCumprimento'
+        'InicioPrevisto', 'InicioRealizadoText', 'statusCumprimento'
       ]
     });
   }
@@ -629,7 +363,7 @@ export class ComparacaoViagensService {
 
   private async limparComparacoesExistentes(dataReferencia: string): Promise<void> {
     const deletados = await this.comparacaoRepository.delete({ dataReferencia });
-    this.logger.log(`?? ${deletados.affected || 0} comparações removidas`);
+    this.logger.log(`🧹 ${deletados.affected || 0} comparações removidas`);
   }
 
   async buscarComparacoes(
