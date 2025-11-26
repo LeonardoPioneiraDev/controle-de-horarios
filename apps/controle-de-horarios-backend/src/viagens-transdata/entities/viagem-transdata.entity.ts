@@ -35,8 +35,8 @@ export class ViagemTransdata {
   ultimaSincronizacao: Date;
 
   // ✅ CAMPOS EXTRAÍDOS/CALCULADOS
-  @Column({ type: 'varchar', length: 10, nullable: true, name: 'codigoLinha' }) // ✅ CORRIGIDO: Especificar nome da coluna
-  codigoLinha: string; // Primeiros 6 dígitos da linha
+  @Column({ type: 'varchar', length: 20, nullable: true, name: 'codigoLinha' }) // ✅ AUMENTADO: 10 -> 20 para evitar erros
+  codigoLinha: string; // Primeiros dígitos da linha
 
   @Column({ type: 'varchar', length: 50, nullable: true, default: 'PENDENTE', name: 'statusCumprimento' })
   statusCumprimento: string;
@@ -205,16 +205,18 @@ export class ViagemTransdata {
   }
 
   /**
-   * ✅ EXTRAIR CÓDIGO DA LINHA (6 primeiros dígitos)
+   * ✅ EXTRAIR CÓDIGO DA LINHA (4 primeiros dígitos)
    */
   private extrairCodigoLinha(): string {
     if (!this.NomeLinha) return null;
-    
+
     // Remove pontos, traços e espaços, pega só números
     const somenteDigitos = this.NomeLinha.replace(/[^0-9]/g, '');
     if (!somenteDigitos) return null;
-    const normalizado = String(parseInt(somenteDigitos, 10));
-    return normalizado;
+
+    // ✅ PEGAR APENAS OS 4 PRIMEIROS DÍGITOS (preservando zeros à esquerda)
+    const codigo4Digitos = somenteDigitos.substring(0, 4);
+    return codigo4Digitos;
   }
 
   /**

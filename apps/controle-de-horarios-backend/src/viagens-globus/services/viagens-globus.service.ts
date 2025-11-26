@@ -230,6 +230,8 @@ export class ViagensGlobusService {
       this.logger.log(`✅ ${deleteResult.affected || 0} viagens apagadas para ${dataViagem}.`);
 
       // ✅ QUERY ORACLE OTIMIZADA
+      // IMPORTANTE: Usa SYSDATE para buscar os dados do dia ATUAL no Oracle
+      // O dataViagem é usado apenas para salvar no PostgreSQL como dataReferencia
       const sqlQuery = `
         SELECT    -- Informações da Linha e Setor Principal    CASE        WHEN L.COD_LOCAL_TERMINAL_SEC = 7000 THEN 'GAMA'
         WHEN L.COD_LOCAL_TERMINAL_SEC = 6000 THEN 'SANTA MARIA'
@@ -320,7 +322,7 @@ WHERE
     AND UPPER(L.NOMELINHA) NOT LIKE '%LINHA ESPECIAL%'
     AND UPPER(L.NOMELINHA) NOT LIKE '%DUPLAS RESERVAS%'
     AND L.COD_LOCAL_TERMINAL_SEC IN (6000, 7000, 8000, 9000)
-    AND TRUNC(D.DAT_ESCALA) = TO_DATE('${dataViagem}', 'YYYY-MM-DD')
+    AND TRUNC(D.DAT_ESCALA) = TRUNC(SYSDATE)
 ORDER BY
     SETOR_PRINCIPAL_LINHA,
     L.CODIGOLINHA,
@@ -397,7 +399,7 @@ ORDER BY
           AND UPPER(L.NOMELINHA) NOT LIKE '%LINHA ESPECIAL%'
           AND UPPER(L.NOMELINHA) NOT LIKE '%DUPLAS RESERVAS%'
           AND L.COD_LOCAL_TERMINAL_SEC IN (6000, 7000, 8000, 9000)
-          AND TRUNC(D.DAT_ESCALA) = TO_DATE('${dataViagem}', 'YYYY-MM-DD')
+          AND TRUNC(D.DAT_ESCALA) = TRUNC(SYSDATE)
         ORDER BY
           SETOR_PRINCIPAL_LINHA,
           L.CODIGOLINHA,

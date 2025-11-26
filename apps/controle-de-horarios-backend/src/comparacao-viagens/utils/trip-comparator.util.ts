@@ -100,7 +100,7 @@ export function normalizeTransDataTrip(transDataTrip: any): NormalizedTransDataT
   const sentido = SENTIDO_MAP[String(transDataTrip.SentidoText || '').toUpperCase()] || String(transDataTrip.SentidoText || '').toUpperCase();
   const servico = String(parseInt(String(transDataTrip.Servico ?? transDataTrip.codServicoNumero ?? ''), 10));
   // Extrai HH:mm de uma string de data/hora como "26/10/2025 15:40:00"
-  const horario = String(transDataTrip.InicioPrevisto || '').split(' ')[1]?.substring(0, 5) || '';
+  const horario = String(transDataTrip.InicioPrevistoText || '').substring(0, 5) || '';
 
   return {
     linha,
@@ -142,7 +142,7 @@ export function normalizeGlobusTrip(globusTrip: ControleHorario | OracleGlobusDa
     logger.debug(`[normalizeGlobusTrip] DTO Data - horSaida: ${dtoData.horSaida}, horSaidaTime: ${dtoData.horSaidaTime}`);
 
     linha = String(dtoData.codigoLinha || '').replace(/[^0-9]/g, '').trim(); // preservar zeros à esquerda
-    sentido = SENTIDO_MAP[String(dtoData.flgSentido || '').toUpperCase()] || String(dtoData.flgSentido || '').toUpperCase();
+    sentido = SENTIDO_MAP[String(dtoData.sentidoTexto || '').toUpperCase()] || String(dtoData.sentidoTexto || '').toUpperCase();
     servico = String(parseInt(String(dtoData.codServicoNumero || '').replace(/[^0-9]/g, ''), 10));
 
     // Prioritize horSaida (Date object) if available and valid

@@ -134,235 +134,25 @@ export class ComparacaoViagensService {
     }
     this.logger.log(`? [FASE 1] Matches exatos encontrados: ${estatisticas.compativeis}`);
 
-    // --- FASE 2: COLETAR TODAS AS COMBINAÇÕES POSSÍVEIS (EXHAUSTIVE SEARCH) ---
-    this.logger.log(`?? [FASE 2] Iniciando BUSCA EXAUSTIVA de combinações...`);
-    this.logger.log(`   - Testando TODAS as viagens Transdata contra TODAS as viagens Globus (mesmo de linhas diferentes)`);
-    this.logger.log(`   - Objetivo: Encontrar o "Par Ideal" priorizando Serviço e Horário`);
-
-    // Casamento ótimo global (Hungarian) por grupos de serviço+sentido
-    {
-      const tdRestantes = viagensTransdata
-        .filter(t => !transdataProcessedIds.has(t.id.toString()))
-        .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
-
-      const gbRestantes = normalizedGlobusTrips
-        .filter(gw => !globusMatchedIds.has(gw.original.id))
-        .map(gw => ({ original: gw.original, norm: gw.normalized }));
-
-      const groupKey = (serv: string, sent: string) => `${serv}|${sent}`;
-      const gruposTd = new Map<string, Array<{ original: ViagemTransdata; norm: NormalizedTransDataTrip }>>();
-      for (const t of tdRestantes) {
-        const key = groupKey(t.norm.servico, t.norm.sentido);
-        const arr = gruposTd.get(key) || [];
-        arr.push(t); gruposTd.set(key, arr);
-      }
-      const gruposGb = new Map<string, Array<{ original: ViagemGlobus; norm: NormalizedGlobusTrip }>>();
-      for (const g of gbRestantes) {
-        const key = groupKey(g.norm.servico, g.norm.sentido);
-        const arr = gruposGb.get(key) || [];
-        arr.push(g); gruposGb.set(key, arr);
-      }
-
-      const MAX_TIME_WINDOW_MIN = PASS1_WINDOW_MIN;
-      const chaves = new Set<string>([...gruposTd.keys(), ...gruposGb.keys()]);
-      let matchesOtimos = 0;
-      for (const key of chaves) {
-        // Yield to event loop to prevent blocking
-        if (matchesOtimos % 5 === 0) await new Promise(resolve => setTimeout(resolve, 0));
-
-        const tdGroup = gruposTd.get(key) || [];
-        const gbGroup = gruposGb.get(key) || [];
-        if (tdGroup.length === 0 || gbGroup.length === 0) continue;
-
-        const cost = buildCostMatrix(tdGroup, gbGroup, (l, r) => {
-          const comb = compareTrips(l.norm, r.norm);
-          const diff = Math.abs(
-            new Date(`1970-01-01T${l.norm.horario}:00`).getTime() -
-            new Date(`1970-01-01T${r.norm.horario}:00`).getTime()
-          ) / (1000 * 60);
-          const base = (COMBINACAO_PRIORITY[comb] ?? 99) * 1000;
-          const time = isNaN(diff) ? 999 : diff;
-          const penalty = diff > MAX_TIME_WINDOW_MIN ? 100000 : 0;
-          return base + time + penalty;
-        });
-
-        const pairs = hungarian(cost);
-        for (const [i, j] of pairs) {
-          const tdW = tdGroup[i];
-          const gbW = gbGroup[j];
-          const diff = Math.abs(
-            new Date(`1970-01-01T${tdW.norm.horario}:00`).getTime() -
-            new Date(`1970-01-01T${gbW.norm.horario}:00`).getTime()
-          ) / (1000 * 60);
-          const comb = compareTrips(tdW.norm, gbW.norm);
-          if (diff > MAX_TIME_WINDOW_MIN || comb === CombinacaoComparacao.TUDO_DIFERENTE) continue;
-          if (!transdataProcessedIds.has(tdW.original.id.toString()) && !globusMatchedIds.has(gbW.original.id)) {
-            const status = this.determinarStatusComparacao(comb);
-            const obs = this.gerarObservacao(comb, tdW.norm, gbW.norm);
-            const comp = this.criarComparacaoDetalhada(dataReferencia, tdW.original, gbW.original, status, obs, comb);
-            todasComparacoes.push(comp);
-            transdataProcessedIds.add(tdW.original.id.toString());
-            globusMatchedIds.add(gbW.original.id);
-            matchesOtimos++;
-            estatisticas.matches++;
-            if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
-            else if (status === StatusComparacao.DIVERGENTE) estatisticas.divergentes++;
-            else if (status === StatusComparacao.COMPATIVEL) estatisticas.compativeis++;
-          }
-        }
-      }
-      this.logger.log(`[FASE 2/3] Matches completos via Hungarian: ${matchesOtimos}`);
-    }
-
-    // Passo adicional: casamento ?timo por (linha+sentido)
-    {
-      type TDWrap = { original: ViagemTransdata; norm: NormalizedTransDataTrip };
-      type GBWrap = { original: ViagemGlobus; norm: NormalizedGlobusTrip };
-
-      const tdRest = viagensTransdata
-        .filter(t => !transdataProcessedIds.has(t.id.toString()))
-        .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
-      const gbRest = normalizedGlobusTrips
-        .filter(gw => !globusMatchedIds.has(gw.original.id))
-        .map(gw => ({ original: gw.original, norm: gw.normalized }));
-
-      const key = (linha: string, sentido: string) => `${linha}|${sentido}`;
-      const mapTd = new Map<string, TDWrap[]>();
-      for (const t of tdRest) {
-        const k = key(t.norm.linha, t.norm.sentido);
-        const arr = mapTd.get(k) || [];
-        arr.push(t); mapTd.set(k, arr);
-      }
-      const mapGb = new Map<string, GBWrap[]>();
-      for (const g of gbRest) {
-        const k = key(g.norm.linha, g.norm.sentido);
-        const arr = mapGb.get(k) || [];
-        arr.push(g); mapGb.set(k, arr);
-      }
-
-      const allKeys = new Set<string>([...mapTd.keys(), ...mapGb.keys()]);
-      let matched = 0;
-      for (const k of allKeys) {
-        // Yield to event loop
-        if (matched % 5 === 0) await new Promise(resolve => setTimeout(resolve, 0));
-
-        const tdG = mapTd.get(k) || [];
-        const gbG = mapGb.get(k) || [];
-        if (tdG.length === 0 || gbG.length === 0) continue;
-
-        const cost = buildCostMatrix(tdG, gbG, (l, r) => {
-          const comb = compareTrips(l.norm, r.norm);
-          const diff = Math.abs(
-            new Date(`1970-01-01T${l.norm.horario}:00`).getTime() -
-            new Date(`1970-01-01T${r.norm.horario}:00`).getTime()
-          ) / (1000 * 60);
-          const base = (COMBINACAO_PRIORITY[comb] ?? 99) * 1000;
-          const time = isNaN(diff) ? 999 : diff;
-          const penalty = diff > PASS2_WINDOW_MIN ? 100000 : 0;
-          return base + time + penalty;
-        });
-
-        const pairs = hungarian(cost);
-        for (const [i, j] of pairs) {
-          const tdW = tdG[i];
-          const gbW = gbG[j];
-          const comb = compareTrips(tdW.norm, gbW.norm);
-          const diff = Math.abs(
-            new Date(`1970-01-01T${tdW.norm.horario}:00`).getTime() -
-            new Date(`1970-01-01T${gbW.norm.horario}:00`).getTime()
-          ) / (1000 * 60);
-          if (diff > PASS2_WINDOW_MIN || comb === CombinacaoComparacao.TUDO_DIFERENTE) continue;
-          if (!transdataProcessedIds.has(tdW.original.id.toString()) && !globusMatchedIds.has(gbW.original.id)) {
-            const status = this.determinarStatusComparacao(comb);
-            const obs = this.gerarObservacao(comb, tdW.norm, gbW.norm);
-            const comp = this.criarComparacaoDetalhada(dataReferencia, tdW.original, gbW.original, status, obs, comb);
-            todasComparacoes.push(comp);
-            transdataProcessedIds.add(tdW.original.id.toString());
-            globusMatchedIds.add(gbW.original.id);
-            matched++; estatisticas.matches++;
-            if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
-            else if (status === StatusComparacao.DIVERGENTE) estatisticas.divergentes++;
-            else if (status === StatusComparacao.COMPATIVEL) estatisticas.compativeis++;
-          }
-        }
-      }
-      this.logger.log(`[FASE 2/3-b] Matches (linha+sentido): ${matched}`);
-    }
-
-    // Passo adicional: casamento ?timo por (linha)
-    {
-      type TDWrap = { original: ViagemTransdata; norm: NormalizedTransDataTrip };
-      type GBWrap = { original: ViagemGlobus; norm: NormalizedGlobusTrip };
-
-      const tdRest = viagensTransdata
-        .filter(t => !transdataProcessedIds.has(t.id.toString()))
-        .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
-      const gbRest = normalizedGlobusTrips
-        .filter(gw => !globusMatchedIds.has(gw.original.id))
-        .map(gw => ({ original: gw.original, norm: gw.normalized }));
-
-      const key = (linha: string) => `${linha}`;
-      const mapTd = new Map<string, TDWrap[]>();
-      for (const t of tdRest) {
-        const k = key(t.norm.linha);
-        const arr = mapTd.get(k) || [];
-        arr.push(t); mapTd.set(k, arr);
-      }
-      const mapGb = new Map<string, GBWrap[]>();
-      for (const g of gbRest) {
-        const k = key(g.norm.linha);
-        const arr = mapGb.get(k) || [];
-        arr.push(g); mapGb.set(k, arr);
-      }
-
-      const allKeys = new Set<string>([...mapTd.keys(), ...mapGb.keys()]);
-      let matched = 0;
-      for (const k of allKeys) {
-        // Yield to event loop
-        if (matched % 5 === 0) await new Promise(resolve => setTimeout(resolve, 0));
-
-        const tdG = mapTd.get(k) || [];
-        const gbG = mapGb.get(k) || [];
-        if (tdG.length === 0 || gbG.length === 0) continue;
-
-        const cost = buildCostMatrix(tdG, gbG, (l, r) => {
-          const comb = compareTrips(l.norm, r.norm);
-          const diff = Math.abs(
-            new Date(`1970-01-01T${l.norm.horario}:00`).getTime() -
-            new Date(`1970-01-01T${r.norm.horario}:00`).getTime()
-          ) / (1000 * 60);
-          const base = (COMBINACAO_PRIORITY[comb] ?? 99) * 1000;
-          const time = isNaN(diff) ? 999 : diff;
-          const penalty = diff > PASS3_WINDOW_MIN ? 100000 : 0;
-          return base + time + penalty;
-        });
-
-        const pairs = hungarian(cost);
-        for (const [i, j] of pairs) {
-          const tdW = tdG[i];
-          const gbW = gbG[j];
-          const comb = compareTrips(tdW.norm, gbW.norm);
-          const diff = Math.abs(
-            new Date(`1970-01-01T${tdW.norm.horario}:00`).getTime() -
-            new Date(`1970-01-01T${gbW.norm.horario}:00`).getTime()
-          ) / (1000 * 60);
-          if (diff > PASS3_WINDOW_MIN || comb === CombinacaoComparacao.TUDO_DIFERENTE) continue;
-          if (!transdataProcessedIds.has(tdW.original.id.toString()) && !globusMatchedIds.has(gbW.original.id)) {
-            const status = this.determinarStatusComparacao(comb);
-            const obs = this.gerarObservacao(comb, tdW.norm, gbW.norm);
-            const comp = this.criarComparacaoDetalhada(dataReferencia, tdW.original, gbW.original, status, obs, comb);
-            todasComparacoes.push(comp);
-            transdataProcessedIds.add(tdW.original.id.toString());
-            globusMatchedIds.add(gbW.original.id);
-            matched++; estatisticas.matches++;
-            if (status === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
-            else if (status === StatusComparacao.DIVERGENTE) estatisticas.divergentes++;
-            else if (status === StatusComparacao.COMPATIVEL) estatisticas.compativeis++;
-          }
-        }
-      }
-      this.logger.log(`[FASE 2/3-c] Matches (linha): ${matched}`);
-    }
+    const columnsToCompare = ['linha', 'servico', 'sentido', 'horario'];
+    const tdLeftovers = viagensTransdata
+      .filter(t => !transdataProcessedIds.has(t.id.toString()))
+      .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
+    const gbLeftovers = normalizedGlobusTrips
+      .filter(gw => !globusMatchedIds.has(gw.original.id))
+      .map(gw => ({ original: gw.original, norm: gw.normalized }));
+    this.logger.log(`[FASE 2] Segunda comparacao entre sobras: ${tdLeftovers.length} Transdata / ${gbLeftovers.length} Globus usando colunas ${columnsToCompare.join(', ')}`);
+    const extraMatches = this.compareLeftovers(dataReferencia, tdLeftovers, gbLeftovers, transdataProcessedIds, globusMatchedIds);
+    for (const match of extraMatches) {
+      todasComparacoes.push(match);
+      estatisticas.matches++;
+      if (match.statusComparacao === StatusComparacao.COMPATIVEL) estatisticas.compativeis++;
+      else if (match.statusComparacao === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
+      else estatisticas.divergentes++;
+    }
+    if (extraMatches.length > 0) {
+      this.logger.log(`[FASE 2] Matches encontrados nessa segunda comparacao: ${extraMatches.length}`);
+    }
     // Greedy desativado ap?s Hungarian; manter estrutura vazia
     const potentialMatches: any[] = [];
     //       tdTrip: ViagemTransdata;
@@ -453,8 +243,85 @@ export class ComparacaoViagensService {
     //     }
     //     this.logger.log(`? [FASE 3] Matches realizados após análise exaustiva: ${matchesRealizados}`);
     // 
-    // --- FASE 4: REGISTRAR O QUE SOBROU (SEM PAR) ---
-    this.logger.log(`?? [FASE 4] Registrando viagens sem par (Divergentes Reais)...`);
+    // --- FASE 4: TENTAR PARES ENTRE "APENAS" (RELAXANDO REGRAS) ---
+    // Recalcula sobras após a segunda comparação
+    const tdRemaining = viagensTransdata
+      .filter(t => !transdataProcessedIds.has(t.id.toString()))
+      .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
+    const gbRemaining = normalizedGlobusTrips
+      .filter(gw => !globusMatchedIds.has(gw.original.id))
+      .map(gw => ({ original: gw.original, norm: gw.normalized }));
+
+    this.logger.log(`?? [FASE 4] Comparando apenas Transdata (${tdRemaining.length}) x apenas Globus (${gbRemaining.length})`);
+
+    const fase4Matches: ComparacaoViagem[] = [];
+
+    // Passo 4.1: linha+serviço (ignora sentido), janela PASS1_WINDOW_MIN
+    fase4Matches.push(
+      ...this.compareLeftoversRelaxed(
+        dataReferencia,
+        tdRemaining,
+        gbRemaining,
+        transdataProcessedIds,
+        globusMatchedIds,
+        (n) => `${this.normalizeLineForKey(n.linha)}|${n.servico}`,
+        PASS1_WINDOW_MIN,
+      )
+    );
+
+    // Passo 4.2: linha+sentido (ignora serviço), janela PASS2_WINDOW_MIN
+    // Recalcula arrays de sobras com os sets atualizados
+    const tdRemaining2 = viagensTransdata
+      .filter(t => !transdataProcessedIds.has(t.id.toString()))
+      .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
+    const gbRemaining2 = normalizedGlobusTrips
+      .filter(gw => !globusMatchedIds.has(gw.original.id))
+      .map(gw => ({ original: gw.original, norm: gw.normalized }));
+
+    fase4Matches.push(
+      ...this.compareLeftoversRelaxed(
+        dataReferencia,
+        tdRemaining2,
+        gbRemaining2,
+        transdataProcessedIds,
+        globusMatchedIds,
+        (n) => `${this.normalizeLineForKey(n.linha)}|${n.sentido}`,
+        PASS2_WINDOW_MIN,
+      )
+    );
+
+    // Passo 4.3: apenas linha, janela PASS3_WINDOW_MIN
+    const tdRemaining3 = viagensTransdata
+      .filter(t => !transdataProcessedIds.has(t.id.toString()))
+      .map(t => ({ original: t, norm: normalizeTransDataTrip(t) }));
+    const gbRemaining3 = normalizedGlobusTrips
+      .filter(gw => !globusMatchedIds.has(gw.original.id))
+      .map(gw => ({ original: gw.original, norm: gw.normalized }));
+
+    fase4Matches.push(
+      ...this.compareLeftoversRelaxed(
+        dataReferencia,
+        tdRemaining3,
+        gbRemaining3,
+        transdataProcessedIds,
+        globusMatchedIds,
+        (n) => `${this.normalizeLineForKey(n.linha)}`,
+        PASS3_WINDOW_MIN,
+      )
+    );
+
+    for (const match of fase4Matches) {
+      todasComparacoes.push(match);
+      estatisticas.matches++;
+      if (match.statusComparacao === StatusComparacao.COMPATIVEL) estatisticas.compativeis++;
+      else if (match.statusComparacao === StatusComparacao.HORARIO_DIVERGENTE) estatisticas.horarioDivergente++;
+      else estatisticas.divergentes++;
+    }
+
+    this.logger.log(`? [FASE 4] Matches adicionais entre 'apenas' encontrados: ${fase4Matches.length}`);
+
+    // --- FASE 5: REGISTRAR O QUE SOBROU (SEM PAR) ---
+    this.logger.log(`?? [FASE 5] Registrando viagens sem par (Divergentes Reais)...`);
     for (const viagemTd of viagensTransdata) {
       if (!transdataProcessedIds.has(viagemTd.id.toString())) {
         estatisticas.apenasTransdata++;
@@ -469,7 +336,7 @@ export class ComparacaoViagensService {
         todasComparacoes.push(this.criarComparacaoApenasGlobus(dataReferencia, viagemGb));
       }
     }
-    this.logger.log(`? [FASE 3] Viagens apenas Transdata: ${estatisticas.apenasTransdata}, apenas Globus: ${estatisticas.apenasGlobus}`);
+    this.logger.log(`? [FASE 5] Viagens apenas Transdata: ${estatisticas.apenasTransdata}, apenas Globus: ${estatisticas.apenasGlobus}`);
 
     await this.salvarComparacoes(todasComparacoes);
     this.logger.log(`?? ${todasComparacoes.length} comparações salvas.`);
@@ -575,6 +442,120 @@ export class ComparacaoViagensService {
     return comparacao;
   }
 
+  private compareLeftovers(
+    dataReferencia: string,
+    transLeft: Array<{ original: ViagemTransdata; norm: NormalizedTransDataTrip }>,
+    globusLeft: Array<{ original: ViagemGlobus; norm: NormalizedGlobusTrip }>,
+    transdataProcessedIds: Set<string>,
+    globusMatchedIds: Set<string>,
+  ): ComparacaoViagem[] {
+    if (transLeft.length === 0 || globusLeft.length === 0) return [];
+    const matches: ComparacaoViagem[] = [];
+    const buckets = new Map<string, Array<{ original: ViagemGlobus; norm: NormalizedGlobusTrip }>>();
+    for (const gb of globusLeft) {
+      const key = `${gb.norm.linha}|${gb.norm.servico}|${gb.norm.sentido}`;
+      const arr = buckets.get(key) || [];
+      arr.push(gb);
+      buckets.set(key, arr);
+    }
+    for (const td of transLeft) {
+      if (transdataProcessedIds.has(td.original.id.toString())) continue;
+      const key = `${td.norm.linha}|${td.norm.servico}|${td.norm.sentido}`;
+      const candidates = buckets.get(key) || [];
+      let chosen: typeof candidates[number] | null = null;
+      let bestDiff = Number.POSITIVE_INFINITY;
+      for (const candidate of candidates) {
+        if (globusMatchedIds.has(candidate.original.id)) continue;
+        const diff = this.computeMinuteDiff(td.norm.horario, candidate.norm.horario);
+        if (Number.isNaN(diff)) continue;
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          chosen = candidate;
+        }
+      }
+      if (!chosen) continue;
+
+      // Na fase relaxada, compara ignorando zeros à esquerda nas linhas
+      const tdAdj = { ...td.norm, linha: this.normalizeLineForKey(td.norm.linha) } as NormalizedTransDataTrip;
+      const gbAdj = { ...chosen.norm, linha: this.normalizeLineForKey(chosen.norm.linha) } as NormalizedGlobusTrip;
+      const comb = compareTrips(tdAdj, gbAdj);
+      const status = this.determinarStatusComparacao(comb);
+      const obs = this.gerarObservacao(comb, td.norm, chosen.norm);
+      const comparacao = this.criarComparacaoDetalhada(dataReferencia, td.original, chosen.original, status, obs, comb);
+      matches.push(comparacao);
+      transdataProcessedIds.add(td.original.id.toString());
+      globusMatchedIds.add(chosen.original.id);
+    }
+    return matches;
+  }
+
+  private computeMinuteDiff(a: string, b: string): number {
+    if (!a || !b) return Number.NaN;
+    const t1 = new Date(`1970-01-01T${a}:00`);
+    const t2 = new Date(`1970-01-01T${b}:00`);
+    if (Number.isNaN(t1.getTime()) || Number.isNaN(t2.getTime())) return Number.NaN;
+    return Math.abs(t1.getTime() - t2.getTime()) / (1000 * 60);
+  }
+
+  private compareLeftoversRelaxed(
+    dataReferencia: string,
+    transLeft: Array<{ original: ViagemTransdata; norm: NormalizedTransDataTrip }>,
+    globusLeft: Array<{ original: ViagemGlobus; norm: NormalizedGlobusTrip }>,
+    transdataProcessedIds: Set<string>,
+    globusMatchedIds: Set<string>,
+    groupKeyFn: (n: NormalizedGlobusTrip | NormalizedTransDataTrip) => string,
+    maxTimeWindowMin: number,
+  ): ComparacaoViagem[] {
+    if (transLeft.length === 0 || globusLeft.length === 0) return [];
+    const matches: ComparacaoViagem[] = [];
+
+    // Bucketize Globus by the chosen grouping key
+    const buckets = new Map<string, Array<{ original: ViagemGlobus; norm: NormalizedGlobusTrip }>>();
+    for (const gb of globusLeft) {
+      const key = groupKeyFn(gb.norm);
+      const arr = buckets.get(key) || [];
+      arr.push(gb);
+      buckets.set(key, arr);
+    }
+
+    for (const td of transLeft) {
+      if (transdataProcessedIds.has(td.original.id.toString())) continue;
+      const key = groupKeyFn(td.norm);
+      const candidates = buckets.get(key) || [];
+
+      let chosen: typeof candidates[number] | null = null;
+      let bestDiff = Number.POSITIVE_INFINITY;
+
+      for (const candidate of candidates) {
+        if (globusMatchedIds.has(candidate.original.id)) continue;
+        const diff = this.computeMinuteDiff(td.norm.horario, candidate.norm.horario);
+        if (Number.isNaN(diff)) continue;
+        if (diff <= maxTimeWindowMin && diff < bestDiff) {
+          bestDiff = diff;
+          chosen = candidate;
+        }
+      }
+
+      if (!chosen) continue;
+
+      const comb = compareTrips(td.norm, chosen.norm);
+      const status = this.determinarStatusComparacao(comb);
+      const obs = this.gerarObservacao(comb, td.norm, chosen.norm);
+      const comparacao = this.criarComparacaoDetalhada(dataReferencia, td.original, chosen.original, status, obs, comb);
+      matches.push(comparacao);
+      transdataProcessedIds.add(td.original.id.toString());
+      globusMatchedIds.add(chosen.original.id);
+    }
+
+    return matches;
+  }
+
+  private normalizeLineForKey(value: string): string {
+    const digits = String(value || '').replace(/[^0-9]/g, '');
+    const noLead = digits.replace(/^0+/, '');
+    return noLead.length > 0 ? noLead : '0';
+  }
+
   private criarComparacaoApenasTransdata(dataReferencia: string, transdata: ViagemTransdata): ComparacaoViagem {
     const comparacao = new ComparacaoViagem();
     const normTd = normalizeTransDataTrip(transdata);
@@ -621,7 +602,7 @@ export class ComparacaoViagensService {
       },
       select: [
         'id', 'codigoLinha', 'NomeLinha', 'Servico', 'SentidoText',
-        'InicioPrevisto', 'InicioRealizadoText', 'statusCumprimento'
+        'InicioPrevistoText', 'InicioRealizadoText', 'statusCumprimento'
       ]
     });
   }
