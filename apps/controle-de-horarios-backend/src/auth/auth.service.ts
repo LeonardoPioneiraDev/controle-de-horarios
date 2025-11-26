@@ -20,11 +20,11 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private emailService: EmailService,
-  ) {}
+  ) { }
 
   async login(loginDto: LoginDto): Promise<{ access_token: string; refresh_token: string; user: Partial<User> }> {
     const { email, password } = loginDto;
-    
+
     console.log(`🔐 [AUTH] Tentativa de login para: ${email}`);
     console.log(`🔐 [AUTH] Dados recebidos: email=${email}, password=${password ? 'presente' : 'ausente'}`);
 
@@ -99,20 +99,20 @@ export class AuthService {
 
   async logout(userId: string): Promise<{ message: string }> {
     console.log(`🚪 [AUTH] Logout para usuário ID: ${userId}`);
-    
+
     // Aqui você pode implementar invalidação de tokens se necessário
     // Por exemplo, adicionar o token a uma blacklist
-    
+
     return { message: 'Logout realizado com sucesso' };
   }
 
   async validateJwtPayload(payload: JwtPayload): Promise<User> {
     console.log(`🔍 [AUTH] Validando JWT payload para: ${payload.email} (ID: ${payload.sub})`);
-    
+
     try {
       console.log(`🔍 [AUTH] Payload SUB: "${payload.sub}" (Length: ${payload.sub.length})`);
       const user = await this.usersService.findOne(payload.sub);
-      
+
       if (!user) {
         console.log(`❌ [AUTH] Usuário não encontrado no JWT: ${payload.sub}`);
         throw new UnauthorizedException('Usuário não encontrado');
@@ -125,7 +125,7 @@ export class AuthService {
       }
 
       console.log(`✅ [AUTH] JWT válido para: ${payload.email} - Role: ${user.role}`);
-      
+
       return user;
     } catch (error) {
       console.log(`❌ [AUTH] Erro na validação do JWT: ${error.message}`);
@@ -186,7 +186,7 @@ export class AuthService {
     try {
       // ✅ CORRIGIDO: Buscar usuário pelo token
       const user = await this.usersService.findByResetToken(token);
-      
+
       if (!user) {
         console.log(`❌ [AUTH] Token de reset não encontrado: ${token.substring(0, 8)}...`);
         throw new BadRequestException('Token de reset inválido ou expirado');
@@ -216,7 +216,7 @@ export class AuthService {
 
     try {
       const user = await this.usersService.findByResetToken(token);
-      
+
       if (!user) {
         console.log(`❌ [AUTH] Token não encontrado: ${token.substring(0, 8)}...`);
         return { valid: false, message: 'Token inválido' };
@@ -268,6 +268,39 @@ export class AuthService {
       usersByRole: userStats.byRole,
       timestamp: new Date().toISOString(),
     };
+  }
+
+  // ✅ AUTOLOGIN - Login automático via token único
+  async autoLogin(token: string): Promise<{ access_token: string; refresh_token: string; user: Partial<User> }> {
+    console.log(`🔐 [AUTOLOGIN] Tentativa de autologin com token: ${token.substring(0, 8)}...`);
+
+    try {
+      // Buscar usuário pelo token de autologin
+      const user = await this.usersService.findByAutoLoginToken(token);
+
+      if (!user) {
+        console.log(`❌ [AUTOLOGIN] Token inválido ou autologin desabilitado`);
+        throw new UnauthorizedException('Token de autologin inválido');
+      }
+
+      console.log(`✅ [AUTOLOGIN] Usuário encontrado: ${user.email} - Role: ${user.role}`);
+
+      // Atualizar último login
+      await this.usersService.updateLastLogin(user.id);
+
+      // Gerar tokens JWT
+      const tokens = await this.generateTokens(user);
+
+      console.log(`🎫 [AUTOLOGIN] Tokens gerados para: ${user.email}`);
+
+      return {
+        ...tokens,
+        user: this.sanitizeUser(user),
+      };
+    } catch (error) {
+      console.log(`❌ [AUTOLOGIN] Erro no autologin: ${error.message}`);
+      throw error;
+    }
   }
 
   // ===============================================

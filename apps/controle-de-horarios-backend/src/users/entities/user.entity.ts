@@ -62,42 +62,42 @@ export class User {
   @Column({ type: 'boolean', default: false, name: 'email_verified' })
   emailVerified: boolean;
 
-  @Column({ 
-    type: 'varchar', 
-    length: 255, 
+  @Column({
+    type: 'varchar',
+    length: 255,
     nullable: true,
     name: 'email_verification_token'
   })
   @Exclude()
   emailVerificationToken: string;
 
-  @Column({ 
-    type: 'varchar', 
-    length: 255, 
+  @Column({
+    type: 'varchar',
+    length: 255,
     nullable: true,
     name: 'temp_password'
   })
   @Exclude()
   tempPassword: string;
 
-  @Column({ 
-    type: 'timestamp', 
+  @Column({
+    type: 'timestamp',
     nullable: true,
     name: 'temp_password_expires'
   })
   tempPasswordExpires: Date;
 
-  @Column({ 
-    type: 'varchar', 
-    length: 255, 
+  @Column({
+    type: 'varchar',
+    length: 255,
     nullable: true,
     name: 'password_reset_token'
   })
   @Exclude()
   passwordResetToken: string;
 
-  @Column({ 
-    type: 'timestamp', 
+  @Column({
+    type: 'timestamp',
     nullable: true,
     name: 'password_reset_expires'
   })
@@ -107,8 +107,8 @@ export class User {
   @Column({ type: 'boolean', default: true, name: 'first_login' })
   firstLogin: boolean;
 
-  @Column({ 
-    type: 'timestamp', 
+  @Column({
+    type: 'timestamp',
     nullable: true,
     name: 'last_login'
   })
@@ -118,13 +118,26 @@ export class User {
   @Exclude()
   loginAttempts: number;
 
-  @Column({ 
-    type: 'timestamp', 
+  @Column({
+    type: 'timestamp',
     nullable: true,
     name: 'locked_until'
   })
   @Exclude()
   lockedUntil: Date;
+
+  @Column({ type: 'boolean', default: false, name: 'auto_login_enabled' })
+  autoLoginEnabled: boolean;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    unique: true,
+    name: 'auto_login_token'
+  })
+  @Exclude()
+  autoLoginToken: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -185,7 +198,7 @@ export class User {
 
   incrementLoginAttempts(): void {
     this.loginAttempts += 1;
-    
+
     // Bloquear após 5 tentativas por 15 minutos
     if (this.loginAttempts >= 5) {
       this.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
@@ -209,17 +222,22 @@ export class User {
   canManageUser(targetUser: User): boolean {
     // Administrador pode gerenciar todos
     if (this.role === UserRole.ADMINISTRADOR) return true;
-    
+
     // Diretor pode gerenciar todos exceto administrador
     if (this.role === UserRole.DIRETOR) {
       return targetUser.role !== UserRole.ADMINISTRADOR;
     }
-    
+
     // Gerente pode gerenciar analista, operador e operador CCO
     if (this.role === UserRole.GERENTE) {
       return [UserRole.ANALISTA, UserRole.OPERADOR, UserRole.OPERADOR_CCO].includes(targetUser.role);
     }
-    
+
     return false;
+  }
+
+  generateAutoLoginToken(): string {
+    const crypto = require('crypto');
+    return crypto.randomBytes(32).toString('hex');
   }
 }

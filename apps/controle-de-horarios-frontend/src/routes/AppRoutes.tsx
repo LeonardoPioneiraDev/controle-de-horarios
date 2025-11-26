@@ -17,12 +17,14 @@ import ComparacaoViagens from '../pages/viagens/ComparacaoViagens';
 import HistoricoComparacoes from '../pages/viagens/HistoricoComparacoes';
 import { ControleHorariosPage } from '../pages/controle-horarios/ControleHorariosPage';
 import { UserRole } from '../types/user.types';
+import AutoLogin from '../pages/AutoLogin';
 
 export const AppRoutes: React.FC = () => {
     return (
         <Routes>
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/autologin/:token" element={<AutoLogin />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/reset-password/confirm" element={<SetPassword />} />
             <Route path="/first-login" element={<SetPassword />} />

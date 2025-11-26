@@ -9,10 +9,10 @@ export class AuthService extends BaseApiService {
 
   async login(credentials: LoginRequest): Promise<LoginResponse> {
     console.log('🔑 Iniciando login...');
-    
+
     try {
       const response = await this.api.post<LoginResponse>('/auth/login', credentials);
-      
+
       // ✅ ADICIONADO: Log detalhado da resposta
       console.log('📦 [AUTH] Resposta bruta do backend:', {
         status: response.status,
@@ -24,7 +24,7 @@ export class AuthService extends BaseApiService {
         hasUser: !!(response.data as any)?.user,
         fullResponse: JSON.stringify(response.data, null, 2)
       });
-      
+
       console.log('✅ Login realizado com sucesso');
       return response.data;
     } catch (error) {
@@ -80,6 +80,13 @@ export class AuthService extends BaseApiService {
     console.log(`🔄 Solicitando reset de senha para: ${email}`);
     const response = await this.api.post('/auth/forgot-password', { email });
     console.log('✅ Solicitação de reset enviada');
+    return response.data;
+  }
+
+  async autoLogin(token: string): Promise<LoginResponse> {
+    console.log(`🔐 Tentando autologin com token: ${token.substring(0, 8)}...`);
+    const response = await this.api.get<LoginResponse>(`/auth/autologin/${token}`);
+    console.log('✅ Autologin realizado com sucesso');
     return response.data;
   }
 }

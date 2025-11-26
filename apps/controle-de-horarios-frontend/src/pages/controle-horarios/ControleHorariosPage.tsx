@@ -4,7 +4,7 @@ import { UserRole, canSyncControleHorarios, canEditControleHorarios } from '../.
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { useControleHorarios } from './hooks/useControleHorarios';
 import { FiltersPanel } from './components/FiltersPanel/FiltersPanel';
-// import { HistoryDrawerList } from './components/HistoryDrawerList/HistoryDrawerList';
+import { HistoryDrawerList } from './components/HistoryDrawerList/HistoryDrawerList';
 import { DataTable } from './components/DataTable';
 import { FloatingActionButton } from './components/FloatingActionButton/FloatingActionButton';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
@@ -593,7 +593,7 @@ export const ControleHorariosPage: React.FC = () => {
             <p className="text-gray-700 dark:text-gray-400 text-lg">Nenhuma viagem encontrada</p>
           </div>
         )}
-        {/* <HistoryDrawerList open={showHistorico} date={dataReferencia} filtros={filtros} onClose={() => setShowHistorico(false)} /> */}
+        <HistoryDrawerList open={showHistorico} date={dataReferencia} filtros={filtros} onClose={() => setShowHistorico(false)} />
 
         {/* Relatório - preview simples */}
         {showReport && (

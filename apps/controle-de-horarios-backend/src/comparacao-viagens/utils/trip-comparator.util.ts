@@ -15,29 +15,6 @@ const SENTIDO_MAP: { [key: string]: string } = {
   'CIRCULAR': 'IDA', // Map Transdata's 'CIRCULAR' to 'IDA' for comparison if that's the rule
 };
 
-// Exceções específicas de equivalência de linha entre fontes
-// Ex.: Transdata "0181" ≡ Globus "00181"
-const LINE_EQUIVALENT_PAIRS: Array<[string, string]> = [
-  ['0181', '00181'],
-  ['0202', '00202'],
-];
-
-const LINE_EQUIVALENCE: Map<string, Set<string>> = new Map();
-for (const [a, b] of LINE_EQUIVALENT_PAIRS) {
-  const A = a.replace(/[^0-9]/g, '');
-  const B = b.replace(/[^0-9]/g, '');
-  if (!LINE_EQUIVALENCE.has(A)) LINE_EQUIVALENCE.set(A, new Set());
-  if (!LINE_EQUIVALENCE.has(B)) LINE_EQUIVALENCE.set(B, new Set());
-  LINE_EQUIVALENCE.get(A)!.add(B);
-  LINE_EQUIVALENCE.get(B)!.add(A);
-}
-
-function areLinesEquivalent(a: string, b: string): boolean {
-  if (a === b) return true;
-  const eq = LINE_EQUIVALENCE.get(a);
-  return !!(eq && eq.has(b));
-}
-
 // Interface para os dados normalizados de TransData
 export interface NormalizedTransDataTrip {
   linha: string;
@@ -78,29 +55,15 @@ export interface OracleGlobusData {
 
 // Função para normalizar os dados da TransData
 export function normalizeTransDataTrip(transDataTrip: any): NormalizedTransDataTrip {
-  // NomeLinha pode vir como: "100.0 - Itapoã Parque  Paranoá ..."
-  // Regra: considerar apenas os números do prefixo (antes do hífen), ignorando ponto, espaços e '-'
-  const nomeLinha: string = String(transDataTrip.NomeLinha || '');
-  const prefixo = nomeLinha.includes('-') ? nomeLinha.split('-')[0] : nomeLinha.split(' ')[0] || nomeLinha;
-  const prefixoTrim = String(prefixo || '').trim().replace(/\s+/g, '');
-  let linhaRaw = '';
-  if (prefixoTrim.startsWith('0.181')) {
-    linhaRaw = '0181';
-  } else if (prefixoTrim.startsWith('018.1')) {
-    linhaRaw = '00181';
-  } else {
-    linhaRaw = String(prefixo || '').replace(/[^0-9]/g, '');
-  }
-  if (!linhaRaw) {
-    // fallback: usar codigoLinha se disponível
-    linhaRaw = String(transDataTrip.codigoLinha || '').replace(/[^0-9]/g, '');
-  }
-  const linha = linhaRaw; // preservar zeros à esquerda
+  const match = transDataTrip.NomeLinha.match(/^(\d+(\.\d+)?)/);
+  let linha = match ? match[1] : ''; // Get "0.018" or "018.1"
+  linha = linha.replace(/\./g, '').trim(); // Remove dots and trim: "0018" or "0181"
+  linha = String(parseInt(linha, 10)); // Convert to int, then back to string to remove leading zeros
 
-  const sentido = SENTIDO_MAP[String(transDataTrip.SentidoText || '').toUpperCase()] || String(transDataTrip.SentidoText || '').toUpperCase();
-  const servico = String(parseInt(String(transDataTrip.Servico ?? transDataTrip.codServicoNumero ?? ''), 10));
+  const sentido = SENTIDO_MAP[transDataTrip.SentidoText.toUpperCase()] || transDataTrip.SentidoText.toUpperCase();
+  const servico = String(parseInt(transDataTrip.Servico, 10));
   // Extrai HH:mm de uma string de data/hora como "26/10/2025 15:40:00"
-  const horario = String(transDataTrip.InicioPrevisto || '').split(' ')[1]?.substring(0, 5) || '';
+  const horario = transDataTrip.InicioPrevisto.split(' ')[1]?.substring(0, 5) || '';
 
   return {
     linha,
@@ -124,7 +87,8 @@ export function normalizeGlobusTrip(globusTrip: ControleHorario | OracleGlobusDa
     // ✅ Dados Oracle (campos em maiúsculo)
     const oracleData = globusTrip as OracleGlobusData;
     logger.debug(`[normalizeGlobusTrip] Oracle Data - HOR_SAIDA: ${oracleData.HOR_SAIDA}`);
-    linha = String(oracleData.CODIGOLINHA || '').replace(/[^0-9]/g, '').trim(); // preservar zeros à esquerda
+    linha = String(oracleData.CODIGOLINHA || '').replace(/[^0-9]/g, '').trim();
+    linha = String(parseInt(linha, 10)); // Convert to int, then back to string to remove leading zeros
     sentido = SENTIDO_MAP[String(oracleData.FLG_SENTIDO || '').toUpperCase()] || String(oracleData.FLG_SENTIDO || '').toUpperCase();
     servico = String(parseInt(String(oracleData.COD_SERVICO_NUMERO || '').replace(/[^0-9]/g, ''), 10));
     
@@ -141,7 +105,8 @@ export function normalizeGlobusTrip(globusTrip: ControleHorario | OracleGlobusDa
     const dtoData = globusTrip as ViagemGlobus; // Cast to ViagemGlobus directly as it's the entity
     logger.debug(`[normalizeGlobusTrip] DTO Data - horSaida: ${dtoData.horSaida}, horSaidaTime: ${dtoData.horSaidaTime}`);
 
-    linha = String(dtoData.codigoLinha || '').replace(/[^0-9]/g, '').trim(); // preservar zeros à esquerda
+    linha = String(dtoData.codigoLinha || '').replace(/[^0-9]/g, '').trim();
+    linha = String(parseInt(linha, 10)); // Convert to int, then back to string to remove leading zeros
     sentido = SENTIDO_MAP[String(dtoData.flgSentido || '').toUpperCase()] || String(dtoData.flgSentido || '').toUpperCase();
     servico = String(parseInt(String(dtoData.codServicoNumero || '').replace(/[^0-9]/g, ''), 10));
 
@@ -169,36 +134,15 @@ export function compareTrips(
   transDataTrip: NormalizedTransDataTrip,
   globusTrip: NormalizedGlobusTrip,
 ): CombinacaoComparacao {
-  const onlyDigits = (s: string) => String(s || '').replace(/[^0-9]/g, '');
-  // Regra: não comparar linhas diferentes. Se as linhas (apenas dígitos) forem diferentes, tratar como TUDO_DIFERENTE
-  const tdLine = onlyDigits(transDataTrip.linha);
-  const gbLine = onlyDigits(globusTrip.linha);
-  if (!areLinesEquivalent(tdLine, gbLine)) {
-    return CombinacaoComparacao.TUDO_DIFERENTE;
-  }
-  const lineVariants = (s: string): Set<string> => {
-    const variants = new Set<string>();
-    const d = onlyDigits(s);
-    if (d) variants.add(d);
-    // Variante 1: remover um zero final (ex.: 1470 -> 147, 1000 -> 100)
-    if (d && d.endsWith('0') && d.length > 1) variants.add(d.slice(0, -1));
-    // Variante 2: adicionar um zero se até 3 dígitos (ex.: 147 -> 1470, 100 -> 1000)
-    if (d && d.length <= 3) variants.add(d + '0');
-    return variants;
-  };
-  const linhaIgual = true; // Já validado por areLinesEquivalent(tdLine, gbLine)
+  const linhaIgual = transDataTrip.linha === globusTrip.linha;
   const sentidoIgual = transDataTrip.sentido === globusTrip.sentido;
   const servicoIgual = transDataTrip.servico === globusTrip.servico;
   const diffHorario = Math.abs(
     (new Date(`1970-01-01T${transDataTrip.horario}:00`).getTime()) -
     (new Date(`1970-01-01T${globusTrip.horario}:00`).getTime())
   ) / (1000 * 60);
-  const TIME_EQUAL_MIN = Number.isFinite(parseInt(process.env.COMPARE_TIME_EQUAL_MIN || '', 10))
-    ? parseInt(process.env.COMPARE_TIME_EQUAL_MIN!, 10)
-    : 2;
-  const horarioIgual = diffHorario <= TIME_EQUAL_MIN; // Consider times equal if within threshold
+  const horarioIgual = diffHorario <= 1; // Consider times equal if within 2 minutes
 
-  // Regra: para match 100%, exigir linha + serviço + sentido + horário iguais
   if (linhaIgual && sentidoIgual && servicoIgual && horarioIgual) {
     return CombinacaoComparacao.TUDO_IGUAL; // 1
   } else if (linhaIgual && sentidoIgual && servicoIgual && !horarioIgual) {

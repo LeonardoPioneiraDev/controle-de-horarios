@@ -102,9 +102,9 @@ export const UserModal: React.FC<UserModalProps> = ({
       newErrors.email = 'E-mail é obrigatório';
     } else if (!formData.email.includes('@')) {
       newErrors.email = 'E-mail inválido';
-    } else if (!formData.email.endsWith('@vpioneira.com.br')) {
-      newErrors.email = 'E-mail deve ser do domínio @vpioneira.com.br';
-    }
+    } //se if (!formData.email.endsWith('@vpioneira.com.br')) {
+     //ewErrors.email = 'E-mail deve ser do domínio @vpioneira.com.br';
+    //
 
     // Validação de nome
     if (!formData.firstName.trim()) {

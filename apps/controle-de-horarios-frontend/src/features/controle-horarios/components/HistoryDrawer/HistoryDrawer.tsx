@@ -115,4 +115,3 @@ export const HistoryDrawer: React.FC<HistoryDrawerProps> = ({ open, itemId, onCl
     </div>
   );
 };
-

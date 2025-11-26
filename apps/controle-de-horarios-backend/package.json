@@ -23,7 +23,8 @@
     "migration:run": "npm run typeorm -- migration:run -d src/database/data-source.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d src/database/data-source.ts",
     "migration:show:status": "npm run typeorm -- migration:show -d src/database/data-source.ts",
-    "seed:admin": "ts-node src/database/seeds/admin.seed.ts"
+    "seed:admin": "ts-node src/database/seeds/admin.seed.ts",
+    "seed:diretor": "ts-node -r tsconfig-paths/register src/database/seeds/create-diretor-user.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.0.0",

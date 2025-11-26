@@ -35,7 +35,7 @@ export class ViagemTransdata {
   ultimaSincronizacao: Date;
 
   // ✅ CAMPOS EXTRAÍDOS/CALCULADOS
-  @Column({ type: 'varchar', length: 10, nullable: true, name: 'codigoLinha' }) // ✅ CORRIGIDO: Especificar nome da coluna
+  @Column({ type: 'varchar', length: 20, nullable: true, name: 'codigoLinha' }) // ✅ CORRIGIDO: Especificar nome da coluna
   codigoLinha: string; // Primeiros 6 dígitos da linha
 
   @Column({ type: 'varchar', length: 50, nullable: true, default: 'PENDENTE', name: 'statusCumprimento' })

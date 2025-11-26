@@ -29,7 +29,7 @@ const Header: FC<HeaderProps> = ({ sidebarOpen, setSidebarOpen, isSidebarExpande
       <div className="h-full flex items-center justify-between sm:grid sm:grid-cols-3">
         {/* Left: Logo + Empresa */}
         <div className="flex items-center justify-start gap-2">
-          <img src={logo} alt="Viação Pioneira" className="h-8 w-8 rounded-full ring-1 ring-gray-200 dark:ring-yellow-400/30 bg-white" />
+          <img src={logo} alt="Viação Pioneira" className="h-8 w-8 rounded-full ring-1 ring-gray-200 dark:ring-yellow-400/30 bg-white dark:bg-black" />
           <span className="hidden text-sm font-semibold text-gray-700 dark:text-yellow-300 sm:block sm:text-base">Viação Pioneira Ltda</span>
         </div>
 
