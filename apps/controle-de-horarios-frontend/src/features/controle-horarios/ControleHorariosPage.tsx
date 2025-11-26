@@ -151,7 +151,7 @@ export const ControleHorariosPage: React.FC = () => {
       String(v ?? '').replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]!));
     const items = Array.isArray(sortedControleHorarios) ? sortedControleHorarios : [];
 
-    const logoBase64 =  '../assets/logo.png'
+    const logoBase64 = '../assets/logo.png'
 
     const renderAdjustedTime = (originalTime?: string, adjustedTime?: string) => {
       if (!adjustedTime) {
@@ -219,16 +219,16 @@ export const ControleHorariosPage: React.FC = () => {
     .report-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #fbcc2c; padding-bottom: 16px; margin-bottom: 16px; }
     .report-header .title-block { text-align: right; }
     h1 { margin: 0 0 4px; color: #1a1a1a; font-size: 28px; }
-    .muted { color: #555; font-size: 14px; }
-    .tags-container { margin: 20px 0; padding: 12px; background-color: #f8f9fa; border-radius: 6px; }
+    .muted { color: #333; font-size: 14px; }
+    .tags-container { margin: 20px 0; padding: 12px; background-color: #f0f0f0; border-radius: 6px; }
     .tags { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
     .tags b { font-weight: 500; }
-    .tag { padding: 5px 12px; border-radius: 15px; font-size: 12px; background-color: #e9ecef; color: #495057; }
+    .tag { padding: 5px 12px; border-radius: 15px; font-size: 12px; background-color: #e0e0e0; color: #333; }
     .tag b { color: #000; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { border: 1px solid #dee2e6; padding: 10px 12px; text-align: left; vertical-align: middle; }
-    thead th { background: #343a40; color: #fff; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-    tbody tr:nth-child(even) { background-color: #f8f9fa; }
+    th, td { border: 1px solid #c0c0c0; padding: 10px 12px; text-align: left; vertical-align: middle; }
+    thead th { background: #495057; color: #fff; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    tbody tr:nth-child(even) { background-color: #f0f0f0; }
     tbody tr:hover { background-color: #e9ecef; }
     tfoot td { background: #e9ecef; font-weight: 700; }
     .row-warning { background-color: #fff3cd; }
@@ -237,7 +237,7 @@ export const ControleHorariosPage: React.FC = () => {
     .cell-adjusted .original { text-decoration: line-through; color: #6c757d; }
     .cell-adjusted .adjusted { font-weight: bold; color: #28a745; }
     .center { text-align: center; }
-    .cracha, .setor { font-size: 0.9em; color: #6c757d; }
+    .cracha, .setor { font-size: 0.9em; color: #495057; }
     @media print { 
       body { margin: 0; font-size: 10px; } 
       .container { box-shadow: none; margin: 0; padding: 10px; border-radius: 0; }
@@ -388,51 +388,51 @@ export const ControleHorariosPage: React.FC = () => {
   const shouldApplyZoom = isTableFullScreen && windowWidth <= 1390 && windowHeight <= 1900;
 
   return (
-    <div className="space-y-6 p-4 md:p-6 min-h-screen bg-gradient-to-br from-black via-neutral-900 to-yellow-950 text-gray-100">
+    <div className="space-y-4 md:space-y-6 p-2 md:p-6 min-h-screen bg-gray-100 dark:bg-gradient-to-br dark:from-black dark:via-neutral-900 dark:to-yellow-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
       <div className="max-w-[1400px] mx-auto">
-        <Card className="relative border border-yellow-400/20">
-          <CardHeader className="pb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold">Controle de Horários</h1>
-            <p className="mt-1 text-sm text-gray-400">Gerencie e edite os horários das viagens</p>
+        <Card className="relative border border-gray-300 dark:border-yellow-400/20 bg-white dark:bg-gray-900 shadow-md dark:shadow-none">
+          <CardHeader className="pb-4 border-b border-gray-400 dark:border-yellow-400/10">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Controle de Horários</h1>
+            <p className="mt-1 text-sm text-gray-700 dark:text-gray-400">Gerencie e edite os horários das viagens</p>
           </CardHeader>
-          <CardContent className="pt-4">
+          <CardContent className="pt-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
               <div className="flex items-center gap-3">
-                <Label htmlFor="date-picker">Data de referência</Label>
+                <Label htmlFor="date-picker" className="text-gray-800 dark:text-gray-300 font-medium">Data de referência</Label>
                 <div className="relative w-full sm:w-56">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500 dark:text-gray-400" />
                   <Input
                     id="date-picker"
                     type="date"
                     value={dataReferencia}
                     onChange={(e) => setDataReferencia(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 bg-white dark:bg-gray-800 border-gray-500 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:border-yellow-500 focus:ring-yellow-500"
                   />
                 </div>
-                
+
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => setShowFilters((v) => !v)}>
+                <Button variant="outline" onClick={() => setShowFilters((v) => !v)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
                   Filtros
                 </Button>
-                <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }}>
+                <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
                   Limpar Filtros
                 </Button>
                 <select
-                  className="border border-gray-700 bg-transparent rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent min-w-[180px]"
+                  className="border border-gray-500 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent min-w-[180px]"
                   onChange={(e) => e.target.value && applySavedFilterQuick(e.target.value)}
                   defaultValue=""
                 >
-                  <option value="" className="bg-gray-900">Filtros salvos…</option>
+                  <option value="" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">Filtros salvos…</option>
                   {savedFiltersQuick.map((sf) => (
-                    <option key={sf.name} value={sf.name} className="bg-gray-900">{sf.name}</option>
+                    <option key={sf.name} value={sf.name} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">{sf.name}</option>
                   ))}
                 </select>
-                <Button variant="outline" onClick={() => setShowReport(true)}>
+                <Button variant="outline" onClick={() => setShowReport(true)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
                   <FileText className="h-4 w-4 mr-2" /> Gerar Relatório
                 </Button>
-                <Button variant="outline" onClick={() => setIsTableFullScreen((v) => !v)}>
+                <Button variant="outline" onClick={() => setIsTableFullScreen((v) => !v)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
                   {isTableFullScreen ? (
                     <>
                       <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
@@ -444,7 +444,7 @@ export const ControleHorariosPage: React.FC = () => {
                   )}
                 </Button>
                 {isAdministrador && ( // Conditionally render for ADMINISTRADOR
-                  <Button variant="outline" onClick={() => setOpenConfirmSync(true)} disabled={loading}>
+                  <Button variant="outline" onClick={() => setOpenConfirmSync(true)} disabled={loading} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
                     Sincronizar
                   </Button>
                 )}
@@ -454,7 +454,7 @@ export const ControleHorariosPage: React.FC = () => {
         </Card>
 
         {error && (
-          <div className="bg-red-900/30 border border-red-700 text-red-300 px-4 py-3 rounded-lg mt-4" role="alert">
+          <div className="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg mt-4 font-medium" role="alert">
             {error}
           </div>
         )}
@@ -479,26 +479,47 @@ export const ControleHorariosPage: React.FC = () => {
         )}
 
         {Array.isArray(controleHorarios) && controleHorarios.length > 0 ? (
-          <div className={isTableFullScreen ? 'fixed inset-0 z-50 bg-gray-900 p-0 overflow-auto' : ''}>
+          <div className={isTableFullScreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-0 overflow-auto' : ''}>
             {isTableFullScreen && (
-              <div className="sticky top-0 z-50 bg-gray-900/90 backdrop-blur border-b border-yellow-400/20 px-4 py-3 flex items-center justify-between">
-                <div className="text-sm text-gray-300">
-                  <b>{controleHorarios.length}</b> viagens • Data: <b>{dataReferencia}</b> • <b>{dayType}</b>
+              <div className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-400 dark:border-yellow-400/20 px-4 py-3 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-sm text-gray-800 dark:text-gray-700 font-medium">
+                    <b>{controleHorarios.length}</b> viagens • Data: <b>{dataReferencia}</b> • <b>{dayType}</b>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" onClick={() => setShowFilters((v) => !v)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
+                      Filtros
+                    </Button>
+                    <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
+                      Limpar Filtros
+                    </Button>
+                    <Button variant="outline" onClick={handleExportHtml} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <Download className="h-4 w-4 mr-2" /> Gerar Relatório
+                    </Button>
+                    <Button variant="outline" onClick={() => setIsTableFullScreen(false)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => setShowFilters((v) => !v)}>
-                  Filtros
-                </Button>
-                <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }}>
-                  Limpar Filtros
-                </Button>
-                  <Button variant="outline" onClick={handleExportHtml}>
-                    <Download className="h-4 w-4 mr-2" /> Gerar Relatório
-                  </Button>
-                  <Button variant="outline" onClick={() => setIsTableFullScreen(false)}>
-                    <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
-                  </Button>
-                </div>
+
+                {/* Saved Filters Quick Select */}
+                {savedFiltersQuick.length > 0 && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-400 dark:border-gray-700">
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Filtros Salvos:</span>
+                    <div className="flex flex-wrap gap-2">
+                      {savedFiltersQuick.map((sf) => (
+                        <button
+                          key={sf.name}
+                          onClick={() => applySavedFilterQuick(sf.name)}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border border-yellow-500/50 bg-yellow-100 dark:bg-yellow-400/10 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-400/20 transition-colors"
+                          title={`Aplicar filtro: ${sf.name}`}
+                        >
+                          {sf.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {isTableFullScreen && showFilters && (
@@ -522,7 +543,7 @@ export const ControleHorariosPage: React.FC = () => {
               </div>
             )}
 
-            <div className={isTableFullScreen ? 'p-4' : ''}              style={shouldApplyZoom ? { transform: 'scale(1)', transformOrigin: 'top left' } : {}}>
+            <div className={isTableFullScreen ? 'p-4' : ''} style={shouldApplyZoom ? { transform: 'scale(1)', transformOrigin: 'top left' } : {}}>
               <DataTable
                 controleHorarios={sortedControleHorarios}
                 controleHorariosOriginais={controleHorariosOriginais}
@@ -568,8 +589,8 @@ export const ControleHorariosPage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="text-center py-12 space-y-4">
-            <p className="text-gray-400">Nenhuma viagem encontrada</p>
+          <div className="text-center py-12 space-y-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-800 shadow-sm">
+            <p className="text-gray-700 dark:text-gray-400 text-lg">Nenhuma viagem encontrada</p>
           </div>
         )}
         <HistoryDrawerList open={showHistorico} date={dataReferencia} filtros={filtros} onClose={() => setShowHistorico(false)} />
@@ -577,63 +598,63 @@ export const ControleHorariosPage: React.FC = () => {
         {/* Relatório - preview simples */}
         {showReport && (
           <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur flex items-center justify-center p-4">
-            <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-xl border border-yellow-400/20 bg-gray-900 shadow-2xl">
-                            <div className="sticky top-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-yellow-400/20 px-4 py-3 bg-gray-900">
-                              <div>
-                                <div className="text-lg font-semibold">Relatório - Controle de Horários</div>
-                                <div className="text-xs text-gray-400">Data: {dataReferencia} • {dayType} • Registros: {Array.isArray(controleHorarios) ? controleHorarios.length : 0}</div>
-                              </div>
-                              <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                                <Button variant="outline" onClick={handleExportHtml} className="w-full sm:w-auto">
-                                  <Download className="h-4 w-4 mr-2" /> Gerar Relatório
-                                </Button>
-                                {isAnalistaOuMais && (
-                                  <Button variant="outline" onClick={handleExportExcel} className="w-full sm:w-auto">
-                                    <Download className="h-4 w-4 mr-2" /> Gerar Relatório Excel
-                                  </Button>
-                                )}
-                                <Button variant="outline" onClick={() => setShowReport(false)} className="w-full sm:w-auto">
-                                  Fechar
-                                </Button>
-                              </div>
-                            </div>
+            <div className="w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-xl border border-gray-300 dark:border-yellow-400/20 bg-white dark:bg-gray-900 shadow-2xl">
+              <div className="sticky top-0 z-50 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-300 dark:border-yellow-400/20 px-4 py-3 bg-white dark:bg-gray-900">
+                <div>
+                  <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">Relatório - Controle de Horários</div>
+                  <div className="text-xs text-gray-700 dark:text-gray-400">Data: {dataReferencia} • {dayType} • Registros: {Array.isArray(controleHorarios) ? controleHorarios.length : 0}</div>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                  <Button variant="outline" onClick={handleExportHtml} className="w-full sm:w-auto border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <Download className="h-4 w-4 mr-2" /> Gerar Relatório
+                  </Button>
+                  {isAnalistaOuMais && (
+                    <Button variant="outline" onClick={handleExportExcel} className="w-full sm:w-auto border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                      <Download className="h-4 w-4 mr-2" /> Gerar Relatório Excel
+                    </Button>
+                  )}
+                  <Button variant="outline" onClick={() => setShowReport(false)} className="w-full sm:w-auto border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                    Fechar
+                  </Button>
+                </div>
+              </div>
               <div className="overflow-auto p-4">
-                <div className="text-sm text-gray-300 mb-2">Filtros aplicados:</div>
+                <div className="text-sm text-gray-700 dark:text-gray-300 mb-2 font-medium">Filtros aplicados:</div>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {Object.entries((filtros as Record<string, unknown>) || {})
                     .filter(([, v]) => v !== undefined && v !== null && String(v) !== '')
                     .map(([k, v]) => (
-                      <span key={k} className="inline-flex items-center gap-1 rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1 text-xs text-yellow-200">
-                        {k}: <b className="text-yellow-300">{String(v)}</b>
+                      <span key={k} className="inline-flex items-center gap-1 rounded-full border border-yellow-400/30 bg-yellow-100 dark:bg-yellow-400/10 px-3 py-1 text-xs text-yellow-800 dark:text-yellow-200 font-medium">
+                        {k}: <b className="text-yellow-900 dark:text-yellow-300">{String(v)}</b>
                       </span>
                     ))}
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto border border-gray-500 dark:border-gray-700 rounded-lg">
                   <table className="min-w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-800/60">
-                        <th className="px-3 py-2 text-left font-semibold">Linha</th>
-                        <th className="px-3 py-2 text-left font-semibold">Serviço</th>
-                        <th className="px-3 py-2 text-left font-semibold">Saída</th>
-                        <th className="px-3 py-2 text-left font-semibold">Chegada</th>
-                        <th className="px-3 py-2 text-left font-semibold">Carro</th>
-                        <th className="px-3 py-2 text-left font-semibold">Motorista</th>
-                        <th className="px-3 py-2 text-left font-semibold">Cobrador</th>
-                        <th className="px-3 py-2 text-left font-semibold">Observações</th>
+                      <tr className="bg-gray-200 dark:bg-gray-800/60 border-b border-gray-400 dark:border-gray-700">
+                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Linha</th>
+                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Serviço</th>
+                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Saída</th>
+                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Chegada</th>
+                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Carro</th>
+                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Motorista</th>
+                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Cobrador</th>
+                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Observações</th>
                       </tr>
                     </thead>
                     <tbody>
                       {sortedControleHorarios.map((it: any) => {
                         const renderAdjustedTime = (originalTime?: string, adjustedTime?: string) => {
                           if (!adjustedTime) {
-                            return <span>{originalTime ? new Date(originalTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>;
+                            return <span className="text-gray-900 dark:text-gray-100">{originalTime ? new Date(originalTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>;
                           }
                           const originalFormatted = originalTime ? new Date(originalTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
                           const adjustedFormatted = new Date(adjustedTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                           return (
                             <div className="flex flex-col">
                               <span className="text-gray-500 line-through">{originalFormatted}</span>
-                              <span className="text-emerald-400 font-bold">{adjustedFormatted}</span>
+                              <span className="text-emerald-700 dark:text-emerald-400 font-bold">{adjustedFormatted}</span>
                             </div>
                           );
                         };
@@ -642,8 +663,8 @@ export const ControleHorariosPage: React.FC = () => {
                           if (!substitutedName && !substitutedCracha) {
                             return (
                               <div>
-                                <div>{originalName || ''}</div>
-                                {originalCracha && <div className="text-xs text-gray-400">Crachá: {originalCracha}</div>}
+                                <div className="text-gray-900 dark:text-gray-100">{originalName || ''}</div>
+                                {originalCracha && <div className="text-xs text-gray-700 dark:text-gray-400">Crachá: {originalCracha}</div>}
                               </div>
                             );
                           }
@@ -653,7 +674,7 @@ export const ControleHorariosPage: React.FC = () => {
                                 <div>{originalName || ''}</div>
                                 {originalCracha && <div className="text-xs">Crachá: {originalCracha}</div>}
                               </div>
-                              <div className="text-yellow-400 font-bold">
+                              <div className="text-yellow-700 dark:text-yellow-400 font-bold">
                                 <div>{substitutedName || ''}</div>
                                 {substitutedCracha && <div className="text-xs">Crachá: {substitutedCracha}</div>}
                               </div>
@@ -664,15 +685,15 @@ export const ControleHorariosPage: React.FC = () => {
                         const isCarroEdited = it.prefixo_veiculo_editado && it.prefixo_veiculo_editado !== it.prefixo_veiculo;
 
                         return (
-                          <tr key={it.id} className="border-b border-gray-800 hover:bg-gray-800/40">
+                          <tr key={it.id} className="hover:bg-gray-100 dark:hover:bg-gray-800/40 transition-colors">
                             <td className="px-3 py-2">
-                              <div>{it.codigoLinha} - {it.nomeLinha}</div>
-                              <div className="text-xs text-gray-400">{it.setorPrincipalLinha}</div>
+                              <div className="text-gray-900 dark:text-gray-100 font-medium">{it.codigoLinha} - {it.nomeLinha}</div>
+                              <div className="text-xs text-gray-600 dark:text-gray-400">{it.setorPrincipalLinha}</div>
                             </td>
-                            <td className="px-3 py-2">{it.codServicoNumero ?? it.cod_servico_numero}</td>
+                            <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{it.codServicoNumero ?? it.cod_servico_numero}</td>
                             <td className="px-3 py-2">{renderAdjustedTime(it.hor_saida, it.hor_saida_ajustada)}</td>
                             <td className="px-3 py-2">{renderAdjustedTime(it.hor_chegada, it.hor_chegada_ajustada)}</td>
-                            <td className={`px-3 py-2 ${isCarroEdited ? 'text-yellow-400 font-bold' : ''}`}>
+                            <td className={`px-3 py-2 ${isCarroEdited ? 'text-yellow-700 dark:text-yellow-400 font-bold' : 'text-gray-900 dark:text-gray-100'}`}>
                               {isCarroEdited ? (
                                 <div className="flex flex-col">
                                   <span className="text-gray-500 line-through">{it.prefixo_veiculo}</span>
@@ -684,7 +705,7 @@ export const ControleHorariosPage: React.FC = () => {
                             </td>
                             <td className="px-3 py-2">{renderPerson(it.nome_motorista, it.nome_motorista_editado, it.cracha_motorista, it.cracha_motorista_editado)}</td>
                             <td className="px-3 py-2">{renderPerson(it.nome_cobrador, it.nome_cobrador_editado, it.cracha_cobrador, it.cracha_cobrador_editado)}</td>
-                            <td className="px-3 py-2">{it.observacao || ''}</td>
+                            <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{it.observacao || ''}</td>
                           </tr>
                         );
                       })}

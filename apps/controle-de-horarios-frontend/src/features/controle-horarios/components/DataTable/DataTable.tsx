@@ -1,6 +1,6 @@
 // src/features/controle-horarios/components/DataTable/DataTable.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList, Navigation, ArrowDown, Play, Square, Users, Car, Bus, Calendar, Activity } from 'lucide-react';
+import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList, Navigation, ArrowDown, Play, Square, Users, Car, Bus, Calendar, Activity, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ControleHorarioItem, StatusControleHorariosData, StatusControleHorariosDto, EstatisticasControleHorariosDto } from '@/types/controle-horarios.types';
 import { controleHorariosService } from '@/services/controleHorariosService';
@@ -104,20 +104,20 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
       <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="relative">
           <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
-          <div className="relative rounded-xl border bg-white text-gray-900 shadow-2xl border-gray-200  dark:border-yellow-400/20  dark:bg-neutral-900 dark:text-gray-100">
-            <div className="px-6 py-4 border-b bg-gray-50 text-gray-900 border-gray-200 dark:bg-transparent dark:text-gray-100  dark:border-yellow-400/20">
+          <div className="relative rounded-xl border border-gray-200 dark:border-yellow-400/20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
+            <div className="px-6 py-4 border-b bg-gray-50 text-gray-900 border-gray-200 dark:bg-transparent dark:text-gray-100 dark:border-yellow-400/20">
               <div className="flex items-center">
                 <Users className="h-5 w-5 mr-2 text-green-800 dark:text-yellow-400" />
                 <h3 className="text-lg font-semibold text-green-800 dark:text-yellow-400">Opções do {isMotorista ? 'Motorista' : 'Cobrador'}</h3>
               </div>
               <div className="mt-2 space-y-1 text-sm">
                 <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-2 text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400" />
-                  <p className="text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400">Original: <span className="font-semibold text-gray-900 dark:text-gray-200">{nomeOriginal || 'Não informado'}</span></p>
+                  <Users className="h-4 w-4 mr-2 text-gray-900 font-semibold dark:text-gray-400" />
+                  <p className="text-gray-900 font-semibold dark:text-gray-400">Original: <span className="font-semibold text-gray-900 dark:text-gray-200">{nomeOriginal || 'Não informado'}</span></p>
                 </div>
                 <div className="flex items-center">
                   <Activity className="h-4 w-4 mr-2 text-blue-800 dark:text-blue-400" />
-                  <p className="text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400">Crachá: <span className="font-semibold text-gray-900 dark:text-gray-200">{crachaOriginal || 'Não informado'}</span></p>
+                  <p className="text-gray-900 font-semibold dark:text-gray-400">Crachá: <span className="font-semibold text-gray-900 dark:text-gray-200">{crachaOriginal || 'Não informado'}</span></p>
                 </div>
               </div>
             </div>
@@ -131,7 +131,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                   if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: isMotorista ? 'motorista' : 'cobrador' });
                   onClose();
                 }}
-                className="w-full flex items-center justify-center px-4 py-2 border border-yellow-200 dark:border-yellow-200 dark:border-yellow-400/30 rounded-md shadow-sm text-sm font-medium text-yellow-700 dark:text-black dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-400 text-black border-yellow-600 dark:bg-yellow-400/10 hover:bg-yellow-100 dark:hover:bg-green-700 dark:bg-yellow-500 dark:hover:bg-green-700 dark:bg-yellow-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors"
+                className="w-full flex items-center justify-center px-4 py-2 border border-yellow-200 dark:border-yellow-400/30 rounded-md shadow-sm text-sm font-medium text-black dark:text-yellow-300 bg-yellow-400 text-black border-yellow-600 dark:bg-yellow-400/10 hover:bg-green-700 dark:bg-yellow-500 dark:hover:bg-green-700 dark:bg-yellow-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors"
               >
                 <ClipboardList className="h-4 w-4 mr-2" /> Ver Escala Completa
               </button>
@@ -144,7 +144,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                 </div>
                 <input
                   type="text"
-                  className="block w-full px-3 py-2 border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
+                  className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
                   value={tempNumeroCarro}
                   onChange={(e) => setTempNumeroCarro(e.target.value.replace(/[^0-9]/g, '').slice(0, 7))}
                   placeholder="Digite o número do veículo"
@@ -157,7 +157,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                   <label className="block text-sm font-medium text-gray-300">Nome do Substituto</label>
                 </div>
                 <input
-                  className="block w-full px-3 py-2 border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
+                  className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
                   value={tempNome}
                   onChange={(e) => setTempNome(e.target.value)}
                   placeholder="Digite o nome"
@@ -171,7 +171,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                   <label className="block text-sm font-medium text-gray-300">Crachá do Substituto</label>
                 </div>
                 <input
-                  className="block w-full px-3 py-2 border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
+                  className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
                   value={tempCracha}
                   onChange={(e) => setTempCracha(e.target.value)}
                   placeholder="Digite o crachá"
@@ -185,7 +185,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                   <label className="block text-sm font-medium text-gray-300">Observações</label>
                 </div>
                 <textarea
-                  className="block w-full px-3 py-2 border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
+                  className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
                   value={tempObservacoes}
                   onChange={(e) => setTempObservacoes(e.target.value)}
                   rows={2}
@@ -194,12 +194,12 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                 />
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-yellow-400/20 flex justify-end gap-3">
-              <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-900 dark:bg-neutral-700 dark:text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-200 dark:hover:bg-gray-200 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors">
+            <div className="px-6 py-4 border-t bg-gray-50 border-gray-200 dark:border-yellow-400/20 flex justify-end gap-3">
+              <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-900 dark:bg-neutral-700 dark:text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-200 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors">
                 <X className="h-4 w-4 mr-2 inline" />
                 Cancelar
               </button>
-              <button onClick={handleSave} className="px-5 py-2 bg-green-700 dark:bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-green-800 dark:hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors">
+              <button onClick={handleSave} className="px-5 py-2 bg-green-700 dark:bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-green-800 dark:hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors">
                 <Save className="h-4 w-4 mr-2 inline" />
                 Salvar e Propagar
               </button>
@@ -237,7 +237,7 @@ const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehic
         <div className="relative">
           <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
           <div className="relative rounded-xl border border-gray-200 dark:border-yellow-400/20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
-            <div className="px-6 py-4 border-b bg-gray-50 text-gray-900 border-gray-200 dark:border-yellow-400/20">
+            <div className="px-6 py-4 border-b bg-gray-50 text-gray-900 border-gray-200 dark:bg-transparent dark:text-gray-100 dark:border-yellow-400/20">
               <div className="flex items-center">
                 <Bus className="h-5 w-5 mr-2 text-green-800 dark:text-yellow-400" />
                 <h3 id="confirm-vehicle-title" className="text-lg font-semibold text-green-800 dark:text-yellow-400">Confirmar Propagação de Veículo</h3>
@@ -251,7 +251,7 @@ const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehic
                 </p>
               </div>
 
-              <div className="border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md p-3">
+              <div className="border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md p-3">
                 <div className="flex items-center mb-2">
                   <AlertCircle className="h-4 w-4 mr-2 text-orange-800 dark:text-orange-400" />
                   <p className="text-xs text-gray-900 font-semibold dark:text-gray-400">A alteração será aplicada em viagens com:</p>
@@ -274,17 +274,17 @@ const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehic
                 </div>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-yellow-400/20 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t bg-gray-50 border-gray-200 dark:border-yellow-400/20 flex justify-end gap-3">
               <button
                 onClick={onCancel}
-                className="px-4 py-2 bg-gray-100 text-gray-900 dark:bg-neutral-700 dark:text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-200 dark:hover:bg-gray-200 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors"
+                className="px-4 py-2 bg-gray-100 text-gray-900 dark:bg-neutral-700 dark:text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-200 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors"
               >
                 <X className="h-4 w-4 mr-2 inline" />
                 Cancelar
               </button>
               <button
                 onClick={onConfirm}
-                className="px-5 py-2 bg-green-700 dark:bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-green-800 dark:hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors"
+                className="px-5 py-2 bg-green-700 dark:bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-green-800 dark:hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors"
               >
                 <Save className="h-4 w-4 mr-2 inline" />
                 Confirmar e Propagar
@@ -322,7 +322,7 @@ const ConfirmPersonPropagationModal: React.FC<{
         <div className="relative">
           <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
           <div className="relative rounded-xl border border-gray-200 dark:border-yellow-400/20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
-            <div className="px-6 py-4 border-b bg-gray-50 text-gray-900 border-gray-200 dark:border-yellow-400/20">
+            <div className="px-6 py-4 border-b bg-gray-50 text-gray-900 border-gray-200 dark:bg-transparent dark:text-gray-100 dark:border-yellow-400/20">
               <div className="flex items-center">
                 <Users className="h-5 w-5 mr-2 text-green-800 dark:text-yellow-400" />
                 <h3 className="text-lg font-semibold text-green-800 dark:text-yellow-400">Confirmar Propagação de {personType === 'motorista' ? 'Motorista' : 'Cobrador'}</h3>
@@ -336,7 +336,7 @@ const ConfirmPersonPropagationModal: React.FC<{
                 </p>
               </div>
 
-              <div className="border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md p-3">
+              <div className="border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md p-3">
                 <div className="flex items-center mb-2">
                   <AlertCircle className="h-4 w-4 mr-2 text-orange-800 dark:text-orange-400" />
                   <p className="text-xs text-gray-900 font-semibold dark:text-gray-400">A alteração será aplicada em viagens com o mesmo serviço e motorista original:</p>
@@ -359,17 +359,17 @@ const ConfirmPersonPropagationModal: React.FC<{
                 </div>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-yellow-400/20 flex justify-end gap-3">
+            <div className="px-6 py-4 border-t bg-gray-50 border-gray-200 dark:border-yellow-400/20 flex justify-end gap-3">
               <button
                 onClick={onCancel}
-                className="px-4 py-2 bg-gray-100 text-gray-900 dark:bg-neutral-700 dark:text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-200 dark:hover:bg-gray-200 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors"
+                className="px-4 py-2 bg-gray-100 text-gray-900 dark:bg-neutral-700 dark:text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-200 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors"
               >
                 <X className="h-4 w-4 mr-2 inline" />
                 Cancelar
               </button>
               <button
                 onClick={onConfirm}
-                className="px-5 py-2 bg-green-700 dark:bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-green-800 dark:hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors"
+                className="px-5 py-2 bg-green-700 dark:bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-green-800 dark:hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors"
               >
                 <Save className="h-4 w-4 mr-2 inline" />
                 Confirmar e Propagar
@@ -436,15 +436,15 @@ const HorariosModal: React.FC<HorariosModalProps> = ({ item, onClose, onSave }) 
       <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="relative">
           <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-cyan-400/30 via-blue-500/25 to-cyan-300/30 blur-md" />
-          <div className="relative rounded-xl border border-cyan-600/30 dark:border-cyan-400/20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
+          <div className="relative rounded-xl border border-cyan-600/30 dark:border-cyan-400/20 bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
             <div className="px-6 py-4 border-b border-cyan-600/30 dark:border-cyan-400/20">
               <div className="flex items-center">
                 <Clock className="h-5 w-5 mr-2 text-cyan-800 dark:text-cyan-400" />
                 <h3 className="text-lg font-semibold text-cyan-800 dark:text-cyan-400">Ajustar Horários e Confirmar Viagem</h3>
               </div>
               <div className="mt-2 space-y-1 text-sm">
-                <p className="text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400">Linha: <span className="font-semibold text-gray-900 dark:text-gray-200">{(item as any).codigoLinha} - {(item as any).nomeLinha}</span></p>
-                <p className="text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400">Serviço: <span className="font-semibold text-gray-900 dark:text-gray-200">{(item as any).cod_servico_numero}</span></p>
+                <p className="text-gray-900 font-semibold dark:text-gray-400">Linha: <span className="font-semibold text-gray-900 dark:text-gray-200">{(item as any).codigoLinha} - {(item as any).nomeLinha}</span></p>
+                <p className="text-gray-900 font-semibold dark:text-gray-400">Serviço: <span className="font-semibold text-gray-900 dark:text-gray-200">{(item as any).cod_servico_numero}</span></p>
               </div>
             </div>
             <div className="px-6 py-5 space-y-4">
@@ -469,7 +469,7 @@ const HorariosModal: React.FC<HorariosModalProps> = ({ item, onClose, onSave }) 
                     type="time"
                     value={saidaAjustada}
                     onChange={(e) => setSaidaAjustada(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-900 dark:text-gray-100"
+                    className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-900 dark:text-gray-100"
                   />
                 </div>
                 <div>
@@ -479,7 +479,7 @@ const HorariosModal: React.FC<HorariosModalProps> = ({ item, onClose, onSave }) 
                     type="time"
                     value={chegadaAjustada}
                     onChange={(e) => setChegadaAjustada(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-900 dark:text-gray-100"
+                    className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
@@ -491,7 +491,7 @@ const HorariosModal: React.FC<HorariosModalProps> = ({ item, onClose, onSave }) 
                   id="motivo-atraso"
                   value={motivoAtraso}
                   onChange={(e) => setMotivoAtraso(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-900 dark:text-gray-100"
+                  className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-900 dark:text-gray-100"
                 >
                   <option value="">Selecione um motivo</option>
                   <option value="ENGARRAFAMENTO">Engarrafamento</option>
@@ -509,17 +509,17 @@ const HorariosModal: React.FC<HorariosModalProps> = ({ item, onClose, onSave }) 
                   value={observacaoAtraso}
                   onChange={(e) => setObservacaoAtraso(e.target.value)}
                   rows={2}
-                  className="block w-full px-3 py-2 border border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-900 dark:text-gray-100"
+                  className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm text-gray-900 dark:text-gray-100"
                   placeholder="Detalhes sobre o atraso, se houver."
                 />
               </div>
             </div>
             <div className="px-6 py-4 border-t border-cyan-600/30 dark:border-cyan-400/20 flex justify-end gap-3">
-              <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-900 dark:bg-neutral-700 dark:text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-200 dark:hover:bg-gray-200 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors">
+              <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-900 dark:bg-neutral-700 dark:text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-200 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors">
                 <X className="h-4 w-4 mr-2 inline" />
                 Cancelar
               </button>
-              <button onClick={handleSave} className="px-5 py-2 bg-cyan-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-cyan-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
+              <button onClick={handleSave} className="px-5 py-2 bg-cyan-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-cyan-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed"
                 disabled={!item.numeroCarro || item.numeroCarro.trim() === ''}
                 title={!item.numeroCarro || item.numeroCarro.trim() === '' ? 'Informe o número do veículo primeiro' : 'Confirmar viagem'}
               >
@@ -803,7 +803,7 @@ export const DataTable: React.FC<DataTableProps> = ({
           <RefreshCw className="h-8 w-8 animate-spin text-blue-500 mr-3" />
           <div className="flex flex-col">
             <Clock className="h-4 w-4 text-blue-800 dark:text-blue-400 mb-1" />
-            <p className="text-gray-900 font-medium">Carregando controle de horários...</p>
+            <p className="text-gray-900 font-semibold font-medium">Carregando controle de horários...</p>
           </div>
         </div>
       </div>
@@ -835,15 +835,15 @@ export const DataTable: React.FC<DataTableProps> = ({
     return (
       <div className="text-center py-12">
         <div className="flex flex-col items-center space-y-4">
-          <Clock className="h-12 w-12 text-gray-900 font-semibold" />
+          <Clock className="h-12 w-12 text-gray-900 font-semibold dark:text-gray-400" />
           <div className="flex items-center">
             <AlertCircle className="h-5 w-5 mr-2 text-gray-900 font-semibold" />
             <h3 className="text-lg font-medium text-gray-900">Nenhuma viagem encontrada</h3>
           </div>
           {!statusDados.existeNoBanco && (
             <div className="flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400" />
-              <p className="text-sm text-gray-700">Verifique se existem dados do Globus para esta data.</p>
+              <Calendar className="h-4 w-4 mr-2 text-gray-900 font-semibold dark:text-gray-400" />
+              <p className="text-sm text-gray-900 font-semibold">Verifique se existem dados do Globus para esta data.</p>
             </div>
           )}
         </div>
@@ -860,367 +860,516 @@ export const DataTable: React.FC<DataTableProps> = ({
           <div className="flex justify-between items-center mb-2">
             <div className="flex items-center">
               <Calendar className="h-4 w-4 mr-2 text-yellow-500" />
-              <span className="px-3 py-1 text-xs font-semibold text-black bg-yellow-400 rounded-full border border-yellow-600">
+              <span className="px-3 py-1 text-xs font-semibold text-black bg-yellow-400 rounded-full border border-yellow-300/30">
                 ESCALA TIPO DIA: {descTipoDia}
               </span>
             </div>
           </div>
         )}
 
-        <table className="min-w-full divide-y divide-gray-300 text-gray-900">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="w-10 px-1 sm:px-3 py-3 text-left"><span className="sr-only">Expandir</span></th>
-              <th
-                className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider cursor-pointer"
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              >
-                <div className="flex items-center ">
-                  {sortOrder === 'asc' ? '▲' : '▼'}
-                  Horários
-                </div>
-              </th>
-              <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                <div className="flex items-center">
-                  <Activity className="h-4 w-4 mr-1 text-purple-700" />
-                  Linha / Serviço
-                </div>
-              </th>
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3 pb-20">
+          {sortedVisibleItems.map((item) => {
+            if (hiddenRows.has(item.id)) return null;
 
-              {!isMobileOrTablet && (
-                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                  <div className="flex items-center">
-                    <Bus className="h-4 w-4 mr-1 text-yellow-700" />
-                    Veículo
+            const saidaISO = (item as any).hor_saida || (item as any).horaSaida;
+            const saidaDate = saidaISO ? new Date(saidaISO) : null;
+            const passou = !!(saidaDate && saidaDate.getTime() < Date.now());
+            const temVeiculo = !!(item.numeroCarro && String(item.numeroCarro).trim() !== '');
+            const trocouMotorista = !!(item.nomeMotoristaEditado || item.crachaMotoristaEditado);
+            const trocouCobrador = !!(item.nomeCobradorEditado || item.crachaCobradorEditado);
+            const isConfirmed = (item as any).de_acordo === true;
+
+            // Card styling based on status
+            let cardStyle = "bg-white dark:bg-gray-800 border-l-4 border-gray-600 dark:border-gray-700";
+            if (isConfirmed) {
+              cardStyle = "bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500";
+            } else if (passou && !temVeiculo) {
+              cardStyle = "bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500";
+            } else if (passou && (trocouMotorista || trocouCobrador)) {
+              cardStyle = "bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400";
+            }
+
+            return (
+              <div key={item.id} className={`rounded-lg shadow-sm p-3 ${cardStyle} mb-3`}>
+                {/* Header: Linha and Serviço */}
+                <div className="flex justify-between items-start mb-2 border-b border-gray-100 dark:border-gray-700 pb-2">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-gray-900 dark:text-gray-100">{(item as any).codigoLinha}</span>
+                      <span className="text-xs text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400 max-w-[150px] truncate">{(item as any).nomeLinha}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 font-semibold dark:text-gray-300">
+                        Serviço {(item as any).cod_servico_numero}
+                      </span>
+                      <span className="text-xs text-gray-900 font-semibold">{(item as any).sentido_texto}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    {(item as any).periodo_do_dia && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold mb-1 ${(item as any).periodo_do_dia === 'MADRUGADA' ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/40 dark:text-indigo-300' :
+                        (item as any).periodo_do_dia === 'MANHÃ' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-black dark:text-yellow-300' :
+                          (item as any).periodo_do_dia === 'TARDE' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
+                            'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                        }`}>
+                        {(item as any).periodo_do_dia}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Time and Route */}
+                <div className="grid grid-cols-2 gap-2 mb-3" onClick={() => setHorariosModalItem(item)}>
+                  <div className="flex flex-col p-2 rounded bg-gray-50 dark:bg-gray-700/30">
+                    <span className="text-xs text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400 mb-1">Saída</span>
+                    <div className="flex items-center gap-1">
+                      <Play className="h-3 w-3 text-green-500" />
+                      <span className="font-mono font-bold text-green-900 dark:text-gray-100">{formatTime((item as any).horaSaida)}</span>
+                    </div>
+                    <span className="text-[10px] text-green-900 font-semibold dark:text-gray-400 truncate mt-1">{(item as any).localOrigemViagem}</span>
+                  </div>
+                  <div className="flex flex-col p-2 rounded bg-gray-50 dark:bg-gray-700/30">
+                    <span className="text-xs text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400 mb-1">Chegada</span>
+                    <div className="flex items-center gap-1">
+                      <Square className="h-3 w-3 text-red-500" />
+                      <span className="font-mono font-bold text-green-900 dark:text-gray-100">{formatTime((item as any).horaChegada)}</span>
+                    </div>
+                    <span className="text-[10px] text-green-900 font-semibold dark:text-gray-400 truncate mt-1">{(item as any).localDestinoLinha}</span>
+                  </div>
+                </div>
+
+                {/* Vehicle Input */}
+                <div className="mb-3">
+                  <label className="text-xs font-bold text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400 mb-1 block">Veículo</label>
+                  <div className="flex items-center gap-2">
+                    <Bus className="h-4 w-4 text-yellow-500" />
+                    <input
+                      type="text"
+                      value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
+                      onChange={(e) => {
+                        const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '').slice(0, 7);
+                        setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
+                      }}
+                      onBlur={(e) => {
+                        const val = (e.target.value || '').trim();
+                        if (!val) return;
+                        if (val.length < 6) { e.target.focus(); return; }
+                        if (/^\d{6,7}$/.test(val)) { setPendingVehicle({ open: true, vehicle: val, anchorId: item.id }); return; }
+                      }}
+                      placeholder="Nº Veículo"
+                      className={`flex-1 px-3 py-2 border rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors text-gray-900 dark:text-gray-100 ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' : 'border-gray-600 dark:border-gray-600 bg-white dark:bg-gray-700'}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Crew (Motorista/Cobrador) */}
+                <div className="grid grid-cols-1 gap-2">
+                  {/* Motorista */}
+                  <div className="flex items-center justify-between p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50" onClick={() => setShowDriverOptionsModal(item)}>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <Users className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-xs text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400">Motorista</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">
+                          {(item as any).nomeMotoristaEditado || (item as any).nomeMotoristaGlobus || 'Não informado'}
+                        </span>
+                        {!!(item as any).nomeMotoristaEditado && <span className="text-[10px] text-yellow-600 dark:text-green-800 dark:text-yellow-400">Substituto</span>}
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-gray-900 font-semibold dark:text-gray-400" />
+                  </div>
+
+                  {/* Cobrador */}
+                  <div className="flex items-center justify-between p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50" onClick={() => setShowCobradorOptionsModal(item)}>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <Users className="h-4 w-4 text-cyan-500 flex-shrink-0" />
+                      <div className="flex flex-col overflow-hidden">
+                        <span className="text-xs text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400">Cobrador</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">
+                          {(item as any).nomeCobradorEditado || (item as any).nomeCobradorGlobus || 'Não informado'}
+                        </span>
+                        {!!(item as any).nomeCobradorEditado && <span className="text-[10px] text-yellow-600 dark:text-green-800 dark:text-yellow-400">Substituto</span>}
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-gray-900 font-semibold dark:text-gray-400" />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block">
+          <table className="min-w-full divide-y divide-gray-800 text-gray-200">
+            <thead className="bg-gray-100 dark:bg-gray-800/60">
+              <tr>
+                <th className="w-10 px-1 sm:px-3 py-3 text-left"><span className="sr-only">Expandir</span></th>
+                <th
+                  className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                >
+                  <div className="flex items-center ">
+                    {sortOrder === 'asc' ? '▲' : '▼'}
+                    Horários
                   </div>
                 </th>
-              )}
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center">
+                    <Activity className="h-4 w-4 mr-1 text-purple-400" />
+                    Linha / Serviço
+                  </div>
+                </th>
 
-              <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-1 text-blue-800" />
-                  Motorista
-                </div>
-              </th>
-              <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                <div className="flex items-center">
-                  <Users className="h-4 w-4 mr-1 text-cyan-700" />
-                  Cobrador
-                </div>
-              </th>
+                {!isMobileOrTablet && (
+                  <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <div className="flex items-center">
+                      <Bus className="h-4 w-4 mr-1 text-green-800 dark:text-yellow-400" />
+                      Veículo
+                    </div>
+                  </th>
+                )}
 
-              {isMobileOrTablet ? (
-                <>
-                  <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    <div className="flex items-center">
-                      <Navigation className="h-4 w-4 mr-1 text-green-700" />
-                      Origem / Destino
-                    </div>
-                  </th>
-                  <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    <div className="flex items-center">
-                      <Activity className="h-4 w-4 mr-1 text-orange-700" />
-                      Atividade / Setor
-                    </div>
-                  </th>
-                </>
-              ) : (
-                <>
-                  <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    <div className="flex items-center">
-                      <Navigation className="h-4 w-4 mr-1 text-green-700" />
-                      Origem
-                    </div>
-                  </th>
-                  <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-1 text-red-700" />
-                      Destino
-                    </div>
-                  </th>
-                  <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                    <div className="flex items-center">
-                      <Activity className="h-4 w-4 mr-1 text-orange-700" />
-                      Ativ. / Tipo / Setor
-                    </div>
-                  </th>
-                </>
-              )}
-            </tr>
-          </thead>
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center">
+                    <Users className="h-4 w-4 mr-1 text-blue-800 dark:text-blue-400" />
+                    Motorista
+                  </div>
+                </th>
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                  <div className="flex items-center">
+                    <Users className="h-4 w-4 mr-1 text-cyan-800 dark:text-cyan-400" />
+                    Cobrador
+                  </div>
+                </th>
 
-          <tbody className="bg-transparent divide-y divide-gray-300">
-            {sortedVisibleItems.map((item) => {
-              if (hiddenRows.has(item.id)) {
-                return null;
-              }
-              const saidaISO = (item as any).hor_saida || (item as any).horaSaida;
-              const saidaDate = saidaISO ? new Date(saidaISO) : null;
-              const passou = !!(saidaDate && saidaDate.getTime() < Date.now());
-              const temVeiculo = !!(item.numeroCarro && String(item.numeroCarro).trim() !== '');
-              const trocouMotorista = !!(item.nomeMotoristaEditado || item.crachaMotoristaEditado);
-              const trocouCobrador = !!(item.nomeCobradorEditado || item.crachaCobradorEditado);
-              const nomeAtividade = ((item as any).nome_atividade || '').toString().toUpperCase();
-              const isAtividadeAmarela = nomeAtividade === 'RECOLHIMENTO' || nomeAtividade === 'RENDIÇÃO';
-              const isConfirmed = (item as any).de_acordo === true;
-              const rowClass = isConfirmed
-                ? 'border-l-4 border-green-500 bg-green-50' // Confirmed is always green
-                : (passou && !temVeiculo)
-                  ? 'border-l-4 border-red-500 bg-red-50'
-                  : (passou && (trocouMotorista || trocouCobrador))
-                    ? 'border-l-4 border-yellow-400 bg-yellow-50'
-                    : '';
-              const draft = vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '');
-              return (
-                <tr key={item.id} className={`transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${rowClass}`}>
-                  <td className="px-3 py-4" />
-                  <td className="px-2 py-4 text-sm text-gray-900 cursor-pointer" onClick={() => setHorariosModalItem(item)}>
-                    <div className="flex flex-col space-y-2">
-                      {/* Horário de Saída */}
+                {isMobileOrTablet ? (
+                  <>
+                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       <div className="flex items-center">
-                        <Play className="h-4 w-4 mr-2 text-green-700" />
-                        <span className="font-mono font-medium text-green-700">{formatTime((item as any).horaSaida)}</span>
+                        <Navigation className="h-4 w-4 mr-1 text-green-800 dark:text-green-400" />
+                        Origem / Destino
                       </div>
-
-                      {/* Duração/Até - Centralizado */}
-                      <div className="flex items-center justify-center">
-                        <span className="text-xs text-blue-800 font-medium">até</span>
-                      </div>
-
-                      {/* Horário de Chegada */}
+                    </th>
+                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       <div className="flex items-center">
-                        <Square className="h-4 w-4 mr-2 text-red-700" />
-                        <span className="font-mono font-medium text-red-700">{formatTime((item as any).horaChegada)}</span>
+                        <Activity className="h-4 w-4 mr-1 text-orange-800 dark:text-orange-400" />
+                        Atividade / Setor
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-2 py-4">
-                    <div className="flex flex-col space-y-1">
+                    </th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       <div className="flex items-center">
-                        <Activity className="h-4 w-4 mr-2 text-purple-700" />
-                        <div className="text-sm font-medium text-gray-900">{(item as any).codigoLinha}</div>
+                        <Navigation className="h-4 w-4 mr-1 text-green-800 dark:text-green-400" />
+                        Origem
                       </div>
-                      <div className="text-xs text-gray-900 font-semibold ml-6" title={(item as any).nomeLinha}>{(item as any).nomeLinha}</div>
-                      <div className="flex items-center mt-1">
-                        <Activity className="h-4 w-4 mr-2 text-blue-800" />
-                        <div className="text-base font-semibold text-blue-800">Serviço {(item as any).cod_servico_numero || ''}</div>
+                    </th>
+                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-1 text-red-400" />
+                        Destino
                       </div>
-                    </div>
-                  </td>
+                    </th>
+                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      <div className="flex items-center">
+                        <Activity className="h-4 w-4 mr-1 text-orange-800 dark:text-orange-400" />
+                        Ativ. / Tipo / Setor
+                      </div>
+                    </th>
+                  </>
+                )}
+              </tr>
+            </thead>
 
-                  {!isMobileOrTablet && (
-                    <td className="px-2 py-4">
-                      <div className="flex items-center">
-                        <Bus className="h-4 w-4 mr-2 text-yellow-700" />
-                        <input
-                          type="text"
-                          value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
-                          onChange={(e) => {
-                            const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '').slice(0, 7);
-                            setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
-                          }}
-                          onBlur={(e) => {
-                            const val = (e.target.value || '').trim();
-                            if (!val) return;
-                            if (val.length < 6) { e.target.focus(); return; }
-                            if (/^\d{6,7}$/.test(val)) { setPendingVehicle({ open: true, vehicle: val, anchorId: item.id }); return; }
-                          }}
-                          placeholder="Nº Veículo"
-                          className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-transparent transition-colors text-gray-900 ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-600 bg-yellow-50' : 'border-gray-600 bg-white'}`}
-                        />
+            <tbody className="bg-transparent divide-y divide-gray-200 dark:divide-gray-800">
+              {sortedVisibleItems.map((item) => {
+                if (hiddenRows.has(item.id)) {
+                  return null;
+                }
+                const saidaISO = (item as any).hor_saida || (item as any).horaSaida;
+                const saidaDate = saidaISO ? new Date(saidaISO) : null;
+                const passou = !!(saidaDate && saidaDate.getTime() < Date.now());
+                const temVeiculo = !!(item.numeroCarro && String(item.numeroCarro).trim() !== '');
+                const trocouMotorista = !!(item.nomeMotoristaEditado || item.crachaMotoristaEditado);
+                const trocouCobrador = !!(item.nomeCobradorEditado || item.crachaCobradorEditado);
+                const nomeAtividade = ((item as any).nome_atividade || '').toString().toUpperCase();
+                const isAtividadeAmarela = nomeAtividade === 'RECOLHIMENTO' || nomeAtividade === 'RENDIÇÃO';
+                const isConfirmed = (item as any).de_acordo === true;
+                const rowClass = isConfirmed
+                  ? 'border-l-4 border-green-500 bg-green-900/20' // Confirmed is always green
+                  : (passou && !temVeiculo)
+                    ? 'border-l-4 border-red-500 bg-red-900/30'
+                    : (passou && (trocouMotorista || trocouCobrador))
+                      ? 'border-l-4 border-yellow-400 bg-yellow-900/25'
+                      : '';
+                const draft = vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '');
+                return (
+                  <tr key={item.id} className={`transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${rowClass}`}>
+                    <td className="px-3 py-4" />
+                    <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200 cursor-pointer" onClick={() => setHorariosModalItem(item)}>
+                      <div className="flex flex-col space-y-2">
+                        {/* Horário de Saída */}
+                        <div className="flex items-center">
+                          <Play className="h-4 w-4 mr-2 text-green-800 dark:text-green-400" />
+                          <span className="font-mono font-semibold text-green-800 dark:text-green-300">{formatTime((item as any).horaSaida)}</span>
+                        </div>
+
+                        {/* Período do Dia - Badge */}
+                        {(item as any).periodo_do_dia && (
+                          <div className="flex items-center justify-center">
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${(item as any).periodo_do_dia === 'MADRUGADA' ? 'bg-indigo-900/40 text-indigo-300 border border-indigo-600/30' :
+                              (item as any).periodo_do_dia === 'MANHÃ' ? 'bg-yellow-900/40 text-black dark:text-yellow-300 border border-yellow-600/30' :
+                                (item as any).periodo_do_dia === 'TARDE' ? 'bg-orange-900/40 text-orange-300 border border-orange-500/30' :
+                                  'bg-blue-900/40 text-blue-300 border border-blue-600/30'
+                              }`}>
+                              {(item as any).periodo_do_dia}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Duração/Até - Centralizado */}
+                        <div className="flex items-center justify-center">
+                          <span className="text-xs text-green-900 font-bold dark:text-blue-300">até</span>
+                        </div>
+
+                        {/* Horário de Chegada */}
+                        <div className="flex items-center">
+                          <Square className="h-4 w-4 mr-2 text-red-400" />
+                          <span className="font-mono font-semibold text-red-800 dark:text-red-300">{formatTime((item as any).horaChegada)}</span>
+                        </div>
                       </div>
                     </td>
-                  )}
+                    <td className="px-2 py-4">
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center">
+                          <Activity className="h-4 w-4 mr-2 text-purple-400" />
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-200">{(item as any).codigoLinha}</div>
+                        </div>
+                        <div className="text-xs text-gray-900 font-semibold dark:text-gray-100 ml-5" title={(item as any).nomeLinha}>{(item as any).nomeLinha}</div>
+                        <div className="flex items-center mt-1">
+                          <Activity className="h-4 w-4 mr-2 text-blue-800 dark:text-blue-400" />
+                          <div className="text-base font-semibold text-blue-800 dark:text-blue-400">Serviço {(item as any).cod_servico_numero || ''}</div>
+                        </div>
+                      </div>
+                    </td>
 
-                  <td className="px-2 py-4">
-                    <div className="cursor-pointer" onClick={() => setShowDriverOptionsModal(item)}>
-                      <div className="flex items-center">
-                        <Users className="h-4 w-4 mr-2 text-blue-800" />
+                    {!isMobileOrTablet && (
+                      <td className="px-2 py-4">
+                        <div className="flex items-center">
+                          <Bus className="h-4 w-4 mr-2 text-green-800 dark:text-yellow-400" />
+                          <input
+                            type="text"
+                            value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
+                            onChange={(e) => {
+                              const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '').slice(0, 7);
+                              setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
+                            }}
+                            onBlur={(e) => {
+                              const val = (e.target.value || '').trim();
+                              if (!val) return;
+                              if (val.length < 6) { e.target.focus(); return; }
+                              if (/^\d{6,7}$/.test(val)) { setPendingVehicle({ open: true, vehicle: val, anchorId: item.id }); return; }
+                            }}
+                            placeholder="Nº Veículo"
+                            className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-transparent transition-colors text-gray-900 dark:text-gray-100 ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' : 'border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60'}`}
+                          />
+                        </div>
+                      </td>
+                    )}
+
+                    <td className="px-2 py-4">
+                      <div className="cursor-pointer" onClick={() => setShowDriverOptionsModal(item)}>
+                        <div className="flex items-center">
+                          <Users className="h-4 w-4 mr-2 text-blue-800 dark:text-blue-400" />
+                          <button
+                            type="button"
+                            className="text-sm font-bold text-blue-800 dark:text-blue-400 leading-tight hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const servico = (item as any).cod_servico_numero || '';
+                              const cracha = (item as any).crachaMotoristaGlobus || '';
+                              if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'motorista' });
+                            }}
+                            title="Ver escala do motorista original"
+                          >
+                            {(item as any).crachaMotoristaGlobus || 'N/A'}
+                          </button>
+                        </div>
+                        {isMobileOrTablet && item.numeroCarro ? (
+                          <div className="flex items-center mt-1 ml-6">
+                            <Bus className="h-3 w-3 mr-1 text-orange-800 dark:text-orange-400" />
+                            <span className="text-xs font-semibold text-orange-800 dark:text-orange-400">{item.numeroCarro}</span>
+                          </div>
+                        ) : isMobileOrTablet && (
+                          <div className="flex items-center mt-1 ml-6">
+                            <Bus className="h-3 w-3 mr-1 text-gray-900 font-semibold" />
+                            <span className="text-xs font-semibold text-gray-900 font-semibold">Veículo:</span>
+                          </div>
+                        )}
+                        <div className="mt-0.5 leading-tight ml-6">
+                          <div className="flex items-center">
+                            <Activity className="h-3 w-3 mr-1 text-gray-900 font-semibold dark:text-gray-400" />
+                            <div className="text-[11px] text-green-800 dark:text-green-400">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
+                          </div>
+                          {((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') && (
+                            <div className="flex items-center">
+                              <Users className="h-3 w-3 mr-1 text-green-800 dark:text-yellow-400" />
+                              <div className="text-xs font-semibold text-yellow-500">Substituto: {(item as any).nomeMotoristaEditado} ({(item as any).crachaMotoristaEditado})</div>
+                            </div>
+                          )}
+                        </div>
                         <button
                           type="button"
-                          className="text-sm font-bold text-blue-800 leading-tight hover:underline"
+                          className="mt-1 text-[11px] text-blue-500 hover:underline flex items-center ml-6"
                           onClick={(e) => {
                             e.stopPropagation();
                             const servico = (item as any).cod_servico_numero || '';
                             const cracha = (item as any).crachaMotoristaGlobus || '';
                             if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'motorista' });
                           }}
-                          title="Ver escala do motorista original"
-                        >
-                          {(item as any).crachaMotoristaGlobus || 'N/A'}
-                        </button>
-                      </div>
-                      {isMobileOrTablet && item.numeroCarro ? (
-                        <div className="flex items-center mt-1 ml-6">
-                          <Bus className="h-3 w-3 mr-1 text-orange-700" />
-                          <span className="text-xs font-semibold text-orange-700">{item.numeroCarro}</span>
-                        </div>
-                      ) : isMobileOrTablet && (
-                        <div className="flex items-center mt-1 ml-6">
-                          <Bus className="h-3 w-3 mr-1 text-gray-700" />
-                          <span className="text-xs font-semibold text-gray-700">Veículo:</span>
-                        </div>
-                      )}
-                      <div className="mt-0.5 leading-tight ml-6">
-                        <div className="flex items-center">
-                          <Activity className="h-3 w-3 mr-1 text-gray-700" />
-                          <div className="text-[11px] text-green-700">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
-                        </div>
-                        {((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') && (
-                          <div className="flex items-center">
-                            <Users className="h-3 w-3 mr-1 text-yellow-700" />
-                            <div className="text-xs font-semibold text-yellow-800">Substituto: {(item as any).nomeMotoristaEditado} ({(item as any).crachaMotoristaEditado})</div>
-                          </div>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        className="mt-1 text-[11px] text-blue-800 hover:underline flex items-center ml-6"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const servico = (item as any).cod_servico_numero || '';
-                          const cracha = (item as any).crachaMotoristaGlobus || '';
-                          if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'motorista' });
-                        }}
-                        title="Ver escala com o motorista original"
-                      >
-                        <ClipboardList className="h-3.5 w-3.5 mr-1" /> Ver escala
-                      </button>
-                    </div>
-                  </td>
-                  <td className="px-2 py-4">
-                    <div className="cursor-pointer" onClick={() => setShowCobradorOptionsModal(item)}>
-                      <div className="flex items-center">
-                        <Users className="h-4 w-4 mr-2 text-cyan-700" />
-                        <button
-                          type="button"
-                          className="text-sm font-bold text-blue-800 leading-tight hover:underline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const servico = (item as any).cod_servico_numero || '';
-                            const cracha = (item as any).crachaCobradorGlobus || '';
-                            if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'cobrador' });
-                          }}
-                          title="Ver escala do cobrador original"
-                        >
-                          {(item as any).crachaCobradorGlobus || 'N/A'}
-                        </button>
-                      </div>
-
-                      <div className="mt-0.5 leading-tight ml-6">
-                        <div className="flex items-center">
-                          <Activity className="h-3 w-3 mr-1 text-gray-700" />
-                          <div className="text-[11px] text-gray-900">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
-                        </div>
-                        {((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') && (
-                          <div className="flex items-center">
-                            <Users className="h-3 w-3 mr-1 text-yellow-700" />
-                            <div className="text-xs font-semibold text-yellow-800">Substituto: {(item as any).nomeCobradorEditado} ({(item as any).crachaCobradorEditado})</div>
-                          </div>
-                        )}
-                      </div>
-                      {!!(item.crachaCobradorGlobus) && (
-                        <button
-                          type="button"
-                          className="mt-1 text-[11px] text-blue-800 hover:underline flex items-center ml-6"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const servico = (item as any).cod_servico_numero || '';
-                            const cracha = (item as any).crachaCobradorGlobus || '';
-                            if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'cobrador' });
-                          }}
-                          title="Ver escala com o cobrador original"
+                          title="Ver escala com o motorista original"
                         >
                           <ClipboardList className="h-3.5 w-3.5 mr-1" /> Ver escala
                         </button>
-                      )}
-                    </div>
-                  </td>
-
-                  {isMobileOrTablet ? (
-                    <>
-                      <td className="px-2 py-4 text-sm text-gray-900">
-                        <div className="flex flex-col space-y-2">
-                          {/* Origem */}
-                          <div className="flex items-center">
-                            <Navigation className="h-4 w-4 mr-2 text-green-700" />
-                            <span className="font-medium text-green-700">{(item as any).localOrigemViagem || 'N/A'}</span>
-                          </div>
-
-                          {/* Sentido - Centralizado */}
-                          <div className="flex items-center justify-center">
-                            <span className="text-xs text-blue-800 font-medium">{(item as any).sentido_texto || ''}</span>
-                          </div>
-
-                          {/* Destino */}
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-2 text-red-700" />
-                            <span className="font-medium text-red-700">{(item as any).localDestinoLinha || 'N/A'}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-4 text-sm text-gray-900">
-                        <div className="flex flex-col space-y-2">
-                          <div className="flex items-center">
-                            <Activity className="h-4 w-4 mr-2 text-orange-700" />
-                            <div className="text-sm text-gray-700">{(item as any).nome_atividade || 'N/A'}</div>
-                          </div>
-                          <div className="flex items-center ml-6">
-                            <div className="text-xs text-gray-700">{(item as any).flg_tipo || ''}</div>
-                          </div>
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-2 text-indigo-800" />
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-900">
-                              {(item as any).setorPrincipalLinha}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-2 py-4 text-sm text-gray-900">
-                        <div className="flex flex-col space-y-1">
-                          <div className="flex items-center">
-                            <Navigation className="h-4 w-4 mr-2 text-green-700" />
-                            <span className="font-medium text-green-700">{(item as any).localOrigemViagem || 'N/A'}</span>
-                          </div>
-                          <div className="flex items-center ml-6">
-                            <ArrowDown className="h-3 w-3 mr-1 text-blue-800" />
-                            <div className="text-xs text-blue-800">{(item as any).sentido_texto || ''}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-4 text-sm text-gray-900">
+                      </div>
+                    </td>
+                    <td className="px-2 py-4">
+                      <div className="cursor-pointer" onClick={() => setShowCobradorOptionsModal(item)}>
                         <div className="flex items-center">
-                          <MapPin className="h-4 w-4 mr-2 text-red-700" />
-                          <span className="font-medium text-red-700">{(item as any).localDestinoLinha || 'N/A'}</span>
+                          <Users className="h-4 w-4 mr-2 text-cyan-800 dark:text-cyan-400" />
+                          <button
+                            type="button"
+                            className="text-sm font-bold text-blue-800 dark:text-blue-400 leading-tight hover:underline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const servico = (item as any).cod_servico_numero || '';
+                              const cracha = (item as any).crachaCobradorGlobus || '';
+                              if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'cobrador' });
+                            }}
+                            title="Ver escala do cobrador original"
+                          >
+                            {(item as any).crachaCobradorGlobus || 'N/A'}
+                          </button>
                         </div>
-                      </td>
-                      <td className="px-2 py-4 text-sm text-gray-900">
-                        <div className="flex flex-col space-y-1">
+
+                        <div className="mt-0.5 leading-tight ml-6">
                           <div className="flex items-center">
-                            <Activity className="h-4 w-4 mr-2 text-orange-700" />
-                            <div className="text-sm text-gray-700">{(item as any).nome_atividade || 'N/A'}</div>
+                            <Activity className="h-3 w-3 mr-1 text-gray-900 font-semibold dark:text-gray-400" />
+                            <div className="text-[11px] text-gray-900 font-semibold dark:text-gray-200">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
                           </div>
-                          <div className="flex items-center ml-6">
-                            <div className="text-xs text-gray-700">{(item as any).flg_tipo || ''}</div>
-                          </div>
-                          <div className="flex items-center mt-1">
-                            <MapPin className="h-4 w-4 mr-2 text-indigo-800" />
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 text-gray-900">
-                              {(item as any).setorPrincipalLinha}
-                            </span>
-                          </div>
+                          {((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') && (
+                            <div className="flex items-center">
+                              <Users className="h-3 w-3 mr-1 text-green-800 dark:text-yellow-400" />
+                              <div className="text-xs font-semibold text-yellow-500">Substituto: {(item as any).nomeCobradorEditado} ({(item as any).crachaCobradorEditado})</div>
+                            </div>
+                          )}
                         </div>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                        {!!(item.crachaCobradorGlobus) && (
+                          <button
+                            type="button"
+                            className="mt-1 text-[11px] text-blue-500 hover:underline flex items-center ml-6"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const servico = (item as any).cod_servico_numero || '';
+                              const cracha = (item as any).crachaCobradorGlobus || '';
+                              if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: 'cobrador' });
+                            }}
+                            title="Ver escala com o cobrador original"
+                          >
+                            <ClipboardList className="h-3.5 w-3.5 mr-1" /> Ver escala
+                          </button>
+                        )}
+                      </div>
+                    </td>
+
+                    {isMobileOrTablet ? (
+                      <>
+                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
+                          <div className="flex flex-col space-y-2">
+                            {/* Origem */}
+                            <div className="flex items-center">
+                              <Navigation className="h-4 w-4 mr-2 text-green-800 dark:text-green-400" />
+                              <span className="font-semibold text-green-800 dark:text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
+                            </div>
+
+                            {/* Sentido - Centralizado */}
+                            <div className="flex items-center justify-center">
+                              <span className="text-xs text-green-900 font-bold dark:text-blue-300">{(item as any).sentido_texto || ''}</span>
+                            </div>
+
+                            {/* Destino */}
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 mr-2 text-red-400" />
+                              <span className="font-semibold text-red-800 dark:text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
+                          <div className="flex flex-col space-y-2">
+                            <div className="flex items-center">
+                              <Activity className="h-4 w-4 mr-2 text-orange-800 dark:text-orange-400" />
+                              <div className="text-sm text-gray-700 dark:text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
+                            </div>
+                            <div className="flex items-center ml-6">
+                              <div className="text-xs text-gray-900 font-semibold dark:text-gray-300">{(item as any).flg_tipo || ''}</div>
+                            </div>
+                            <div className="flex items-center">
+                              <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-gray-200">
+                                {(item as any).setorPrincipalLinha}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
+                          <div className="flex flex-col space-y-1">
+                            <div className="flex items-center">
+                              <Navigation className="h-4 w-4 mr-2 text-green-800 dark:text-green-400" />
+                              <span className="font-semibold text-green-800 dark:text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center ml-6">
+                              <ArrowDown className="h-3 w-3 mr-1 text-blue-800 dark:text-blue-400" />
+                              <div className="text-xs text-green-900 font-bold dark:text-blue-300">{(item as any).sentido_texto || ''}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
+                          <div className="flex items-center">
+                            <MapPin className="h-4 w-4 mr-2 text-red-400" />
+                            <span className="font-semibold text-red-800 dark:text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
+                          <div className="flex flex-col space-y-1">
+                            <div className="flex items-center">
+                              <Activity className="h-4 w-4 mr-2 text-orange-800 dark:text-orange-400" />
+                              <div className="text-sm text-gray-700 dark:text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
+                            </div>
+                            <div className="flex items-center ml-6">
+                              <div className="text-xs text-gray-900 font-semibold dark:text-gray-300">{(item as any).flg_tipo || ''}</div>
+                            </div>
+                            <div className="flex items-center mt-1">
+                              <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-gray-200">
+                                {(item as any).setorPrincipalLinha}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showDriverOptionsModal && (
@@ -1298,6 +1447,8 @@ export const DataTable: React.FC<DataTableProps> = ({
 }
 
 export default DataTable;
+
+
 
 
 

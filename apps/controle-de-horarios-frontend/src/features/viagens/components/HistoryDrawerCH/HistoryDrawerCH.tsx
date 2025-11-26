@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { X, ClipboardList } from 'lucide-react';
+import { X, ClipboardList, Download } from 'lucide-react';
 import { controleHorariosService as chService } from '@/services/controleHorariosService';
 import type { FiltrosViagem } from '@/types/viagens-transdata.types';
+import { downloadAsFile, exportToExcel } from '@/lib/utils';
 
 type Props = {
   open: boolean;
@@ -52,6 +53,8 @@ export const HistoryDrawerCH: React.FC<Props> = ({ open, date, filtros, onClose 
   }, [open, date, mappedFilters]);
 
   if (!open) return null;
+
+  const safe = (v: any) => (v === null || v === undefined ? '' : String(v));
 
   const trunc = (v?: string, max: number = 20) => {
     if (!v) return '';
@@ -120,6 +123,100 @@ export const HistoryDrawerCH: React.FC<Props> = ({ open, date, filtros, onClose 
     );
   };
 
+  const handleExportExcel = () => {
+    const header = [
+      'Setor', 'Linha', 'Serviço', 'Saída', 'Chegada', 'Saída Ajustada', 'Chegada Ajustada',
+      'Carro (Orig)', 'Carro (Editado)', 'Motorista (Orig)', 'Cracha (Orig)', 'Motorista (Subst)', 'Cracha (Subst)',
+      'Cobrador (Orig)', 'Cracha (Orig)', 'Cobrador (Subst)', 'Cracha (Subst)', 'E-mail', 'Confirmada', 'Editado em',
+      'Observações'
+    ];
+    const data = (items || []).map((it: any) => [
+      it.setor_principal_linha || '',
+      `${safe(it.codigo_linha)} - ${safe(it.nome_linha)}`,
+      safe(it.cod_servico_numero),
+      fmtTime(it.hor_saida),
+      fmtTime(it.hor_chegada),
+      fmtTime(it.hor_saida_ajustada),
+      fmtTime(it.hor_chegada_ajustada),
+      safe(it.prefixo_veiculo),
+      safe(it.prefixo_veiculo_editado),
+      safe(it.nome_motorista),
+      safe(it.cracha_motorista),
+      safe(it.motorista_substituto_nome),
+      safe(it.motorista_substituto_cracha),
+      safe(it.nome_cobrador),
+      safe(it.cracha_cobrador),
+      safe(it.cobrador_substituto_nome),
+      safe(it.cobrador_substituto_cracha),
+      safe(it.editado_por_email),
+      (it.de_acordo ? 'SIM' : 'NÃO'),
+      (it.updated_at ? new Date(it.updated_at).toLocaleString('pt-BR') : ''),
+      buildObservacoes(it)
+    ]);
+    const excelData = [
+      ['Histórico - Viagens Editadas'],
+      [`Data: ${date}`],
+      [`Total: ${items.length}`],
+      [],
+      header,
+      ...data,
+    ];
+    exportToExcel(`historico_viagens_editadas_${date}.xlsx`, 'Editadas', excelData);
+  };
+  const handleExportHtml = () => {
+    const rows = (items || []).map((it: any) => `
+      <tr>
+        <td>${safe(it.setor_principal_linha)}</td>
+        <td>${safe(it.codigo_linha)} - ${safe(it.nome_linha)}</td>
+        <td>${safe(it.cod_servico_numero)}</td>
+        <td>${fmtTime(it.hor_saida)}</td>
+        <td>${fmtTime(it.hor_chegada)}</td>
+        <td>${fmtTime(it.hor_saida_ajustada)}</td>
+        <td>${fmtTime(it.hor_chegada_ajustada)}</td>
+        <td>${safe(it.prefixo_veiculo)}</td>
+        <td>${safe(it.nome_motorista)}</td>
+        <td>${safe(it.cracha_motorista)}</td>
+        <td>${safe(it.motorista_substituto_nome)}</td>
+        <td>${safe(it.motorista_substituto_cracha)}</td>
+        <td>${safe(it.nome_cobrador)}</td>
+        <td>${safe(it.cracha_cobrador)}</td>
+        <td>${safe(it.cobrador_substituto_nome)}</td>
+        <td>${safe(it.cobrador_substituto_cracha)}</td>
+        <td>${safe(it.editado_por_email)}</td>
+        <td>${it.de_acordo ? 'SIM' : 'NÃO'}</td>
+        <td>${it.updated_at ? new Date(it.updated_at).toLocaleString('pt-BR') : ''}</td>
+        <td>${safe(buildObservacoes(it))}</td>
+      </tr>
+    `).join('\n');
+    const html = `<!DOCTYPE html>
+    <html lang="pt-BR"><head><meta charset="utf-8" />
+    <title>Histórico - Viagens Editadas ${date}</title>
+    <style>
+      body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue";background:#111;color:#eee;padding:24px}
+      h1{font-size:18px;margin:0 0 12px}
+      .meta{color:#bbb;margin-bottom:12px}
+      table{border-collapse:collapse;width:100%;font-size:12px}
+      th,td{border:1px solid #333;padding:6px 8px; vertical-align: top;}
+      th{background:#222;color:#ffde6a;position:sticky;top:0}
+      tr:nth-child(even){background:#151515}
+    </style></head>
+    <body>
+      <h1>Histórico - Viagens Editadas</h1>
+      <div class="meta">Data: ${date} • Total: ${items.length}</div>
+      <table>
+        <thead><tr>
+          <th>Setor</th><th>Linha</th><th>Serviço</th><th>Saída</th><th>Chegada</th>
+          <th>Saída Ajust.</th><th>Chegada Ajust.</th><th>Carro</th>
+          <th>Motorista (Orig)</th><th>Crachá (Orig)</th><th>Motorista (Subst)</th><th>Crachá (Subst)</th>
+          <th>Cobrador (Orig)</th><th>Crachá (Orig)</th><th>Cobrador (Subst)</th><th>Crachá (Subst)</th>
+          <th>E-mail</th><th>Conf.</th><th>Editado em</th><th>Observações</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </body></html>`;
+    downloadAsFile(`historico_viagens_editadas_${date}.html`, html, 'text/html;charset=utf-8');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/60" onClick={onClose} aria-hidden="true" />
@@ -135,6 +232,10 @@ export const HistoryDrawerCH: React.FC<Props> = ({ open, date, filtros, onClose 
         </div>
 
         <div className="h-full overflow-auto p-4">
+          <div className="flex items-center justify-end mb-3 gap-2">
+            <button onClick={handleExportHtml} className="px-3 py-1.5 text-xs border border-yellow-400/30 rounded text-yellow-200 hover:bg-yellow-400/10 flex items-center gap-1"><Download className="h-3 w-3" /> Relatório</button>
+            <button onClick={handleExportExcel} className="px-3 py-1.5 text-xs border border-yellow-400/30 rounded text-yellow-200 hover:bg-yellow-400/10 flex items-center gap-1"><Download className="h-3 w-3" /> Excel</button>
+          </div>
           {loading && <div className="text-sm text-gray-400">Carregando...</div>}
           {error && <div className="text-sm text-red-400">{error}</div>}
           {!loading && !error && items.length === 0 && (

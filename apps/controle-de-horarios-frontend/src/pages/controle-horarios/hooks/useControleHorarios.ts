@@ -283,7 +283,13 @@ export const useControleHorarios = () => {
       if ((item as any).de_acordo !== (original as any).de_acordo) adjPayload.de_acordo = (item as any).de_acordo;
       if (String((item as any).hor_saida_ajustada || '') !== String((original as any).hor_saida_ajustada || '')) adjPayload.hor_saida_ajustada = (item as any).hor_saida_ajustada || '';
       if (String((item as any).hor_chegada_ajustada || '') !== String((original as any).hor_chegada_ajustada || '')) adjPayload.hor_chegada_ajustada = (item as any).hor_chegada_ajustada || '';
-      if ((item as any).atraso_motivo !== (original as any).atraso_motivo) adjPayload.atraso_motivo = (item as any).atraso_motivo || '';
+      if ((item as any).atraso_motivo !== (original as any).atraso_motivo) {
+        const allowedMotivos = ['ENGARRAFAMENTO', 'ACIDENTE', 'QUEBRA_OU_DEFEITO', 'DIVERSOS'];
+        const motivo = String((item as any).atraso_motivo || '').toUpperCase();
+        if (allowedMotivos.includes(motivo)) {
+          adjPayload.atraso_motivo = motivo;
+        }
+      }
       if ((item as any).atraso_observacao !== (original as any).atraso_observacao) adjPayload.atraso_observacao = (item as any).atraso_observacao || '';
 
       if (Object.keys(propPayload).length > 0) propagaveisChanged.push({ id: item.id, ...propPayload });

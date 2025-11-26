@@ -20,15 +20,15 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
   if (!temAlteracoesPendentes) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-4 max-w-lg">
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <p className="text-sm font-medium text-gray-900">
               {alteracoesPendentes} alteração(ões) pendente(s)
             </p>
             <p className="text-xs text-gray-500">
-              Clique em salvar para confirmar
+              Clique em salvar para confirmar alterações nas viagens
             </p>
           </div>
           <div className="flex gap-2">

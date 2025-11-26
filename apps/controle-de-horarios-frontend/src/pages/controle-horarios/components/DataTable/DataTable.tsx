@@ -1108,7 +1108,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                 const draft = vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '');
                 return (
                   <tr key={item.id} className={`transition-colors hover:bg-gray-100 dark:hover:bg-gray-800/40 ${rowClass}`}>
-                    <td className="px-3 py-4" />
+                    <td className="px-0 py-0" />
                     <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200 cursor-pointer" onClick={() => setHorariosModalItem(item)}>
                       <div className="flex flex-col space-y-2">
                         {/* Horário de Saída */}
@@ -1148,7 +1148,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                           <Activity className="h-4 w-4 mr-2 text-purple-400" />
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-200">{(item as any).codigoLinha}</div>
                         </div>
-                        <div className="text-xs text-gray-900 font-semibold dark:text-gray-100 ml-6" title={(item as any).nomeLinha}>{(item as any).nomeLinha}</div>
+                        <div className="text-xs text-gray-900 font-semibold dark:text-gray-100 ml-2" title={(item as any).nomeLinha}>{(item as any).nomeLinha}</div>
                         <div className="flex items-center mt-1">
                           <Activity className="h-4 w-4 mr-2 text-blue-800 dark:text-blue-400" />
                           <div className="text-base font-semibold text-blue-800 dark:text-blue-400">Serviço {(item as any).cod_servico_numero || ''}</div>

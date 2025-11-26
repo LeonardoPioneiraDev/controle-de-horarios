@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserRole, canSyncControleHorarios, canEditControleHorarios } from '../../types/user.types';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';

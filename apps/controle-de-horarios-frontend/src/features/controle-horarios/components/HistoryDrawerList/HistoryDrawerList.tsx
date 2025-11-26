@@ -110,7 +110,7 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
   const handleExportExcel = () => {
     const header = [
       'Setor', 'Linha', 'Serviço', 'Saída', 'Chegada', 'Saída Ajustada', 'Chegada Ajustada',
-      'Carro', 'Motorista (Orig)', 'Cracha (Orig)', 'Motorista (Subst)', 'Cracha (Subst)',
+      'Carro (Orig)', 'Carro (Editado)', 'Motorista (Orig)', 'Cracha (Orig)', 'Motorista (Subst)', 'Cracha (Subst)',
       'Cobrador (Orig)', 'Cracha (Orig)', 'Cobrador (Subst)', 'Cracha (Subst)', 'E-mail', 'Confirmada', 'Editado em',
       'Observações'
     ];
@@ -123,6 +123,7 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
       fmtTime(it.hor_saida_ajustada),
       fmtTime(it.hor_chegada_ajustada),
       safe(it.prefixo_veiculo),
+      safe(it.prefixo_veiculo_editado),
       safe(it.nome_motorista),
       safe(it.cracha_motorista),
       safe(it.motorista_substituto_nome),
@@ -161,6 +162,7 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
         <td>${fmtTime(it.hor_saida_ajustada)}</td>
         <td>${fmtTime(it.hor_chegada_ajustada)}</td>
         <td>${safe(it.prefixo_veiculo)}</td>
+        <td>${safe(it.prefixo_veiculo_editado)}</td>
         <td>${safe(it.nome_motorista)}</td>
         <td>${safe(it.cracha_motorista)}</td>
         <td>${safe(it.motorista_substituto_nome)}</td>
@@ -193,7 +195,7 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
       <table>
         <thead><tr>
           <th>Setor</th><th>Linha</th><th>Serviço</th><th>Saída</th><th>Chegada</th>
-          <th>Saída Ajust.</th><th>Chegada Ajust.</th><th>Carro</th>
+          <th>Saída Ajust.</th><th>Chegada Ajust.</th><th>Carro (Orig)</th><th>Carro (Editado)</th>
           <th>Motorista (Orig)</th><th>Crachá (Orig)</th><th>Motorista (Subst)</th><th>Crachá (Subst)</th>
           <th>Cobrador (Orig)</th><th>Crachá (Orig)</th><th>Cobrador (Subst)</th><th>Crachá (Subst)</th>
           <th>E-mail</th><th>Conf.</th><th>Editado em</th><th>Observações</th>
@@ -206,8 +208,10 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
     const a = document.createElement('a');
     a.href = url;
     a.download = `historico_editadas_${date}.html`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   if (!open) return null;
@@ -347,7 +351,6 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
                           </div>
                         </td>
                         <td className="px-3 py-2 align-top">
-                          <td className="px-3 py-2 align-top">
                             {buildObservacoes(it) ? (
                               <span className="text-yellow-200/90 italic font-medium bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20 block">
                                 {buildObservacoes(it)}
@@ -356,7 +359,6 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
                               <span className="text-gray-600">—</span>
                             )}
                           </td>
-                        </td>
                       </tr>
                     );
                   })}
@@ -369,3 +371,5 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
     </div>
   );
 };
+
+

@@ -1,0 +1,51 @@
+# ==========================================
+# 🌐 CONFIGURAÇÕES DE AMBIENTE - FRONTEND
+# ==========================================
+VITE_NODE_ENV=development
+
+# ==========================================
+# 🔗 CONFIGURAÇÕES DE API
+# ==========================================
+# URL base da API (sem /api no final)
+#VITE_API_BASE_URL=http://localhost:3336 # Desenvolvimento
+
+#VITE_API_BASE_URL=http://10.10.100.176:3355 # Docker
+VITE_API_BASE_URL=https://horariosapi.vpioneira.com.br # Produção
+
+# URL completa da API (com /api)
+#VITE_API_URL=http://localhost:3336/api # Desenvolvimento
+
+#VITE_API_URL=http://10.10.100.176:3355/api # Docker
+VITE_API_URL=https://horariosapi.vpioneira.com.br # Produção
+
+# ==========================================
+# 🌍 CONFIGURAÇÕES DO FRONTEND
+# ==========================================
+#VITE_FRONTEND_URL=http://localhost:3005 # Desenvolvimento
+#VITE_FRONTEND_PORT=3005 # Desenvolvimento
+
+#VITE_FRONTEND_URL=http://10.10.100.176:3000 # Docker
+#VITE_FRONTEND_PORT=3000 # Docker
+
+VITE_FRONTEND_URL=https://horarios.vpioneira.com.br # Produção
+VITE_FRONTEND_PORT=3008 # Produção
+
+# ==========================================
+# 🔧 CONFIGURAÇÕES DE DESENVOLVIMENTO
+# ==========================================
+VITE_DEV_MODE=true
+VITE_DEBUG_API=true
+VITE_USE_PROXY=true
+
+# ==========================================
+# ⏱️ CONFIGURAÇÕES DE TIMEOUT
+# ==========================================
+VITE_API_TIMEOUT=50000
+VITE_REQUEST_RETRY_ATTEMPTS=4
+VITE_REQUEST_RETRY_DELAY=1000
+
+# ==========================================
+# 🛡️ CONFIGURAÇÕES DE SEGURANÇA
+# ==========================================
+VITE_ENABLE_DEVTOOLS=true
+VITE_STRICT_MODE=true
