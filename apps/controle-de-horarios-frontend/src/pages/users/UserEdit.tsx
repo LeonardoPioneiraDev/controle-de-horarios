@@ -32,6 +32,7 @@ export const UserEdit: React.FC = () => {
       [UserRole.INSTRUTORES]: 'Instrutores',
       [UserRole.DESPACHANTE]: 'Despachante',
       [UserRole.OPERADOR_CCO]: 'Operador CCO',
+      [UserRole.ESTATISTICA]: 'Estatística',
     };
     return labels[r] ?? String(r);
   };

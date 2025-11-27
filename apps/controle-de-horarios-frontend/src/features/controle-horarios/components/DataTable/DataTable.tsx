@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList, Navigation, ArrowDown, Play, Square, Users, Car, Bus, Calendar, Activity, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ControleHorarioItem, StatusControleHorariosData, StatusControleHorariosDto, EstatisticasControleHorariosDto } from '@/types/controle-horarios.types';
-import { controleHorariosService } from '@/services/controleHorariosService';
+import { controleHorariosService } from '../../../../services/controleHorariosService';
 
 // ... other code ...
 
@@ -854,7 +854,7 @@ export const DataTable: React.FC<DataTableProps> = ({
   const descTipoDia = controleHorarios.length > 0 ? (controleHorarios[0] as any).desc_tipodia : '';
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       <div className="overflow-x-auto">
         {descTipoDia && (
           <div className="flex justify-between items-center mb-2">
@@ -1447,7 +1447,6 @@ export const DataTable: React.FC<DataTableProps> = ({
 }
 
 export default DataTable;
-
 
 
 

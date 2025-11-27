@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useFullscreen } from '../contexts/FullscreenContext';
 import { Users, LogOut, Bus, Server, GitCompare, Clock, TrendingUp } from 'lucide-react';
 
 import Header from './Header';
@@ -9,6 +10,7 @@ import { canViewUsers, canViewViagens, canViewControleHorarios } from '../types/
 
 export const Layout: React.FC = () => {
   const { user, logout } = useAuth();
+  const { isFullscreen } = useFullscreen();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
@@ -33,9 +35,20 @@ export const Layout: React.FC = () => {
       items.push({ name: 'Histórico Comparações', href: '/historico-comparacoes', icon: TrendingUp as any });
     }
     if (canViewControleHorarios(user?.role)) items.push({ name: 'Controle Horários', href: '/controle-horarios', icon: Clock });
+    if (canViewViagens(user?.role)) items.push({ name: 'BCO Alterações', href: '/bco-alteracoes', icon: Server });
     return items;
   }, [user]);
 
+  // Fullscreen mode: render only the content without header/sidebar
+  if (isFullscreen) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-neutral-900">
+        <Outlet />
+      </div>
+    );
+  }
+
+  // Normal mode: render with header and sidebar
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 via-gray-50 to-gray-100 dark:from-gray-950 dark:via-gray-900 dark:to-neutral-900 transition-colors duration-500">
       <Header
@@ -65,3 +78,4 @@ export const Layout: React.FC = () => {
 };
 
 export default Layout;
+

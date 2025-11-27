@@ -44,6 +44,7 @@ export const Users: React.FC = () => {
     operador: 'Operador',
     operador_cco: 'Operador CCO',
     pcqc: 'PCQC',
+    estatistica: 'Estatística',
   } as Record<string, string>)[r] || r;
   const roleOptions = (Object.values(UserRole) as string[])
     .map((r) => String(r))
@@ -231,7 +232,8 @@ export const Users: React.FC = () => {
       dacn: 'DACN',
       instrutores: 'Instrutores',
       despachante: 'Despachante',
-      operador_cco: 'Operador CCO'
+      operador_cco: 'Operador CCO',
+      estatistica: 'Estatística',
     } as Record<string, string>;
 
     return (
@@ -274,8 +276,8 @@ export const Users: React.FC = () => {
         <Button
           onClick={handleCreateUser}
           className={`w-full sm:w-auto gap-2 ${isAdmin
-              ? 'bg-gradient-to-r from-[#fbcc2c] to-[#ecd43c] hover:from-[#e6cd4a] hover:to-[#d4cc54] dark:from-yellow-600 dark:to-amber-600 text-gray-900'
-              : 'bg-gray-200 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
+            ? 'bg-gradient-to-r from-[#fbcc2c] to-[#ecd43c] hover:from-[#e6cd4a] hover:to-[#d4cc54] dark:from-yellow-600 dark:to-amber-600 text-gray-900'
+            : 'bg-gray-200 dark:bg-gray-800 text-gray-500 cursor-not-allowed'
             }`}
           disabled={!isAdmin}
           title={!isAdmin ? 'Apenas administradores podem criar usuários' : ''}
@@ -390,9 +392,70 @@ export const Users: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Users Table */}
-      <Card className="overflow-hidden border-none shadow-xl bg-white/60 dark:bg-gray-900/60 backdrop-blur-md">
-        <div className="overflow-x-auto">
+      {/* Users - Mobile List (mobile-first) */}
+      <Card className="border-none shadow-xl bg-white/60 dark:bg-gray-900/60 backdrop-blur-md">
+        {/* Mobile list */}
+        <div className="md:hidden">
+          <ul className="divide-y divide-gray-200 dark:divide-gray-800">
+            {filteredUsers.map((user) => (
+              <li key={user.id} className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-[#fbcc2c] to-[#ecd43c] dark:from-yellow-600 dark:to-amber-600 flex items-center justify-center text-sm font-bold text-gray-900 shadow-md">
+                      {user.firstName.charAt(0)}{user.lastName.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold text-gray-900 dark:text-gray-100 truncate">
+                        {user.firstName} {user.lastName}
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                        {user.email}
+                      </div>
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditUser(user)}
+                        className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        aria-label={`Editar ${user.firstName} ${user.lastName}`}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user)}
+                        className="inline-flex items-center px-2.5 py-1.5 rounded-md text-xs font-medium border border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        aria-label={`Excluir ${user.firstName} ${user.lastName}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {getRoleBadge(user.role)}
+                  {getStatusBadge(user.status)}
+                </div>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-gray-600 dark:text-gray-400">
+                  <div>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Último login:</span>
+                    <span className="ml-1">{user.lastLogin ? formatDate(user.lastLogin.toISOString()) : 'Nunca'}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="font-medium text-gray-700 dark:text-gray-300">Criado em:</span>
+                    <span className="ml-1">{formatDate(user.createdAt.toISOString())}</span>
+                  </div>
+                </div>
+              </li>
+            ))}
+            {filteredUsers.length === 0 && (
+              <li className="p-6 text-center text-sm text-gray-600 dark:text-gray-400">Nenhum usuário encontrado</li>
+            )}
+          </ul>
+        </div>
+
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50/50 dark:bg-gray-800/50">
               <tr>

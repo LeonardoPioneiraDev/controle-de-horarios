@@ -4,8 +4,8 @@
 NODE_ENV=development
 HOST=0.0.0.0
 #PORT=3355 #Docker
-#PORT=3336 #Desenvolvimento
-PORT=3335 #Produção
+PORT=3336 #Desenvolvimento
+#PORT=3335 #Produção
 
 
 # ==========================================
@@ -15,8 +15,8 @@ DATABASE_TYPE=postgres
 DATABASE_HOST=localhost
 DATABASE_PORT=5435
 DATABASE_USERNAME=horarios_user
-#DATABASE_PASSWORD=horarios123 # Desenvolvimento
-DATABASE_PASSWORD=horarios_Vpioneira25 # Produção
+DATABASE_PASSWORD=horarios123 # Desenvolvimento
+#DATABASE_PASSWORD=horarios_Vpioneira25 # Produção
 DATABASE_NAME=controle_horarios_db 
 DATABASE_SCHEMA=public
 DATABASE_SYNCHRONIZE=true
@@ -196,8 +196,8 @@ ORACLE_CONNECTION_STRING=//10.0.1.191:1521/orcl_pdb1.sub02151801351.vcnpioneira.
 ORACLE_HOST=10.0.1.191
 ORACLE_PORT=1521
 ORACLE_SERVICE_NAME=orcl_pdb1.sub02151801351.vcnpioneira.oraclevcn.com
-#ORACLE_CLIENT_PATH=C:\Oracle\instantclient_12_2 # Desenvolvimento
-ORACLE_CLIENT_PATH=/opt/oracle/instantclient # Produção
+ORACLE_CLIENT_PATH=C:\Oracle\instantclient_12_2 # Desenvolvimento
+#ORACLE_CLIENT_PATH=/opt/oracle/instantclient # Produção
 
 # ✅ ORACLE TIMEOUTS E PERFORMANCE
 ORACLE_POOL_MIN=5

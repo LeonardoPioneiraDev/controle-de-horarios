@@ -69,7 +69,12 @@ const Sidebar: FC<SidebarProps> = ({ isSidebarExpanded, setIsSidebarExpanded, na
           {/* Navigation */}
           <nav className="flex flex-1 flex-col px-6 py-4">
             <ul className="flex flex-1 flex-col gap-y-2">
-              {navigation.map((item) => {
+              {navigation.filter(item => {
+                if (item.name === 'BCO') {
+                  return user?.role === 'administrador' || user?.role === 'estatistica';
+                }
+                return true;
+              }).map((item) => {
                 const isActive = location.pathname === item.href;
                 return (
                   <li key={item.name}>

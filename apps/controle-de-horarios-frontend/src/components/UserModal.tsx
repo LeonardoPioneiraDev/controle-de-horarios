@@ -26,7 +26,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     role: UserRole.OPERADOR,
     status: UserStatus.PENDING
   });
-  
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [emailInfo, setEmailInfo] = useState<{
     willSendEmail: boolean;
@@ -73,7 +73,7 @@ export const UserModal: React.FC<UserModalProps> = ({
 
       try {
         const config = await emailService.getEmailConfig();
-        
+
         setEmailInfo({
           willSendEmail: config.emailEnabled && config.transporterConfigured,
           emailEnabled: config.emailEnabled,
@@ -103,7 +103,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     } else if (!formData.email.includes('@')) {
       newErrors.email = 'E-mail inválido';
     } //se if (!formData.email.endsWith('@vpioneira.com.br')) {
-     //ewErrors.email = 'E-mail deve ser do domínio @vpioneira.com.br';
+    //ewErrors.email = 'E-mail deve ser do domínio @vpioneira.com.br';
     //
 
     // Validação de nome
@@ -126,7 +126,7 @@ export const UserModal: React.FC<UserModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
@@ -159,7 +159,7 @@ export const UserModal: React.FC<UserModalProps> = ({
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
+
     // Limpar erro do campo quando usuário começa a digitar
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -217,13 +217,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               <p className="mt-1 text-sm text-green-700">
                 Uma senha temporária será gerada automaticamente e enviada por e-mail para o usuário.
               </p>
-              {emailInfo.config && (
-                <div className="mt-2 text-xs text-green-600">
-                  <p>📧 Servidor: {emailInfo.config.smtpHost}:{emailInfo.config.smtpPort}</p>
-                  <p>📤 Remetente: {emailInfo.config.fromAddress}</p>
-                  <p>⚙️ Configuração: {emailInfo.config.workingConfigName}</p>
-                </div>
-              )}
+
             </div>
           </div>
         </div>
@@ -383,6 +377,7 @@ export const UserModal: React.FC<UserModalProps> = ({
               <option value={UserRole.INSTRUTORES}>Instrutores</option>
               <option value={UserRole.DESPACHANTE}>Despachante</option>
               <option value={UserRole.OPERADOR_CCO}>Operador CCO</option>
+              <option value={UserRole.ESTATISTICA}>Estatística</option>
               <option value={UserRole.OPERADOR}>Operador</option>
               <option value={UserRole.ENCARREGADO}>Encarregado</option>
               <option value={UserRole.ANALISTA}>Analista</option>

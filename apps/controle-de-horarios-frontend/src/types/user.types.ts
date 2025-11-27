@@ -12,6 +12,7 @@ export enum UserRole {
   INSTRUTORES = 'instrutores',
   DESPACHANTE = 'despachante',
   OPERADOR_CCO = 'operador_cco',
+  ESTATISTICA = 'estatistica',
 }
 
 export enum UserStatus {
@@ -96,6 +97,7 @@ export const UserRoleHierarchy: Record<UserRole, number> = {
   [UserRole.INSTRUTORES]: 1,
   [UserRole.DESPACHANTE]: 1,
   [UserRole.OPERADOR_CCO]: 1,
+  [UserRole.ESTATISTICA]: 1,
 };
 
 export const isAtLeast = (role: UserRole | undefined, min: UserRole): boolean => {

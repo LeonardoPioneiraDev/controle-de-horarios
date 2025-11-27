@@ -11,7 +11,8 @@ export enum UserRole {
   DACN = 'dacn',
   INSTRUTORES = 'instrutores',
   DESPACHANTE = 'despachante',
-  OPERADOR_CCO = 'operador_cco'
+  OPERADOR_CCO = 'operador_cco',
+  ESTATISTICA = 'estatistica'
 }
 
 export const UserRoleLabels = {
@@ -25,7 +26,8 @@ export const UserRoleLabels = {
   [UserRole.DACN]: 'DACN',
   [UserRole.INSTRUTORES]: 'Instrutores',
   [UserRole.DESPACHANTE]: 'Despachante',
-  [UserRole.OPERADOR_CCO]: 'Operador CCO'
+  [UserRole.OPERADOR_CCO]: 'Operador CCO',
+  [UserRole.ESTATISTICA]: 'Estatística'
 };
 
 export const UserRoleHierarchy = {
@@ -40,8 +42,8 @@ export const UserRoleHierarchy = {
   [UserRole.DACN]: 1,
   [UserRole.INSTRUTORES]: 1,
   [UserRole.DESPACHANTE]: 1,
-  [UserRole.OPERADOR_CCO]: 1
-
+  [UserRole.OPERADOR_CCO]: 1,
+  [UserRole.ESTATISTICA]: 1
 };
 
 /**
@@ -66,18 +68,18 @@ export const RolePermissions = {
   VIEW_VIAGENS: [UserRole.ADMINISTRADOR, UserRole.DIRETOR, UserRole.GERENTE, UserRole.ANALISTA, UserRole.OPERADOR],
   SYNC_VIAGENS: [UserRole.ADMINISTRADOR, UserRole.DIRETOR, UserRole.GERENTE, UserRole.ANALISTA],
   VIEW_VIAGENS_STATS: [UserRole.ADMINISTRADOR, UserRole.DIRETOR, UserRole.GERENTE],
-  
+
   // Gestão de usuários
   CREATE_USERS: [UserRole.ADMINISTRADOR, UserRole.DIRETOR],
   VIEW_ALL_USERS: [UserRole.ADMINISTRADOR, UserRole.DIRETOR, UserRole.GERENTE],
   EDIT_USERS: [UserRole.ADMINISTRADOR, UserRole.DIRETOR],
   DELETE_USERS: [UserRole.ADMINISTRADOR],
-  
+
   // Configurações do sistema
   MANAGE_EMAIL_CONFIG: [UserRole.ADMINISTRADOR, UserRole.DIRETOR],
   VIEW_SYSTEM_LOGS: [UserRole.ADMINISTRADOR, UserRole.DIRETOR, UserRole.GERENTE],
   MANAGE_SYSTEM_CONFIG: [UserRole.ADMINISTRADOR],
-  
+
   // API Externa
   TEST_EXTERNAL_API: [UserRole.ADMINISTRADOR, UserRole.DIRETOR, UserRole.GERENTE],
   VIEW_API_STATS: [UserRole.ADMINISTRADOR, UserRole.DIRETOR, UserRole.GERENTE]

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, ClipboardList } from 'lucide-react';
-import { controleHorariosService as chService } from '@/services/controleHorariosService';
+import { controleHorariosService as chService } from '../../../../services/controleHorariosService';
 import type { FiltrosViagem } from '@/types/viagens-transdata.types';
 
 type Props = {

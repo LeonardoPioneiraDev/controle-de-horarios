@@ -16,6 +16,7 @@ import { ViagensGlobus } from '../pages/viagens/ViagensGlobus';
 import ComparacaoViagens from '../pages/viagens/ComparacaoViagens';
 import HistoricoComparacoes from '../pages/viagens/HistoricoComparacoes';
 import { ControleHorariosPage } from '../pages/controle-horarios/ControleHorariosPage';
+import BcoAlteracoesPage from '../pages/bco/BcoAlteracoesPage';
 import { UserRole } from '../types/user.types';
 import AutoLogin from '../pages/AutoLogin';
 
@@ -74,6 +75,14 @@ export const AppRoutes: React.FC = () => {
                     element={
                         <ProtectedRoute minRole={UserRole.ANALISTA}>
                             <Viagens />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="bco-alteracoes"
+                    element={
+                        <ProtectedRoute minRole={UserRole.ANALISTA}>
+                            <BcoAlteracoesPage />
                         </ProtectedRoute>
                     }
                 />

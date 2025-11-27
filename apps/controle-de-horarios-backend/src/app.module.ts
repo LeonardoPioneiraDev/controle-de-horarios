@@ -14,6 +14,7 @@ import { HealthController } from './health/health.controller';
 import oracleConfig from './database/oracle/oracle.config';
 
 import { LogsModule } from './logs/logs.module';
+import { BcoAlteracoesModule } from './bco-alteracoes/bco-alteracoes.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { LogsModule } from './logs/logs.module';
     ControleHorariosModule, // ✅ ADICIONAR
     OracleModule,
     LogsModule,
+    BcoAlteracoesModule,
   ],
   controllers: [HealthController],
   providers: [],

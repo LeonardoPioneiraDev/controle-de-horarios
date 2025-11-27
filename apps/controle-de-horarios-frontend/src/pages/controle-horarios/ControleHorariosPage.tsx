@@ -13,10 +13,11 @@ import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Calendar, Maximize2, Minimize2, FileText, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useFullscreen } from '../../contexts/FullscreenContext';
 
 export const ControleHorariosPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
-  const [isTableFullScreen, setIsTableFullScreen] = useState(false);
+  const { isFullscreen, setIsFullscreen } = useFullscreen();
   const [showLinhaMultiSelect, setShowLinhaMultiSelect] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [openConfirmSync, setOpenConfirmSync] = useState(false);
@@ -35,6 +36,22 @@ export const ControleHorariosPage: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  useEffect(() => {
+    if (isFullscreen) setShowFilters(false);
+  }, [isFullscreen]);
+
+  // Accessibility: allow ESC to exit fullscreen
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    if (isFullscreen) {
+      window.addEventListener('keydown', onKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isFullscreen, setIsFullscreen]);
 
   const {
     dataReferencia,
@@ -385,7 +402,7 @@ export const ControleHorariosPage: React.FC = () => {
     XLSX.writeFile(wb, `relatorio_controle_horarios_${dataReferencia || 'data'}.xlsx`);
   };
 
-  const shouldApplyZoom = isTableFullScreen && windowWidth <= 1390 && windowHeight <= 1900;
+  const shouldApplyZoom = isFullscreen && windowWidth <= 1390 && windowHeight <= 1900;
 
   return (
     <div className="space-y-4 md:space-y-6 p-2 md:p-6 min-h-screen bg-gray-100 dark:bg-gradient-to-br dark:from-black dark:via-neutral-900 dark:to-yellow-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
@@ -432,8 +449,8 @@ export const ControleHorariosPage: React.FC = () => {
                 <Button variant="outline" onClick={() => setShowReport(true)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
                   <FileText className="h-4 w-4 mr-2" /> Gerar Relatório
                 </Button>
-                <Button variant="outline" onClick={() => setIsTableFullScreen((v) => !v)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
-                  {isTableFullScreen ? (
+                <Button variant="outline" onClick={() => setIsFullscreen((v) => !v)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
+                  {isFullscreen ? (
                     <>
                       <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
                     </>
@@ -459,7 +476,7 @@ export const ControleHorariosPage: React.FC = () => {
           </div>
         )}
 
-        {showFilters && !isTableFullScreen && (
+        {showFilters && !isFullscreen && (
           <FiltersPanel
             showFilters={showFilters}
             onClose={() => setShowFilters(false)}
@@ -479,8 +496,20 @@ export const ControleHorariosPage: React.FC = () => {
         )}
 
         {Array.isArray(controleHorarios) && controleHorarios.length > 0 ? (
-          <div className={isTableFullScreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-0 overflow-auto' : ''}>
-            {isTableFullScreen && (
+          <div>
+            {false && isFullscreen && (
+              <div className="fixed top-4 right-4 z-[60]">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsFullscreen(false)}
+                  className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+                  aria-label="Sair da tela cheia"
+                >
+                  <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
+                </Button>
+              </div>
+            )}
+            {false && isFullscreen && (
               <div className="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-400 dark:border-yellow-400/20 px-4 py-3 shadow-sm">
                 <div className="flex items-center justify-between mb-2">
                   <div className="text-sm text-gray-800 dark:text-gray-700 font-medium">
@@ -496,7 +525,7 @@ export const ControleHorariosPage: React.FC = () => {
                     <Button variant="outline" onClick={handleExportHtml} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
                       <Download className="h-4 w-4 mr-2" /> Gerar Relatório
                     </Button>
-                    <Button variant="outline" onClick={() => setIsTableFullScreen(false)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
+                    <Button variant="outline" onClick={() => setIsFullscreen(false)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
                       <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
                     </Button>
                   </div>
@@ -522,7 +551,7 @@ export const ControleHorariosPage: React.FC = () => {
                 )}
               </div>
             )}
-            {isTableFullScreen && showFilters && (
+            {isFullscreen && showFilters && (
               <div className="fixed right-4 top-16 z-[60] w-[calc(100%-2rem)] sm:w-[720px]">
                 <FiltersPanel
                   showFilters={showFilters}
@@ -543,7 +572,59 @@ export const ControleHorariosPage: React.FC = () => {
               </div>
             )}
 
-            <div className={isTableFullScreen ? 'p-4' : ''} style={shouldApplyZoom ? { transform: 'scale(1)', transformOrigin: 'top left' } : {}}>
+            <div className={isFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-4 overflow-auto' : ''} style={shouldApplyZoom ? { transform: 'scale(1)', transformOrigin: 'top left' } : {}}>
+              {isFullscreen && (
+                <div className="sticky top-0 z-[55] bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-400 dark:border-yellow-400/20 px-4 py-3 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm text-gray-800 dark:text-gray-300 font-medium">
+                      <b>{controleHorarios.length}</b> viagens • Data: <b>{dataReferencia}</b> • <b>{dayType}</b>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={() => setShowFilters((v) => !v)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
+                        Filtros
+                      </Button>
+                      <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
+                        Limpar Filtros
+                      </Button>
+                      <select
+                        className="border border-gray-500 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent min-w-[180px]"
+                        onChange={(e) => e.target.value && applySavedFilterQuick(e.target.value)}
+                        defaultValue=""
+                        aria-label="Filtros Salvos"
+                        title="Filtros Salvos"
+                      >
+                        <option value="" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">Filtros salvos…</option>
+                        {savedFiltersQuick.map((sf) => (
+                          <option key={sf.name} value={sf.name} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">{sf.name}</option>
+                        ))}
+                      </select>
+                      <Button variant="outline" onClick={handleExportHtml} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <Download className="h-4 w-4 mr-2" /> Gerar Relatório
+                      </Button>
+                      <Button variant="outline" onClick={() => setIsFullscreen(false)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
+                      </Button>
+                    </div>
+                  </div>
+                  {savedFiltersQuick.length > 0 && (
+                    <div className="flex items-center gap-2 pt-2 border-t border-gray-400 dark:border-gray-700">
+                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Filtros Salvos:</span>
+                      <div className="flex flex-wrap gap-2">
+                        {savedFiltersQuick.map((sf) => (
+                          <button
+                            key={sf.name}
+                            onClick={() => applySavedFilterQuick(sf.name)}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border border-yellow-500/50 bg-yellow-100 dark:bg-yellow-400/10 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-400/20 transition-colors"
+                            title={`Aplicar filtro: ${sf.name}`}
+                          >
+                            {sf.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <DataTable
                 controleHorarios={sortedControleHorarios}
                 controleHorariosOriginais={controleHorariosOriginais}
