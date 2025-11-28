@@ -81,7 +81,7 @@ export const AppRoutes: React.FC = () => {
                 <Route
                     path="bco-alteracoes"
                     element={
-                        <ProtectedRoute minRole={UserRole.ANALISTA}>
+                        <ProtectedRoute allowedRoles={[UserRole.ESTATISTICA, UserRole.ADMINISTRADOR]}>
                             <BcoAlteracoesPage />
                         </ProtectedRoute>
                     }

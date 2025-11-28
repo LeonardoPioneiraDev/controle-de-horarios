@@ -3,7 +3,7 @@
 import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { UserRole, hasRolePermission } from '../../common/enums/user-role.enum';
+import { UserRole, hasRolePermission, isValidRole } from '../../common/enums/user-role.enum';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -44,10 +44,35 @@ export class RolesGuard implements CanActivate {
 
     // âœ… LOG PARA DEBUG
     this.logger.log(`[ROLES_GUARD] User role:  | normalized=`);
+    // Normalize user role from token/request
+    const normalizeRole = (value: unknown): UserRole | null => {
+      const raw = (value ?? '').toString().trim().toLowerCase();
+      if (!raw) return null;
+      const alias: Record<string, UserRole> = {
+        admin: UserRole.ADMINISTRADOR,
+        administrador: UserRole.ADMINISTRADOR,
+        estatistica: UserRole.ESTATISTICA,
+        analista: UserRole.ANALISTA,
+        gerente: UserRole.GERENTE,
+        diretor: UserRole.DIRETOR,
+        operador: UserRole.OPERADOR,
+        encarregado: UserRole.ENCARREGADO,
+        pcqc: UserRole.PCQC,
+        dacn: UserRole.DACN,
+        instrutores: UserRole.INSTRUTORES,
+        despachante: UserRole.DESPACHANTE,
+        'operador_cco': UserRole.OPERADOR_CCO,
+        operadorcco: UserRole.OPERADOR_CCO,
+      };
+      if (alias[raw]) return alias[raw];
+      return isValidRole(raw) ? (raw as UserRole) : null;
+    };
 
-    // âœ… CORRIGIDO: Usar hierarquia de roles
-    const hasPermission = requiredRoles.some((requiredRole) => {
-      const permission = hasRolePermission(((user?.role)||'').toString().toLowerCase() as UserRole, requiredRole);
+    const normalizedRole = normalizeRole(user?.role) || normalizeRole((user as any)?.perfil);
+    this.logger.log(`[ROLES_GUARD] User role raw: ${user?.role} | normalized=${normalizedRole}`);
+    // CORRIGIDO: Usar hierarquia de roles
+    const hasPermission = !!normalizedRole && requiredRoles.some((requiredRole) => {
+      const permission = hasRolePermission(normalizedRole as UserRole, requiredRole);
       
       // âœ… LOG DETALHADO
       this.logger.log(`[ROLES_GUARD] Checking:  >= ${requiredRole} = ${permission}`);
@@ -61,3 +86,6 @@ export class RolesGuard implements CanActivate {
     return hasPermission;
   }
 }
+
+
+

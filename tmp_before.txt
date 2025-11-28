@@ -166,11 +166,8 @@ export class UsersController {
     const activated = await this.usersService.activateUser(newUser.id);
     const { token } = await this.usersService.enableAutoLogin(activated.id);
 
-    const frontendBase = this.configService.get<string>('FRONTEND_URL', 'https://horarios.vpioneira.com.br');
+    const frontendBase = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3005');
     const autologinUrl = `${frontendBase.replace(/\/$/, '')}/autologin/${token}`;
-    const emailLinkBase = this.configService.get<string>('EMAIL_LINK_BASE')
-      || frontendBase;
-    const emailAutologinUrl = `${emailLinkBase.replace(/\/$/, '')}/autologin/${token}`;
 
     // Enviar e-mail com link de autologin
     try {
@@ -189,10 +186,7 @@ export class UsersController {
           <p style=\"word-break:break-all;color:#2563eb;\">${autologinUrl}</p>
         </div>
       `;
-      // Substituir URLs internas pelo link preferencial de e-mail
-      const escaped = autologinUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const finalHtml = html.replace(new RegExp(escaped, 'g'), emailAutologinUrl);
-      await this.emailService.sendEmail({ to: email, subject, html: finalHtml, text: emailAutologinUrl });
+      await this.emailService.sendEmail({ to: email, subject, html, text: autologinUrl });
     } catch (e: any) {
       console.log(`Falha ao enviar e-mail de autologin: ${e?.message}`);
     }

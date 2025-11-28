@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserRole, canSyncControleHorarios, canEditControleHorarios } from '../../types/user.types';
+import { UserRole, canSyncControleHorarios, canEditControleHorarios } from '../../types';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { useControleHorarios } from './hooks/useControleHorarios';
 import { FiltersPanel } from './components/FiltersPanel/FiltersPanel';

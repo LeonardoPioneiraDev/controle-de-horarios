@@ -1,4 +1,4 @@
-// src/types/user.types.ts
+﻿// src/types/user.types.ts
 export enum UserRole {
   OPERADOR = 'operador',
   ENCARREGADO = 'encarregado',
@@ -32,7 +32,7 @@ export interface User {
   createdAt: Date;
   updatedAt: Date;
   lastLogin?: Date;
-  // �o. ADICIONADOS: Campos extras que vǦm do backend
+  // ï¿½o. ADICIONADOS: Campos extras que vÇ¦m do backend
   emailVerified?: boolean;
   tempPasswordExpires?: Date | null;
   passwordResetExpires?: Date | null;
@@ -61,10 +61,10 @@ export interface LoginRequest {
   password?: string;
 }
 
-// �o. CORRIGIDO: Interface que corresponde ao que o backend retorna
+// ï¿½o. CORRIGIDO: Interface que corresponde ao que o backend retorna
 export interface LoginResponse {
-  access_token: string;  // �o. snake_case como o backend retorna
-  refresh_token: string; // �o. snake_case como o backend retorna
+  access_token: string;  // ï¿½o. snake_case como o backend retorna
+  refresh_token: string; // ï¿½o. snake_case como o backend retorna
   user: User;
 }
 
@@ -82,7 +82,7 @@ export interface UserStats {
   rolesDistribution: { role: string; count: number }[];
 }
 
-// Helpers de roles e permiss��es no frontend (espelham o backend)
+// Helpers de roles e permissï¿½ï¿½es no frontend (espelham o backend)
 export const UserRoleHierarchy: Record<UserRole, number> = {
   [UserRole.ADMINISTRADOR]: 6,
   [UserRole.DIRETOR]: 5,
@@ -90,7 +90,7 @@ export const UserRoleHierarchy: Record<UserRole, number> = {
   [UserRole.ANALISTA]: 3,
   [UserRole.ENCARREGADO]: 2,
   [UserRole.OPERADOR]: 1,
-  // Aliases (mesmo n��vel)
+  // Aliases (mesmo nï¿½ï¿½vel)
   // [UserRole.ADMIN]: 6, // removido para evitar chave duplicada (mesmo valor string)
   [UserRole.PCQC]: 1,
   [UserRole.DACN]: 1,
@@ -107,13 +107,22 @@ export const isAtLeast = (role: UserRole | undefined, min: UserRole): boolean =>
   return (current ?? 0) >= (required ?? Number.MAX_SAFE_INTEGER);
 };
 
-// Permiss��es derivadas de neg��cio
+// Permissï¿½ï¿½es derivadas de negï¿½ï¿½cio
 export const canViewUsers = (role?: UserRole) => isAtLeast(role, UserRole.ADMINISTRADOR);
 export const canViewControleHorarios = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.OPERADOR);
 export const canSyncControleHorarios = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.ADMINISTRADOR);
 export const canViewViagens = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.ANALISTA);
 export const canSyncViagens = (role?: UserRole) => isAtLeast(role as UserRole, UserRole.ADMINISTRADOR);
-// Apenas Despachantes podem editar controle de horários
 export const canEditControleHorarios = (role?: UserRole) => {
   return [UserRole.DESPACHANTE, UserRole.OPERADOR, UserRole.ADMINISTRADOR].includes(role as UserRole);
 };
+
+
+// BCO Alterações: apenas Estatística e Administrador
+export const canViewBcoAlteracoes = (role?: UserRole) => (
+  role === UserRole.ESTATISTICA || role === UserRole.ADMINISTRADOR
+);
+
+
+
+

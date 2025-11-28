@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useFullscreen } from '../contexts/FullscreenContext';
@@ -6,7 +6,7 @@ import { Users, LogOut, Bus, Server, GitCompare, Clock, TrendingUp } from 'lucid
 
 import Header from './Header';
 import Sidebar from './Sidebar';
-import { canViewUsers, canViewViagens, canViewControleHorarios } from '../types/user.types';
+import { canViewUsers, canViewViagens, canViewControleHorarios, canViewBcoAlteracoes } from '../types/user.types';
 
 export const Layout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -35,7 +35,7 @@ export const Layout: React.FC = () => {
       items.push({ name: 'Histórico Comparações', href: '/historico-comparacoes', icon: TrendingUp as any });
     }
     if (canViewControleHorarios(user?.role)) items.push({ name: 'Controle Horários', href: '/controle-horarios', icon: Clock });
-    if (canViewViagens(user?.role)) items.push({ name: 'BCO Alterações', href: '/bco-alteracoes', icon: Server });
+    if (canViewBcoAlteracoes(user?.role)) items.push({ name: 'BCO Alterações', href: '/bco-alteracoes', icon: Server });
     return items;
   }, [user]);
 
@@ -78,4 +78,7 @@ export const Layout: React.FC = () => {
 };
 
 export default Layout;
+
+
+
 

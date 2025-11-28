@@ -12,6 +12,7 @@ export const BcoAlteracoesPage: React.FC = () => {
   const [status, setStatus] = React.useState<BcoStatusFiltro>('alteradas');
   const [page, setPage] = React.useState<number>(1);
   const [limite, setLimite] = React.useState<number>(50);
+  const [prefixo, setPrefixo] = React.useState<string>('');
 
   const resumoQuery = useQuery<BcoResumo | null>({
     queryKey: ['bcoResumo', data],
@@ -21,11 +22,19 @@ export const BcoAlteracoesPage: React.FC = () => {
   });
 
   const listaQuery = useQuery<BcoListaResponse>({
-    queryKey: ['bcoLista', data, status, page, limite],
-    queryFn: () => bcoAlteracoesService.listar(data, status, { page, limite }),
+    queryKey: ['bcoLista', data, status, page, limite, prefixo],
+    queryFn: () => bcoAlteracoesService.listar(data, status, { page, limite, prefixoVeiculo: prefixo }),
     enabled: !!data,
     placeholderData: keepPreviousData,
   });
+
+  const getLogDisplay = React.useCallback((it: BcoItem): string => {
+    const bco = (it.logAlteracao ?? '').trim();
+    const frq = (it.logAlteracaoFrq ?? '').trim();
+    if (bco) return bco;
+    if (frq) return `${frq} (FRQ)`;
+    return '';
+  }, []);
 
   const verificarMut = useMutation({
     mutationFn: () => bcoAlteracoesService.verificar(data),
@@ -155,7 +164,7 @@ export const BcoAlteracoesPage: React.FC = () => {
                   <td>${it.digitador || '-'}</td>
                   <td>${it.dataBco}</td>
                   <td>${it.dataDigitacao || '-'}</td>
-                  <td><span class="badge">${it.logAlteracao || ''}</span></td>
+                  <td><span class="badge">${(it.logAlteracao?.trim() ? it.logAlteracao : (it.logAlteracaoFrq?.trim() ? `${it.logAlteracaoFrq} (FRQ)` : ''))}</span></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -184,10 +193,17 @@ export const BcoAlteracoesPage: React.FC = () => {
   const total: number = listaQuery.data?.count ?? 0;
   const totalPages = Math.max(Math.ceil(total / limite), 1);
 
-  React.useEffect(() => { setPage(1); }, [data, status, limite]);
+  React.useEffect(() => { setPage(1); }, [data, status, limite, prefixo]);
 
   return (
     <div className="space-y-4">
+      {/* Error states (permissions) */}
+      {(resumoQuery.isError || listaQuery.isError) && (
+        <div className="rounded-md border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-800 dark:text-red-300">
+          Sem permissão para visualizar os dados de BCO Alterações. Contate um administrador.
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row md:items-end gap-3">
         <div>
           <label className="block text-sm text-gray-700 dark:text-yellow-300 mb-1">Data</label>
@@ -212,6 +228,16 @@ export const BcoAlteracoesPage: React.FC = () => {
               className={`px-4 py-2 text-sm font-medium border ${status === 'pendentes' ? 'bg-yellow-400 text-gray-900' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-yellow-200'} border-gray-300 dark:border-yellow-500/30 rounded-r-md`}
             >Pendentes</button>
           </div>
+        </div>
+        <div>
+          <label className="block text-sm text-gray-700 dark:text-yellow-300 mb-1">Prefixo</label>
+          <input
+            type="text"
+            value={prefixo}
+            onChange={(e) => setPrefixo(e.target.value)}
+            placeholder="Filtrar..."
+            className="px-3 py-2 border rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-yellow-200 border-gray-300 dark:border-yellow-500/30 w-32"
+          />
         </div>
         <div>
           <label className="block text-sm text-gray-700 dark:text-yellow-300 mb-1">Itens por página</label>
@@ -256,7 +282,7 @@ export const BcoAlteracoesPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <StatCard title="Total" value={resumo?.totalDocumentos ?? 0}   />
+        <StatCard title="Total" value={resumo?.totalDocumentos ?? 0} />
         <StatCard title="Alteradas" value={resumo?.totalAlteradas ?? 0} subtitle={resumo?.novasAlteracoes ? `+${resumo.novasAlteracoes} novas` : undefined} />
         <StatCard title="Pendentes" value={resumo?.totalPendentes ?? 0} />
       </div>
@@ -284,8 +310,8 @@ export const BcoAlteracoesPage: React.FC = () => {
                   <div className="text-gray-700 dark:text-yellow-200 text-right"><span className="font-medium">Digitação:</span> {it.dataDigitacao ?? '-'}</div>
                 </div>
                 <div className="mt-2">
-                  {it.logAlteracao ? (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">{it.logAlteracao}</span>
+                  {getLogDisplay(it) ? (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">{getLogDisplay(it)}</span>
                   ) : (
                     <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">Pendente</span>
                   )}
@@ -325,9 +351,9 @@ export const BcoAlteracoesPage: React.FC = () => {
                   <Td>{it.dataBco}</Td>
                   <Td>{it.dataDigitacao ?? '-'}</Td>
                   <Td>
-                    {it.logAlteracao ? (
+                    {getLogDisplay(it) ? (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                        {it.logAlteracao}
+                        {getLogDisplay(it)}
                       </span>
                     ) : (
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">

@@ -17,7 +17,7 @@ export class ViagensTransdataService {
     @InjectRepository(ViagemTransdata)
     private viagensRepository: Repository<ViagemTransdata>,
     private transdataApiService: TransdataApiService,
-  ) {}
+  ) { }
 
   /**
    * ✅ BUSCAR TODAS AS VIAGENS DE UMA DATA (SEM FILTROS)
@@ -27,7 +27,7 @@ export class ViagensTransdataService {
 
     // 1. Verificar se existem dados locais
     const viagensLocais = await this.buscarViagensLocais(data);
-    
+
     if (viagensLocais.length > 0) {
       this.logger.log(`[VIAGENS] ✅ Encontradas ${viagensLocais.length} viagens locais para ${data}`);
       return viagensLocais;
@@ -40,7 +40,7 @@ export class ViagensTransdataService {
     // 3. Retornar dados sincronizados
     const viagensSincronizadas = await this.buscarViagensLocais(data);
     this.logger.log(`[VIAGENS] ✅ Sincronização concluída: ${viagensSincronizadas.length} viagens`);
-    
+
     return viagensSincronizadas;
   }
 
@@ -48,7 +48,7 @@ export class ViagensTransdataService {
    * ✅ BUSCAR VIAGENS COM FILTROS APLICADOS
    */
   async buscarViagensComFiltros(
-    data: string, 
+    data: string,
     filtros: FiltrosViagemTransdataDto
   ): Promise<ResponsePaginadaDto<ViagemTransdata>> {
     this.logger.log(`[VIAGENS] Buscando viagens filtradas para data: ${data}`);
@@ -92,12 +92,12 @@ export class ViagensTransdataService {
   /**
    * ✅ SINCRONIZAÇÃO INTELIGENTE - VERSÃO OTIMIZADA
    */
-  async sincronizarViagensPorData(data: string): Promise<{ 
-    sincronizadas: number; 
-    novas: number; 
+  async sincronizarViagensPorData(data: string): Promise<{
+    sincronizadas: number;
+    novas: number;
     atualizadas: number;
     ignoradas: number;
-    desativadas: number; // ✅ CORRIGIDO: Propriedade adicionada
+    desativadas: number;
     tempoProcessamento: number;
     isPrimeiraSincronizacao: boolean;
   }> {
@@ -113,21 +113,6 @@ export class ViagensTransdataService {
 
       // 2. Buscar dados da API
       const dadosApi = await this.transdataApiService.buscarViagensPorData(data);
-      
-      if (!dadosApi || dadosApi.length === 0) {
-        this.logger.warn(`[VIAGENS] ⚠️ Nenhum dado encontrado na API para ${data}`);
-        return { 
-          sincronizadas: 0, 
-          novas: 0, 
-          atualizadas: 0, 
-          ignoradas: 0,
-          desativadas: 0, // ✅ CORRIGIDO: Propriedade adicionada
-          tempoProcessamento: Date.now() - inicioProcessamento,
-          isPrimeiraSincronizacao
-        };
-      }
-
-      this.logger.log(`[VIAGENS] 📊 API retornou ${dadosApi.length} viagens para processamento`);
 
       let resultado;
 
@@ -168,24 +153,32 @@ export class ViagensTransdataService {
    * ✅ PRIMEIRA SINCRONIZAÇÃO: SALVAR TODOS OS DADOS
    */
   private async executarPrimeiraSincronizacao(
-    dadosApi: TransdataApiResponse[], 
+    dadosApi: TransdataApiResponse[],
     dataReferencia: string
   ): Promise<{ novas: number; atualizadas: number; ignoradas: number; desativadas: number }> {
-    
-    this.logger.log(`[VIAGENS] 🆕 Executando primeira sincronização - salvando ${dadosApi.length} viagens`);
+    this.logger.log(`[VIAGENS] 💾 Executando primeira sincronização - salvando ${dadosApi.length} viagens`);
 
-    // Converter todos os dados da API para entidades
     const viagensParaSalvar = dadosApi.map(dadoApi => 
       this.mapearApiParaEntity(dadoApi, dataReferencia)
     );
 
     // Salvar em lotes para melhor performance
-    const tamanhoLote = 500;
+    const tamanhoLote = 100;
     let totalSalvas = 0;
 
     for (let i = 0; i < viagensParaSalvar.length; i += tamanhoLote) {
       const lote = viagensParaSalvar.slice(i, i + tamanhoLote);
-      await this.viagensRepository.save(lote);
+      try {
+        await this.viagensRepository.save(lote);
+      } catch (error) {
+        if (this.isDuplicatePrimaryKeyError(error)) {
+          this.logger.warn('[VIAGENS] Duplicidade de PK na primeira sincronização. Ajustando sequência e tentando novamente...');
+          await this.ajustarSequenciaIdSeNecessario();
+          await this.viagensRepository.save(lote);
+        } else {
+          throw error;
+        }
+      }
       totalSalvas += lote.length;
 
       this.logger.log(`[VIAGENS] 📈 Primeira sincronização - progresso: ${totalSalvas}/${viagensParaSalvar.length}`);
@@ -195,7 +188,7 @@ export class ViagensTransdataService {
       novas: totalSalvas,
       atualizadas: 0,
       ignoradas: 0,
-      desativadas: 0 // ✅ CORRIGIDO: Propriedade adicionada
+      desativadas: 0
     };
   }
 
@@ -203,10 +196,9 @@ export class ViagensTransdataService {
    * ✅ SINCRONIZAÇÃO INCREMENTAL: APENAS MUDANÇAS
    */
   private async executarSincronizacaoIncremental(
-    dadosApi: TransdataApiResponse[], 
+    dadosApi: TransdataApiResponse[],
     dataReferencia: string
   ): Promise<{ novas: number; atualizadas: number; ignoradas: number; desativadas: number }> {
-    
     this.logger.log(`[VIAGENS] 🔄 Executando sincronização incremental - verificando ${dadosApi.length} viagens`);
 
     // 1. Buscar todas as viagens existentes para esta data
@@ -225,7 +217,7 @@ export class ViagensTransdataService {
     for (let i = 0; i < dadosApi.length; i += tamanhoLote) {
       const lote = dadosApi.slice(i, i + tamanhoLote);
       const resultadoLote = await this.processarLoteIncremental(lote, dataReferencia, mapViagensExistentes);
-      
+
       novas += resultadoLote.novas;
       atualizadas += resultadoLote.atualizadas;
       ignoradas += resultadoLote.ignoradas;
@@ -265,7 +257,7 @@ export class ViagensTransdataService {
         isAtivo: true
       },
       select: [
-        'id', 'IdLinha', 'Servico', 'Viagem', 'hashDados', 
+        'id', 'IdLinha', 'Servico', 'Viagem', 'hashDados',
         'InicioRealizadoText', 'FimRealizadoText', 'statusCumprimento',
         'PrefixoRealizado', 'NomeMotorista', 'NomeCobrador'
       ]
@@ -277,7 +269,7 @@ export class ViagensTransdataService {
    */
   private criarMapaViagensExistentes(viagens: ViagemTransdata[]): Map<string, ViagemTransdata> {
     const mapa = new Map<string, ViagemTransdata>();
-    
+
     viagens.forEach(viagem => {
       const chave = this.gerarChaveUnica(viagem.IdLinha, viagem.Servico, viagem.Viagem);
       mapa.set(chave, viagem);
@@ -290,11 +282,10 @@ export class ViagensTransdataService {
    * ✅ PROCESSAR LOTE INCREMENTAL
    */
   private async processarLoteIncremental(
-    lote: TransdataApiResponse[], 
+    lote: TransdataApiResponse[],
     dataReferencia: string,
     mapViagensExistentes: Map<string, ViagemTransdata>
   ): Promise<{ novas: number; atualizadas: number; ignoradas: number; processedIds: number[] }> {
-    
     const viagensParaSalvar: ViagemTransdata[] = [];
     const processedIds: number[] = [];
     let novas = 0;
@@ -304,7 +295,7 @@ export class ViagensTransdataService {
     for (const dadoApi of lote) {
       const chaveUnica = this.gerarChaveUnica(dadoApi.IdLinha, dadoApi.Servico, dadoApi.Viagem);
       const viagemExistente = mapViagensExistentes.get(chaveUnica);
-      
+
       if (!viagemExistente) {
         // ✅ NOVA VIAGEM (não existia antes)
         const viagemEntity = this.mapearApiParaEntity(dadoApi, dataReferencia);
@@ -313,21 +304,36 @@ export class ViagensTransdataService {
       } else {
         // ✅ VERIFICAR SE PRECISA ATUALIZAR
         const viagemAtualizada = this.verificarEAtualizarSeNecessario(viagemExistente, dadoApi, dataReferencia);
-        
+
         if (viagemAtualizada) {
           viagensParaSalvar.push(viagemAtualizada);
           atualizadas++;
         } else {
           ignoradas++;
         }
-        processedIds.push(viagemExistente.id); // Add existing ID to processed list
+        processedIds.push(viagemExistente.id);
       }
     }
 
     // Salvar apenas as viagens que precisam ser inseridas ou atualizadas
     if (viagensParaSalvar.length > 0) {
-      const savedViagens = await this.viagensRepository.save(viagensParaSalvar);
-      savedViagens.forEach(v => processedIds.push(v.id)); // Add new IDs to processed list
+      let savedViagens: ViagemTransdata[] = [];
+      try {
+        savedViagens = await this.viagensRepository.save(viagensParaSalvar);
+      } catch (error) {
+        if (this.isDuplicatePrimaryKeyError(error)) {
+          this.logger.warn('[VIAGENS] Duplicidade de PK na sincronização incremental. Ajustando sequência e tentando novamente...');
+          await this.ajustarSequenciaIdSeNecessario();
+          savedViagens = await this.viagensRepository.save(viagensParaSalvar);
+        } else {
+          throw error;
+        }
+      }
+      savedViagens.forEach(v => {
+        if (!processedIds.includes(v.id)) {
+          processedIds.push(v.id);
+        }
+      });
     }
 
     return { novas, atualizadas, ignoradas, processedIds };
@@ -337,15 +343,14 @@ export class ViagensTransdataService {
    * ✅ VERIFICAR E ATUALIZAR SE NECESSÁRIO
    */
   private verificarEAtualizarSeNecessario(
-    viagemExistente: ViagemTransdata, 
+    viagemExistente: ViagemTransdata,
     dadoApi: TransdataApiResponse,
     dataReferencia: string
   ): ViagemTransdata | null {
-    
     // Campos que podem mudar e precisam ser verificados
     const camposParaVerificar = [
       'InicioRealizadoText',
-      'FimRealizadoText', 
+      'FimRealizadoText',
       'statusCumprimento',
       'PrefixoRealizado',
       'NomeMotorista',
@@ -407,22 +412,22 @@ export class ViagensTransdataService {
    * ✅ MAPEAR DADOS DA API PARA ENTITY
    */
   private mapearApiParaEntity(
-    dadoApi: TransdataApiResponse, 
+    dadoApi: TransdataApiResponse,
     dataReferencia: string
   ): ViagemTransdata {
     const viagem = new ViagemTransdata();
-    
+
     // Campos de controle
     viagem.dataReferencia = dataReferencia;
     viagem.ultimaSincronizacao = new Date();
     viagem.isAtivo = true;
-    
+
     // Gerar hash dos dados para comparação futura
     viagem.hashDados = this.gerarHashDados(dadoApi);
-    
+
     // Mapear todos os campos da API
     Object.assign(viagem, dadoApi);
-    
+
     return viagem;
   }
 
@@ -449,42 +454,71 @@ export class ViagensTransdataService {
   }
 
   /**
+   * �o. DETECTAR ERRO DE CHAVE PRIMÁRIA DUPLICADA (Postgres 23505 + PK_*)
+   */
+  private isDuplicatePrimaryKeyError(error: any): boolean {
+    const code = (error as any)?.code;
+    const constraint = (error as any)?.constraint as string | undefined;
+    return code === '23505' && !!constraint && constraint.startsWith('PK_');
+  }
+
+  /**
+   * �o. AJUSTAR SEQUÊNCIA DE ID QUANDO FICAR FORA DE SINCRONIA
+   * Garante que o próximo valor do ID seja > MAX(id) atual.
+   */
+  private async ajustarSequenciaIdSeNecessario(): Promise<void> {
+    try {
+      await this.viagensRepository.query(`
+        SELECT setval(
+          (SELECT pg_get_serial_sequence('viagens_transdata','id')),
+          COALESCE((SELECT MAX(id) FROM viagens_transdata), 0) + 1,
+          false
+        )
+      `);
+      this.logger.warn('[VIAGENS] Sequência de ID da tabela "viagens_transdata" ajustada.');
+    } catch (e) {
+      this.logger.error('[VIAGENS] Falha ao ajustar sequência de ID:', (e as any)?.message || e);
+      throw e;
+    }
+  }
+
+  /**
    * ✅ APLICAR FILTROS NA QUERY
    */
   private aplicarFiltros(queryBuilder: any, filtros: FiltrosViagemTransdataDto): void {
     if (filtros.codigoLinha) {
-      queryBuilder.andWhere('viagem.codigoLinha = :codigoLinha', { 
-        codigoLinha: filtros.codigoLinha 
+      queryBuilder.andWhere('viagem.codigoLinha = :codigoLinha', {
+        codigoLinha: filtros.codigoLinha
       });
     }
 
     if (filtros.servico) {
-      queryBuilder.andWhere('viagem.Servico = :servico', { 
-        servico: filtros.servico 
+      queryBuilder.andWhere('viagem.Servico = :servico', {
+        servico: filtros.servico
       });
     }
 
     if (filtros.sentido) {
-      queryBuilder.andWhere('viagem.SentidoText = :sentido', { 
-        sentido: filtros.sentido 
+      queryBuilder.andWhere('viagem.SentidoText = :sentido', {
+        sentido: filtros.sentido
       });
     }
 
     if (filtros.pontoFinal) {
-      queryBuilder.andWhere('viagem.PontoFinal = :pontoFinal', { 
-        pontoFinal: filtros.pontoFinal 
+      queryBuilder.andWhere('viagem.PontoFinal = :pontoFinal', {
+        pontoFinal: filtros.pontoFinal
       });
     }
 
     if (filtros.statusCumprimento) {
-      queryBuilder.andWhere('viagem.statusCumprimento = :status', { 
-        status: filtros.statusCumprimento 
+      queryBuilder.andWhere('viagem.statusCumprimento = :status', {
+        status: filtros.statusCumprimento
       });
     }
 
     if (filtros.nomeLinha) {
-      queryBuilder.andWhere('viagem.NomeLinha ILIKE :nomeLinha', { 
-        nomeLinha: `%${filtros.nomeLinha}%` 
+      queryBuilder.andWhere('viagem.NomeLinha ILIKE :nomeLinha', {
+        nomeLinha: `%${filtros.nomeLinha}%`
       });
     }
 
@@ -505,14 +539,14 @@ export class ViagensTransdataService {
     }
 
     if (filtros.horarioInicio) {
-      queryBuilder.andWhere('viagem.InicioPrevistoText >= :horarioInicio', { 
-        horarioInicio: filtros.horarioInicio 
+      queryBuilder.andWhere('viagem.InicioPrevistoText >= :horarioInicio', {
+        horarioInicio: filtros.horarioInicio
       });
     }
 
     if (filtros.horarioFim) {
-      queryBuilder.andWhere('viagem.InicioPrevistoText <= :horarioFim', { 
-        horarioFim: filtros.horarioFim 
+      queryBuilder.andWhere('viagem.InicioPrevistoText <= :horarioFim', {
+        horarioFim: filtros.horarioFim
       });
     }
   }
@@ -542,7 +576,7 @@ export class ViagensTransdataService {
       .where('viagem.dataReferencia = :data', { data })
       .andWhere('viagem.isAtivo = :ativo', { ativo: true })
       .andWhere('viagem.codigoLinha IS NOT NULL')
-      .andWhere('viagem.codigoLinha != :empty', { empty: '' }) // ✅ CORRIGIDO: SQL syntax
+      .andWhere('viagem.codigoLinha != :empty', { empty: '' })
       .orderBy('codigoLinha', 'ASC')
       .getRawMany();
 

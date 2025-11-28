@@ -13,6 +13,7 @@ export interface BcoItem {
   idbco: number;
   documento: string;
   logAlteracao: string | null;
+  logAlteracaoFrq?: string | null;
   dataBco: string; // YYYY-MM-DD
   dataDigitacao: string | null; // YYYY-MM-DD
   digitador: string | null;
@@ -24,4 +25,3 @@ export interface BcoListaResponse {
   count: number;
   source: 'POSTGRESQL';
 }
-

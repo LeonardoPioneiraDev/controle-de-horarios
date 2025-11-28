@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Like } from 'typeorm';
 import { BcoAlteracoesResumo } from '../entities/bco-alteracoes-resumo.entity';
 import { OracleService } from '../../database/oracle/services/oracle.service';
 import { BcoAlteracoesItem } from '../entities/bco-alteracoes-item.entity';
@@ -17,6 +17,7 @@ export interface ListaAlteracoesItemDTO {
   idbco: number;
   documento: string;
   logAlteracao: string | null;
+  logAlteracaoFrq?: string | null;
   dataBco: string; // YYYY-MM-DD
   dataDigitacao: string | null; // YYYY-MM-DD
   digitador: string | null;
@@ -48,6 +49,7 @@ export class BcoAlteracoesService {
         V.IDBCO,
         B.DOCUMENTOBCO,
         B.LOGALTERACAOBCO,
+        B.LOGALTERACAOFRQ,
         TO_CHAR(B.DATABCO, 'YYYY-MM-DD') AS DATABCO,
         TO_CHAR(B.DATADIGITACAO, 'YYYY-MM-DD') AS DATADIGITACAO,
         B.DIGITADORBCO,
@@ -79,9 +81,12 @@ export class BcoAlteracoesService {
       totalDocumentos = uniqueItens.size;
 
       for (const r of uniqueItens.values()) {
-        const log = r.LOGALTERACAOBCO ?? null;
+        const logBcoRaw = r.LOGALTERACAOBCO ?? null;
+        const logFrqRaw = r.LOGALTERACAOFRQ ?? null;
+        const logAlteracaoBco = logBcoRaw && String(logBcoRaw).trim() !== '' ? String(logBcoRaw) : null;
+        const logAlteracaoFrq = logFrqRaw && String(logFrqRaw).trim() !== '' ? String(logFrqRaw) : null;
         // Se tiver vazia ou null ainda não teve alteração
-        const alterada = !!(log && String(log).trim() !== '');
+        const alterada = !!(logAlteracaoBco || logAlteracaoFrq);
 
         if (alterada) {
           totalAlteradas++;
@@ -91,7 +96,8 @@ export class BcoAlteracoesService {
           dataReferencia: dataRef,
           idbco: Number(r.IDBCO),
           documento: String(r.DOCUMENTOBCO ?? ''),
-          logAlteracao: log,
+          logAlteracao: logAlteracaoBco,
+          logAlteracaoFrq: logAlteracaoFrq,
           dataBco: r.DATABCO ? new Date(String(r.DATABCO)) : dataRef,
           dataDigitacao: r.DATADIGITACAO ? new Date(String(r.DATADIGITACAO)) : null,
           digitador: r.DIGITADORBCO ?? null,
@@ -137,17 +143,23 @@ export class BcoAlteracoesService {
   async listarPorData(
     data: string,
     status: 'alteradas' | 'pendentes',
-    opts?: { limite?: number; page?: number },
+    opts?: { limite?: number; page?: number; prefixoVeiculo?: string },
   ): Promise<{ items: ListaAlteracoesItemDTO[]; count: number; source: 'POSTGRESQL' }> {
     const limite = Math.min(Math.max(opts?.limite ?? 1000, 1), 10000);
     const page = Math.max(opts?.page ?? 1, 1);
     const skip = (page - 1) * limite;
 
+    const where: any = {
+      dataReferencia: new Date(data),
+      alterada: status === 'alteradas',
+    };
+
+    if (opts?.prefixoVeiculo) {
+      where.prefixoVeic = Like(`%${opts.prefixoVeiculo}%`);
+    }
+
     const [rows, count] = await this.itemRepo.findAndCount({
-      where: {
-        dataReferencia: new Date(data),
-        alterada: status === 'alteradas',
-      },
+      where,
       order: { documento: 'ASC' },
       take: limite,
       skip,
@@ -175,6 +187,7 @@ export class BcoAlteracoesService {
       idbco: r.idbco,
       documento: r.documento,
       logAlteracao: r.logAlteracao,
+      logAlteracaoFrq: (r as any).logAlteracaoFrq ?? null,
       dataBco: toYMD(r.dataBco) || '',
       dataDigitacao: toYMD(r.dataDigitacao),
       digitador: r.digitador,

@@ -22,7 +22,7 @@ export class ControleHorariosService {
     private readonly controleHorarioChangeRepository: Repository<ControleHorarioChange>,
     private readonly oracleService: OracleService,
     private readonly configService: ConfigService,
-  ) {}
+  ) { }
 
   // Executa diariamente às 19:00 (horário do servidor) a sincronização do dia seguinte
   @Cron('0 19 * * *', { timeZone: 'America/Sao_Paulo' })
@@ -76,8 +76,8 @@ export class ControleHorariosService {
         }
         const d = new Date(val);
         return isNaN(d.getTime()) ? null : d;
-      } catch { 
-        return null; 
+      } catch {
+        return null;
       }
     };
 
@@ -108,7 +108,7 @@ export class ControleHorariosService {
 
       // 3. Guarda de segurança para propagação
       const isPropagationSafe = originalControleHorario.cod_servico_numero && originalControleHorario.cracha_motorista;
-      
+
       // map adjusted times and agreement if present in payload
       if (typeof (fieldsToUpdate as any).hor_saida_ajustada === 'string') {
         (fieldsToUpdate as any).hor_saida_ajustada = parseHoraAjustada(originalControleHorario.hor_saida, (fieldsToUpdate as any).hor_saida_ajustada) || undefined;
@@ -170,7 +170,7 @@ export class ControleHorariosService {
           editado_por_email: normalizedEditorEmail,
           updated_at: new Date(),
         });
-        
+
         updatedRecords.push(relatedHorario);
         processedIds.add(relatedHorario.id);
       }
@@ -179,7 +179,7 @@ export class ControleHorariosService {
 
     if (updatedRecords.length > 0) {
       const uniqueRecords = Array.from(new Map(updatedRecords.map((r) => [r.id, r])).values());
-      
+
       this.logger.log(`Salvando ${uniqueRecords.length} registros únicos no banco de dados.`);
       await this.controleHorarioRepository.manager.transaction(async (transactionalEntityManager) => {
         await transactionalEntityManager.save(ControleHorario, uniqueRecords);
@@ -259,9 +259,10 @@ export class ControleHorariosService {
       });
     }
 
-    if (!isEscala && filtros?.local_origem_viagem) {
-      queryBuilder.andWhere('controle.local_origem_viagem ILIKE :local_origem_viagem', {
-        local_origem_viagem: `%${filtros.local_origem_viagem}%`,
+    if (!isEscala && filtros?.local_origem_viagem && filtros.local_origem_viagem.length > 0) {
+      // Filtra por múltiplas localidades (OR)
+      queryBuilder.andWhere('controle.local_origem_viagem IN (:...local_origem_viagem)', {
+        local_origem_viagem: filtros.local_origem_viagem,
       });
     }
 
@@ -367,7 +368,7 @@ export class ControleHorariosService {
       queryBuilder.andWhere('controle.de_acordo = TRUE');
     }
 
-    // Esconder viagens \"de acordo\" após N segundos (padrão 30s)
+    // Esconder viagens "de acordo" após N segundos (padrão 30s)
     const ocultarSegundos = Number(filtros?.ocultar_de_acordo_apos_segundos ?? 30);
     const isApenasEditadas = Boolean((filtros as any)?.apenas_editadas);
     const isFiltroEditadosPor = Boolean(filtros?.editado_por_usuario_email);
@@ -404,14 +405,15 @@ export class ControleHorariosService {
         queryBuilder.andWhere('controle.flg_sentido = :flgSentido', { flgSentido });
       }
     }
-    // Filtrar por horário de início
+    // Filtrar por horário de início (Viagens que começam DEPOIS ou IGUAL a X)
     if (!isEscala && filtros?.horarioInicio) {
       queryBuilder.andWhere('CAST(controle.hor_saida AS time) >= CAST(:horarioInicio AS time)', { horarioInicio: filtros.horarioInicio });
     }
 
-    // Filtrar por horário de fim
+    // Filtrar por horário de fim (Viagens que começam ANTES ou IGUAL a Y)
+    // CORREÇÃO: O filtro de fim deve limitar o horário de SAÍDA, não de chegada, para pegar o intervalo de partidas.
     if (!isEscala && filtros?.horarioFim) {
-      queryBuilder.andWhere('CAST(controle.hor_chegada AS time) <= CAST(:horarioFim AS time)', { horarioFim: filtros.horarioFim });
+      queryBuilder.andWhere('CAST(controle.hor_saida AS time) <= CAST(:horarioFim AS time)', { horarioFim: filtros.horarioFim });
     }
 
     // Busca geral em múltiplos campos
@@ -420,8 +422,8 @@ export class ControleHorariosService {
         '(controle.nome_linha ILIKE :buscaTexto OR ' +
         'controle.nome_motorista ILIKE :buscaTexto OR ' +
         'controle.nome_cobrador ILIKE :buscaTexto OR ' +
-        'controle.prefixo_veiculo ILIKE :buscaTexto OR ' + 
-        'controle.atraso_motivo ILIKE :buscaTexto OR ' + 
+        'controle.prefixo_veiculo ILIKE :buscaTexto OR ' +
+        'controle.atraso_motivo ILIKE :buscaTexto OR ' +
         'controle.atraso_observacao ILIKE :buscaTexto OR ' +
         'controle.cod_servico_numero ILIKE :buscaTexto)',
         { buscaTexto: `%${filtros.buscaTexto}%` },
@@ -608,7 +610,7 @@ export class ControleHorariosService {
       for (let i = 0; i < dadosOracle.length; i += BATCH_SIZE) {
         const lote = dadosOracle.slice(i, i + BATCH_SIZE);
         const loteProcessado = lote.map(item => this.processarDadosOracle(item, dataReferencia));
-        
+
         // Filter out duplicates based on hash_dados within the current batch
         const uniqueLoteProcessado = Array.from(new Map(loteProcessado.map(item => [item.hash_dados, item])).values());
 
@@ -802,10 +804,10 @@ export class ControleHorariosService {
 
     const ultimaAtualizacao = totalRegistros > 0
       ? (await this.controleHorarioRepository.findOne({
-          where: { data_referencia: dataReferencia, is_ativo: true },
-          order: { updated_at: 'DESC' },
-          select: ['updated_at'],
-        }))?.updated_at || null
+        where: { data_referencia: dataReferencia, is_ativo: true },
+        order: { updated_at: 'DESC' },
+        select: ['updated_at'],
+      }))?.updated_at || null
       : null;
 
     const setoresDisponiveis = await this.controleHorarioRepository
@@ -1012,22 +1014,22 @@ export class ControleHorariosService {
 
     if (devePropagar) {
       this.logger.log(`✔️ Detecção de campos propagáveis. Acionando a lógica de atualização múltipla para o ID: ${id}`);
-      
+
       const updateForward: SingleControleHorarioUpdateDto = { id, ...updateDto };
-      
+
       const atualizados = await this.updateMultipleControleHorarios([updateForward], editorNome, editorEmail);
-      
+
       const registroAtualizado = atualizados.find((r) => r.id === id);
-      
+
       if (registroAtualizado) {
         return registroAtualizado;
       }
-      
+
       this.logger.warn(`⚠️ O registro com ID ${id} não foi encontrado no resultado da propagação. Retornando o estado original.`);
       return controleHorario; // Retorna o original se algo der errado na propagação
     } else {
       this.logger.log(`🖊️ Nenhuma alteração propagável detectada. Atualizando apenas o registro com ID: ${id}`);
-      
+
       // Função auxiliar para parsing de hora ajustada
       const parseHoraAjustada = (baseDate: Date | null | undefined, val?: string): Date | null => {
         if (!val) return null;
@@ -1041,8 +1043,8 @@ export class ControleHorariosService {
           }
           const d = new Date(val);
           return isNaN(d.getTime()) ? null : d;
-        } catch { 
-          return null; 
+        } catch {
+          return null;
         }
       };
 

@@ -19,6 +19,9 @@ export class BcoAlteracoesItem {
   @Column({ name: 'log_alteracao', type: 'varchar', length: 255, nullable: true })
   logAlteracao!: string | null;
 
+  @Column({ name: 'log_alteracao_frq', type: 'varchar', length: 255, nullable: true })
+  logAlteracaoFrq!: string | null;
+
   @Column({ name: 'data_bco', type: 'date' })
   dataBco!: Date;
 
@@ -40,4 +43,3 @@ export class BcoAlteracoesItem {
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date;
 }
-

@@ -55,10 +55,12 @@ export class FiltrosControleHorarioDto {
   @IsString()
   setor_principal_linha?: string;
 
-  @ApiPropertyOptional({ description: 'Local de origem da viagem (busca parcial)' })
+  @ApiPropertyOptional({ description: 'Local de origem da viagem (busca parcial)', type: [String] })
   @IsOptional()
-  @IsString()
-  local_origem_viagem?: string;
+  @IsArray()
+  @IsString({ each: true })
+  @Transform(({ value }) => (Array.isArray(value) ? value : value.split(',')))
+  local_origem_viagem?: string[];
 
   @ApiPropertyOptional({ description: 'Número do serviço (busca parcial)' })
   @IsOptional()

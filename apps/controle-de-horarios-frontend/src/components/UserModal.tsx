@@ -7,7 +7,7 @@ import { X, Mail, AlertCircle, CheckCircle, XCircle, Settings, Loader } from 'lu
 interface UserModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (userData: CreateUserRequest | UpdateUserRequest) => Promise<void>;
+  onSave: (userData: (CreateUserRequest & { autoLoginDirector?: boolean }) | UpdateUserRequest) => Promise<void>;
   user?: User | null;
   loading?: boolean;
 }
@@ -26,6 +26,7 @@ export const UserModal: React.FC<UserModalProps> = ({
     role: UserRole.OPERADOR,
     status: UserStatus.PENDING
   });
+  const [autoLoginDirector, setAutoLoginDirector] = useState<boolean>(false);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [emailInfo, setEmailInfo] = useState<{
@@ -52,6 +53,7 @@ export const UserModal: React.FC<UserModalProps> = ({
         role: user.role,
         status: user.status
       });
+      setAutoLoginDirector(false);
     } else {
       setFormData({
         email: '',
@@ -60,6 +62,7 @@ export const UserModal: React.FC<UserModalProps> = ({
         role: UserRole.OPERADOR,
         status: UserStatus.PENDING
       });
+      setAutoLoginDirector(false);
     }
     setErrors({});
   }, [user, isOpen]);
@@ -143,11 +146,12 @@ export const UserModal: React.FC<UserModalProps> = ({
         await onSave(updateData);
       } else {
         // Criação - sem senha
-        const createData: CreateUserRequest = {
+        const createData: CreateUserRequest & { autoLoginDirector?: boolean } = {
           email: formData.email.trim().toLowerCase(),
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
-          role: formData.role
+          role: formData.role,
+          autoLoginDirector: formData.role === UserRole.DIRETOR ? autoLoginDirector : undefined,
         };
         await onSave(createData);
       }
@@ -271,6 +275,27 @@ export const UserModal: React.FC<UserModalProps> = ({
 
   if (!isOpen) return null;
 
+  const roleSelectValue = (() => {
+    const r = String(formData.role);
+    if (!user && r === String(UserRole.DIRETOR) && autoLoginDirector) return '__diretor_auto__';
+    return r;
+  })();
+
+  const handleRoleSelectChange = (value: string) => {
+    if (value === '__diretor_auto__') {
+      setFormData(prev => ({ ...prev, role: UserRole.DIRETOR }));
+      setAutoLoginDirector(true);
+      // clear errors possibly related
+      if (errors['role']) setErrors(prev => ({ ...prev, role: '' }));
+      return;
+    }
+    setFormData(prev => ({ ...prev, role: value as any }));
+    if ((value as any) === UserRole.DIRETOR) {
+      setAutoLoginDirector(false);
+    }
+    if (errors['role']) setErrors(prev => ({ ...prev, role: '' }));
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
@@ -368,8 +393,8 @@ export const UserModal: React.FC<UserModalProps> = ({
             </label>
             <select
               className="form-select"
-              value={formData.role}
-              onChange={(e) => handleInputChange('role', e.target.value)}
+              value={roleSelectValue}
+              onChange={(e) => handleRoleSelectChange(e.target.value)}
               disabled={loading}
             >
               <option value={UserRole.PCQC}>PCQC</option>
@@ -383,8 +408,14 @@ export const UserModal: React.FC<UserModalProps> = ({
               <option value={UserRole.ANALISTA}>Analista</option>
               <option value={UserRole.GERENTE}>Gerente</option>
               <option value={UserRole.DIRETOR}>Diretor</option>
+              {!user && (<option value="__diretor_auto__">Diretor - Login automático</option>)}
               <option value={UserRole.ADMINISTRADOR}>Administrador</option>
             </select>
+            {!user && roleSelectValue === '__diretor_auto__' && (
+              <p className="mt-1 text-xs text-blue-600">
+                O usuário receberá por e-mail um link seguro para entrar automaticamente (sem senha).
+              </p>
+            )}
           </div>
 
           {/* Status (apenas na edição) */}

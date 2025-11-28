@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS bco_alteracoes_itens (
   idbco INTEGER NOT NULL,
   documento VARCHAR(50) NOT NULL,
   log_alteracao VARCHAR(255),
+  log_alteracao_frq VARCHAR(255),
   data_bco DATE NOT NULL,
   data_digitacao DATE,
   digitador VARCHAR(100),

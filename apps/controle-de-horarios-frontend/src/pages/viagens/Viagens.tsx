@@ -284,18 +284,6 @@ const ViagensTable = ({ viagens, loading }: { viagens: ViagemTransdata[], loadin
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex flex-col space-y-1">
-                                            <div className="flex items-center text-sm text-gray-900 dark:text-gray-100">
-                                                <Truck className="h-4 w-4 mr-2 text-gray-400" />
-                                                <span className="font-medium">{v.PrefixoRealizado || '-'}</span>
-                                            </div>
-                                            <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px]" title={v.NomeMotorista}>
-                                                <User className="h-3 w-3 mr-2 text-gray-400" />
-                                                <span className="truncate">{v.NomeMotorista || '-'}</span>
-                                            </div>
-                                        </div>
-                                    </td>
                                 </tr>
                             );
                         })}
@@ -467,12 +455,17 @@ export const Viagens: React.FC = () => {
         setSincronizando(true);
         setError('');
         setSuccess('');
+        console.log(`[FRONTEND] Iniciando sincronização para ${selectedDate}...`);
         try {
             const result = await viagensTransdataService.sincronizarViagens(selectedDate);
+            console.log('[FRONTEND] Sincronização bem-sucedida:', result);
             setSuccess(`Sincronização concluída: ${result.sincronizadas} viagens processadas.`);
             await loadInitialData(); // Recarrega todos os dados
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Erro na sincronização.');
+            console.error('[FRONTEND] Erro na sincronização:', err);
+            const msg = err.response?.data?.message || err.message || 'Erro desconhecido na sincronização.';
+            const stack = err.response?.data?.stack ? `\n\nStack Trace:\n${err.response.data.stack}` : '';
+            setError(`Falha ao sincronizar: ${msg}${stack}`);
         } finally {
             setSincronizando(false);
         }

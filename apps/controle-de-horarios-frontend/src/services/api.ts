@@ -1,6 +1,7 @@
 import { BaseApiService } from './shared/api.service';
 import { authService } from './auth/auth.service';
 import { usersService } from './users/users.service';
+import { usersAutologinService } from './users/users.autologin';
 import { viagensTransdataService } from './viagens-transdata/viagens-transdata.service';
 import { controleHorariosService } from "../features/controle-horarios/services/controle-horarios.service"; // ✅ CAMINHO 
 import { emailService } from './email/email.service';
@@ -11,6 +12,7 @@ import { logsService } from './logs/logs.service';
 export {
   authService,
   usersService,
+  usersAutologinService,
   viagensTransdataService,
   controleHorariosService,
   emailService,

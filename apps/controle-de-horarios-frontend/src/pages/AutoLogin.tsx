@@ -32,9 +32,9 @@ const AutoLogin: React.FC = () => {
                 // Assumindo que o AuthContext tem um método para definir sessão ou que podemos salvar no localStorage e recarregar
                 // Vamos salvar no localStorage manualmente como fallback e tentar usar o contexto
 
-                localStorage.setItem('@App:token', response.access_token);
-                localStorage.setItem('@App:refreshToken', response.refresh_token);
-                localStorage.setItem('@App:user', JSON.stringify(response.user));
+                localStorage.setItem('token', response.access_token);
+                if (response.refresh_token) localStorage.setItem('refresh_token', response.refresh_token);
+                localStorage.setItem('user', JSON.stringify(response.user));
 
                 // Forçar atualização do contexto ou recarregar a página
                 // O ideal seria ter um método `setSession` no AuthContext, mas vamos recarregar para garantir

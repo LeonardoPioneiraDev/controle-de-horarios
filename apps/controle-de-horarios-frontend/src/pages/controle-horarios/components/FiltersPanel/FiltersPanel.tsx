@@ -249,19 +249,63 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           </select>
         </div>
 
-        {/* Local Origem Direta */}
-        <div>
-          <label className="block text-sm font-bold text-gray-800 dark:text-gray-300 mb-1.5">Local Origem Direta</label>
-          <select
-            value={filtros.local_origem_viagem || ''}
-            onChange={(e) => handleFilterChange('local_origem_viagem', e.target.value || undefined)}
-            className="w-full min-w-[150px] border border-gray-400 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent shadow-sm"
-          >
-            <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" value="">Todos</option>
-            {(opcoesFiltros.locaisOrigem || []).map(local => (
-              <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" key={local} value={local}>{local}</option>
-            ))}
-          </select>
+        {/* Local Origem Direta - Multi-select (até 4) */}
+        <div className="relative">
+          <label className="block text-sm font-bold text-gray-800 dark:text-gray-300 mb-1.5">
+            Local Origem ({Array.isArray(filtros.local_origem_viagem) ? filtros.local_origem_viagem.length : 0}/4)
+          </label>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                const dropdown = document.getElementById('localidade-dropdown');
+                if (dropdown) dropdown.classList.toggle('hidden');
+              }}
+              className="w-full min-w-[150px] border border-gray-400 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent shadow-sm text-left"
+            >
+              {Array.isArray(filtros.local_origem_viagem) && filtros.local_origem_viagem.length > 0
+                ? filtros.local_origem_viagem.join(', ')
+                : 'Selecione até 4'}
+            </button>
+            <div
+              id="localidade-dropdown"
+              className="hidden absolute z-50 mt-1 w-full max-h-60 overflow-auto bg-white dark:bg-gray-900 border border-gray-400 dark:border-gray-700 rounded-md shadow-lg"
+            >
+              {(opcoesFiltros.locaisOrigem || []).map(local => {
+                const selected = Array.isArray(filtros.local_origem_viagem) && filtros.local_origem_viagem.includes(local);
+                const count = Array.isArray(filtros.local_origem_viagem) ? filtros.local_origem_viagem.length : 0;
+                const canSelect = selected || count < 4;
+                return (
+                  <label
+                    key={local}
+                    className={`flex items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer ${!canSelect ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      disabled={!canSelect}
+                      onChange={(e) => {
+                        const currentList = Array.isArray(filtros.local_origem_viagem) ? filtros.local_origem_viagem : [];
+                        let newList;
+                        if (e.target.checked) {
+                          if (currentList.length < 4) {
+                            newList = [...currentList, local];
+                          } else {
+                            return;
+                          }
+                        } else {
+                          newList = currentList.filter(l => l !== local);
+                        }
+                        handleFilterChange('local_origem_viagem', newList.length > 0 ? newList : undefined);
+                      }}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-900 dark:text-gray-100">{local}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Busca Geral */}

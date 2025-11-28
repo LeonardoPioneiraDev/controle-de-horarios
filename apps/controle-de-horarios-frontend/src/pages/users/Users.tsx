@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { usersService } from '../../services/api';
+import { usersService, usersAutologinService } from '../../services/api';
 import { User, CreateUserRequest, UpdateUserRequest, UserRole, UserStatus } from '../../types';
 import { UserModal } from '../../components/UserModal';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
@@ -184,12 +184,30 @@ export const Users: React.FC = () => {
         }
         await usersService.updateUser(selectedUser.id, payload as UpdateUserRequest);
       } else {
-        await usersService.createUser(payload as CreateUserRequest);
+        const createPayload = payload as CreateUserRequest & { autoLoginDirector?: boolean };
+        const isDirector = String(createPayload.role).toLowerCase() === 'diretor';
+        const wantsAutologin = Boolean(createPayload.autoLoginDirector);
+
+        if (isDirector && wantsAutologin) {
+          const res = await usersAutologinService.createDirectorAutologin({
+            email: createPayload.email,
+            firstName: createPayload.firstName,
+            lastName: createPayload.lastName,
+          });
+          // Exibir link de autologin no sucesso
+          setActionSuccess(`Usuário criado. Link de acesso: ${res.autologinUrl}`);
+        } else {
+          await usersService.createUser(createPayload as CreateUserRequest);
+        }
       }
 
       setIsModalOpen(false);
       await loadUsers();
-      setActionSuccess(wasUpdate ? 'Usuário atualizado com sucesso.' : 'Usuário criado com sucesso.');
+      if (wasUpdate) {
+        setActionSuccess('Usuário atualizado com sucesso.');
+      } else if (!actionSuccess) {
+        setActionSuccess('Usuário criado com sucesso.');
+      }
       setTimeout(() => setActionSuccess(''), 4000);
     } catch (err: any) {
       setActionError(err.response?.data?.message || 'Erro ao salvar usuário');

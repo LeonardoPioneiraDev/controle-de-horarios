@@ -34,7 +34,7 @@ export class BcoAlteracoesController {
   }
 
   @Get(':data')
-  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR, UserRole.ESTATISTICA)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Obter resumo salvo no PostgreSQL por data' })
   @ApiResponse({ status: 200, description: 'Resumo retornado do PostgreSQL' })
@@ -52,7 +52,7 @@ export class BcoAlteracoesController {
   }
 
   @Get(':data/listar')
-  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR)
+  @Roles(UserRole.ANALISTA, UserRole.GERENTE, UserRole.DIRETOR, UserRole.ADMINISTRADOR, UserRole.ESTATISTICA)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Listar documentos alterados ou pendentes por data' })
   @ApiResponse({ status: 200, description: 'Lista retornada do Oracle' })
@@ -61,6 +61,7 @@ export class BcoAlteracoesController {
     @Query('status') status: 'alteradas' | 'pendentes' = 'alteradas',
     @Query('limite') limite?: string,
     @Query('page') page?: string,
+    @Query('prefixoVeiculo') prefixoVeiculo?: string,
   ) {
     if (status !== 'alteradas' && status !== 'pendentes') {
       throw new BadRequestException("Parâmetro 'status' deve ser 'alteradas' ou 'pendentes'");
@@ -69,7 +70,11 @@ export class BcoAlteracoesController {
     const start = Date.now();
     const parsedLimite = limite ? parseInt(limite, 10) : undefined;
     const parsedPage = page ? parseInt(page, 10) : undefined;
-    const result = await this.service.listarPorData(data, status, { limite: parsedLimite, page: parsedPage });
+    const result = await this.service.listarPorData(data, status, {
+      limite: parsedLimite,
+      page: parsedPage,
+      prefixoVeiculo,
+    });
     const execMs = Date.now() - start;
 
     return {

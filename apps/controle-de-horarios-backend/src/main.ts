@@ -3,6 +3,8 @@ import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
+
+
 process.env.TZ = 'America/Sao_Paulo';
 
 async function bootstrap() {
@@ -12,12 +14,14 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:3000',
+      'http://localhost:5173',
       'http://10.10.100.176:3000',
       'http://10.10.100.176:3005',
       'http://localhost:3005',
       'https://horarios.vpioneira.com.br',
-      'http://127.0.0.1:3000',   
-      'http://127.0.0.1:3005'
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3005',
+      'http://127.0.0.1:5173'
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control'],
@@ -47,11 +51,11 @@ async function bootstrap() {
     .setVersion('1.0')
     .addBearerAuth()
     .build();
-  
+
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-  
+
   //const port = process.env.PORT || 3336; // Desenvolvimento
   //const port = process.env.PORT || 3355; // Docker
   const port = process.env.PORT || 3335; // Produção

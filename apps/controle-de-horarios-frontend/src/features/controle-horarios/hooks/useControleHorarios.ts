@@ -1,6 +1,6 @@
 ﻿﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { controleHorariosService } from '../../../services/controleHorariosService';
-import { isAtLeast, UserRole, canEditControleHorarios } from '../../../types/user.types';
+import { isAtLeast, UserRole, canEditControleHorarios } from '../../../types';
 import {
   ControleHorarioItem,
   FiltrosControleHorarios,
