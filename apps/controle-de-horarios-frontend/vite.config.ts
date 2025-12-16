@@ -14,9 +14,9 @@ export default defineConfig({
     ],
   },
   server: {
-     //port: 3005, // Desenvolvimento
-    //port: 3000, // Docker
-   port: 3008, // Produção
+     port: 3005, // Desenvolvimento
+     //port: 3000, // Docker
+     //port: 3008, // Produção
   },
   build: {
     minify: 'terser',

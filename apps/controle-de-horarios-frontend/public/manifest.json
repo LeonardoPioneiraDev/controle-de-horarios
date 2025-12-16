@@ -1,0 +1,20 @@
+{
+    "name": "Horários Pioneira",
+    "short_name": "Horários Pioneira",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#fbcc2c",
+    "icons": [
+        {
+            "src": "/horarios.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/horarios.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

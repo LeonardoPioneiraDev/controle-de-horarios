@@ -49,6 +49,7 @@ export const UserEdit: React.FC = () => {
         const u = await usersService.getUserById(id);
         setUser(u);
         setForm({
+          email: u.email,
           firstName: u.firstName,
           lastName: u.lastName,
           role: u.role,
@@ -79,6 +80,7 @@ export const UserEdit: React.FC = () => {
       setSaving(true);
       setError(null);
       const payload: UpdateUserRequest = {
+        email: form.email?.trim(),
         firstName: form.firstName?.trim(),
         lastName: form.lastName?.trim(),
         role: form.role,
@@ -145,14 +147,19 @@ export const UserEdit: React.FC = () => {
             <div className="md:col-span-2 space-y-2">
               <Label className="text-gray-700 dark:text-gray-300 font-medium">E-mail</Label>
               <div className="relative group">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-[#fbcc2c] dark:group-focus-within:text-yellow-400 transition-colors" />
                 <Input
-                  className="pl-10 bg-gray-100/50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-70"
-                  value={user.email}
-                  disabled
+                  className={`pl-10 bg-white/50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 ${errors.email ? 'border-red-300 dark:border-red-700' : ''}`}
+                  value={form.email || ''}
+                  onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+                  autoComplete="email"
                 />
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">E-mail não pode ser alterado</p>
+              {errors.email && (
+                <p className="text-sm text-red-500 dark:text-red-400 flex items-center mt-1">
+                  <AlertCircle className="h-4 w-4 mr-1" />{errors.email}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

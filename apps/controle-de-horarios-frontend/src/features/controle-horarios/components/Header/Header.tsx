@@ -1,6 +1,6 @@
 // src/features/controle-horarios/components/Header/Header.tsx
 import React, { useMemo } from 'react';
-import { Calendar, Filter, Save, RefreshCw, Clock, X, AlertCircle } from 'lucide-react';
+import { Calendar, Filter, Save, RefreshCw, Clock, X, AlertCircle, Bell } from 'lucide-react';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { canSyncControleHorarios } from '../../../../types/user.types';
 
@@ -18,6 +18,8 @@ interface HeaderProps {
   onSincronizarGlobus: () => void; // Renamed from onSincronizar
   sincronizando: boolean;
   onManualSync: () => void; // Added
+  notificationsUnreadCount?: number;
+  onOpenNotifications?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -33,7 +35,9 @@ export const Header: React.FC<HeaderProps> = ({
   saving,
   onSincronizarGlobus, // Renamed from onSincronizar
   sincronizando,
-  onManualSync // Added
+  onManualSync, // Added
+  notificationsUnreadCount,
+  onOpenNotifications
 }) => {
   const { user } = useAuth();
   const canSync = useMemo(() => canSyncControleHorarios(user?.role), [user]);
@@ -49,6 +53,23 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
         
         <div className="flex items-center gap-4">
+          {/* Notificações - próximo ao toggle de tema no cabeçalho */}
+          {typeof notificationsUnreadCount !== 'undefined' && onOpenNotifications && (
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              className="relative inline-flex items-center justify-center w-10 h-10 rounded-md border border-gray-300 dark:border-gray-700 bg-white/70 dark:bg-gray-900/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              aria-label="Notificações"
+              title="Notificações"
+            >
+              <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              {notificationsUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center">
+                  {notificationsUnreadCount}
+                </span>
+              )}
+            </button>
+          )}
           {/* Seletor de Data */}
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-400" />

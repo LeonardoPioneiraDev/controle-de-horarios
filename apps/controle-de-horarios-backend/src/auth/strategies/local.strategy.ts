@@ -17,22 +17,19 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(email: string, password: string): Promise<any> {
-    console.log(`�� [LOCAL_STRATEGY] Validando credenciais para: ${email}`);
-    
+    console.log(`[LOCAL_STRATEGY] Validando credenciais para: ${email}`);
     try {
       const user = await this.usersService.validateUser(email, password);
-      
       if (!user) {
-        console.log(`❌ [LOCAL_STRATEGY] Credenciais inválidas para: ${email}`);
+        console.log(`[LOCAL_STRATEGY] Credenciais inválidas para: ${email}`);
         throw new UnauthorizedException('Credenciais inválidas');
       }
-
-      console.log(`✅ [LOCAL_STRATEGY] Credenciais válidas para: ${email}`);
-      
+      console.log(`[LOCAL_STRATEGY] Credenciais válidas para: ${email}`);
       return user;
-    } catch (error) {
-      console.log(`❌ [LOCAL_STRATEGY] Erro na validação para: ${email} - ${error.message}`);
+    } catch (error: any) {
+      console.log(`[LOCAL_STRATEGY] Erro na validação para: ${email} - ${error.message}`);
       throw new UnauthorizedException('Credenciais inválidas');
     }
   }
 }
+

@@ -186,20 +186,20 @@ export const HistoryDrawerCH: React.FC<Props> = ({ open, date, filtros, onClose 
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="flex-1 bg-black/60" onClick={onClose} aria-hidden="true" />
-      <aside className="w-full sm:w-[1000px] max-w-[95vw] h-full bg-gray-900 border-l border-yellow-400/20 shadow-xl overflow-hidden">
-        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-yellow-400/20 bg-gray-900">
+      <aside className="w-full sm:w-[1000px] max-w-[95vw] h-full bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-yellow-400/20 shadow-xl overflow-hidden">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-yellow-400/20 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-yellow-400" />
-            <h2 className="text-sm font-semibold text-gray-100">Viagens Editadas • {date}</h2>
+            <ClipboardList className="h-5 w-5 text-green-700 dark:text-yellow-400" />
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Viagens Editadas • {date}</h2>
           </div>
-          <button onClick={onClose} aria-label="Fechar histórico" className="p-1 rounded hover:bg-gray-800">
-            <X className="h-5 w-5 text-gray-300" />
+          <button onClick={onClose} aria-label="Fechar histórico" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+            <X className="h-5 w-5 text-gray-500 dark:text-gray-300" />
           </button>
         </div>
 
         <div className="h-full overflow-auto p-4">
           <div className="flex items-center justify-end mb-3">
-            <button onClick={handleExportHtml} className="px-3 py-1.5 text-xs border border-yellow-400/30 rounded text-yellow-200 hover:bg-yellow-400/10">RelatÃ³rio</button>
+            <button onClick={handleExportHtml} className="px-3 py-1.5 text-xs border border-green-700/30 dark:border-yellow-400/30 rounded text-green-800 dark:text-yellow-200 hover:bg-green-50 dark:hover:bg-yellow-400/10">Relatório</button>
           </div>
           {loading && <div className="text-sm text-gray-400">Carregando...</div>}
           {error && <div className="text-sm text-red-400">{error}</div>}
@@ -209,25 +209,25 @@ export const HistoryDrawerCH: React.FC<Props> = ({ open, date, filtros, onClose 
           {!loading && !error && items.length > 0 && (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-gray-800/60">
+                <thead className="bg-gray-50 dark:bg-gray-800/60">
                   <tr>
-                    <th className="px-3 py-2 text-left font-semibold">Linha / Serviço / Setor</th>
-                    <th className="px-3 py-2 text-left font-semibold">Horários</th>
-                    <th className="px-3 py-2 text-left font-semibold">Carro</th>
-                    <th className="px-3 py-2 text-left font-semibold">Motorista</th>
-                    <th className="px-3 py-2 text-left font-semibold">Cobrador</th>
-                    <th className="px-3 py-2 text-left font-semibold">Edição</th>
-                    <th className="px-3 py-2 text-left font-semibold">Observações</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Linha / Serviço / Setor</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Horários</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Carro</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Motorista</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Cobrador</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Edição</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Observações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {items.map((it: any) => {
                     return (
-                      <tr key={it.id} className="hover:bg-gray-800/30">
+                      <tr key={it.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
                         <td className="px-3 py-2 align-top">
-                          <div className="font-medium text-gray-100">{(it.codigo_linha || it.codigoLinha) + ' - ' + trunc(it.nome_linha || it.nomeLinha, 20)}</div>
-                          <div className="text-xs text-gray-300">Serviço: {it.cod_servico_numero || ''}</div>
-                          <div className="text-xs text-gray-400">Setor: {it.setor_principal_linha || it.setorPrincipalLinha || ''}</div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">{(it.codigo_linha || it.codigoLinha) + ' - ' + trunc(it.nome_linha || it.nomeLinha, 20)}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-300">Serviço: {it.cod_servico_numero || ''}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Setor: {it.setor_principal_linha || it.setorPrincipalLinha || ''}</div>
                         </td>
                         <td className="px-3 py-2 align-top">
                           <div className="flex flex-col gap-1">
@@ -241,22 +241,22 @@ export const HistoryDrawerCH: React.FC<Props> = ({ open, date, filtros, onClose 
                             </div>
                           </div>
                         </td>
-                        <td className={`px-3 py-2 align-top ${it.prefixo_veiculo_editado && it.prefixo_veiculo_editado !== it.prefixo_veiculo ? 'text-yellow-400 font-bold' : ''}`}>
+                        <td className={`px-3 py-2 align-top ${it.prefixo_veiculo_editado && it.prefixo_veiculo_editado !== it.prefixo_veiculo ? 'text-green-700 dark:text-yellow-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
                           {it.prefixo_veiculo || ''}
                         </td>
                         <td className="px-3 py-2 align-top">
                           {(!it.motorista_substituto_nome && !it.motorista_substituto_cracha) ? (
                             <div>
-                              <div>{it.nome_motorista || ''}</div>
-                              {it.cracha_motorista && <div className="text-xs text-gray-400">Crachá: {it.cracha_motorista}</div>}
+                              <div className="text-gray-900 dark:text-gray-100">{it.nome_motorista || ''}</div>
+                              {it.cracha_motorista && <div className="text-xs text-gray-500 dark:text-gray-400">Crachá: {it.cracha_motorista}</div>}
                             </div>
                           ) : (
                             <div className="flex flex-col">
-                              <div className="text-gray-500 line-through">
+                              <div className="text-gray-400 dark:text-gray-500 line-through">
                                 <div>{it.nome_motorista || ''}</div>
                                 {it.cracha_motorista && <div className="text-xs">Crachá: {it.cracha_motorista}</div>}
                               </div>
-                              <div className="text-yellow-400 font-bold">
+                              <div className="text-green-700 dark:text-yellow-400 font-bold">
                                 <div>{it.motorista_substituto_nome || ''}</div>
                                 {it.motorista_substituto_cracha && <div className="text-xs">Crachá: {it.motorista_substituto_cracha}</div>}
                               </div>
@@ -266,16 +266,16 @@ export const HistoryDrawerCH: React.FC<Props> = ({ open, date, filtros, onClose 
                         <td className="px-3 py-2 align-top">
                           {(!it.cobrador_substituto_nome && !it.cobrador_substituto_cracha) ? (
                             <div>
-                              <div>{it.nome_cobrador || ''}</div>
-                              {it.cracha_cobrador && <div className="text-xs text-gray-400">Crachá: {it.cracha_cobrador}</div>}
+                              <div className="text-gray-900 dark:text-gray-100">{it.nome_cobrador || ''}</div>
+                              {it.cracha_cobrador && <div className="text-xs text-gray-500 dark:text-gray-400">Crachá: {it.cracha_cobrador}</div>}
                             </div>
                           ) : (
                             <div className="flex flex-col">
-                              <div className="text-gray-500 line-through">
+                              <div className="text-gray-400 dark:text-gray-500 line-through">
                                 <div>{it.nome_cobrador || ''}</div>
                                 {it.cracha_cobrador && <div className="text-xs">Crachá: {it.cracha_cobrador}</div>}
                               </div>
-                              <div className="text-yellow-400 font-bold">
+                              <div className="text-green-700 dark:text-yellow-400 font-bold">
                                 <div>{it.cobrador_substituto_nome || ''}</div>
                                 {it.cobrador_substituto_cracha && <div className="text-xs">Crachá: {it.cobrador_substituto_cracha}</div>}
                               </div>
@@ -297,7 +297,7 @@ export const HistoryDrawerCH: React.FC<Props> = ({ open, date, filtros, onClose 
                         </td>
                         <td className="px-3 py-2 align-top">
                           {buildObservacoes(it) ? (
-                            <span className="text-yellow-200/90 italic font-medium bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20 block">
+                            <span className="text-green-800 dark:text-yellow-200/90 italic font-medium bg-green-50 dark:bg-yellow-500/10 px-2 py-1 rounded border border-green-200 dark:border-yellow-500/20 block">
                               {buildObservacoes(it)}
                             </span>
                           ) : (

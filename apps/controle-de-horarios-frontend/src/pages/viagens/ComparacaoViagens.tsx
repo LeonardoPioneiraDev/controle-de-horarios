@@ -107,7 +107,7 @@ const Controls = ({ date, onDateChange, onExecute, executing, onToggleFilters, f
   </Card>
 );
 
-const Statistics = ({ stats, isModal = false }: { stats: ResultadoComparacao; isModal?: boolean }) => (
+const Statistics = ({ stats, isModal = false, onQuickFilter, activeQuick }: { stats: ResultadoComparacao; isModal?: boolean; onQuickFilter?: (key: string) => void; activeQuick?: string; }) => (
   <Card className={`border-none shadow-lg ${isModal ? 'bg-gray-900/50' : 'bg-white/60 dark:bg-gray-900/60'} backdrop-blur-md`}>
     <CardContent className="p-6">
       <div className="flex items-center gap-3 mb-6">
@@ -121,12 +121,12 @@ const Statistics = ({ stats, isModal = false }: { stats: ResultadoComparacao; is
         </div>
       </div>
       <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 ${isModal ? 'lg:grid-cols-4' : 'lg:grid-cols-8'}`}>
-        <StatCard label="Total" value={stats.totalComparacoes} />
-        <StatCard label="Compatíveis" value={stats.compativeis} color="text-green-600 dark:text-green-400" icon={<CheckCircle className="h-4 w-4 mb-1" />} />
-        <StatCard label="Divergentes" value={stats.divergentes} color="text-red-600 dark:text-red-400" icon={<AlertCircle className="h-4 w-4 mb-1" />} />
-        <StatCard label="Horário Div." value={stats.horarioDivergente} color="text-yellow-600 dark:text-yellow-400" icon={<Clock className="h-4 w-4 mb-1" />} />
-        <StatCard label="Só Transdata" value={stats.apenasTransdata} color="text-blue-600 dark:text-blue-400" />
-        <StatCard label="Só Globus" value={stats.apenasGlobus} color="text-purple-600 dark:text-purple-400" />
+        <StatCard label="Total" value={stats.totalComparacoes} active={activeQuick === 'total'} onClick={() => onQuickFilter && onQuickFilter('total')} />
+        <StatCard label="Compatíveis" value={stats.compativeis} color="text-green-600 dark:text-green-400" icon={<CheckCircle className="h-4 w-4 mb-1" />} active={activeQuick === 'compativel'} onClick={() => onQuickFilter && onQuickFilter('compativel')} />
+        <StatCard label="Divergentes" value={stats.divergentes} color="text-red-600 dark:text-red-400" icon={<AlertCircle className="h-4 w-4 mb-1" />} active={activeQuick === 'divergente'} onClick={() => onQuickFilter && onQuickFilter('divergente')} />
+        <StatCard label="Horário Div." value={stats.horarioDivergente} color="text-yellow-600 dark:text-yellow-400" icon={<Clock className="h-4 w-4 mb-1" />} active={activeQuick === 'horario_divergente'} onClick={() => onQuickFilter && onQuickFilter('horario_divergente')} />
+        <StatCard label="Só Transdata" value={stats.apenasTransdata} color="text-blue-600 dark:text-blue-400" active={activeQuick === 'apenas_transdata'} onClick={() => onQuickFilter && onQuickFilter('apenas_transdata')} />
+        <StatCard label="Só Globus" value={stats.apenasGlobus} color="text-purple-600 dark:text-purple-400" active={activeQuick === 'apenas_globus'} onClick={() => onQuickFilter && onQuickFilter('apenas_globus')} />
         <StatCard label="Compatibilidade" value={`${stats.percentualCompatibilidade}%`} color="text-indigo-600 dark:text-indigo-400" />
         <StatCard label="Linhas" value={stats.linhasAnalisadas} />
       </div>
@@ -134,16 +134,22 @@ const Statistics = ({ stats, isModal = false }: { stats: ResultadoComparacao; is
   </Card>
 );
 
-const StatCard = ({ label, value, color = 'text-gray-900 dark:text-gray-100', icon }: any) => {
+const StatCard = ({ label, value, color = 'text-gray-900 dark:text-gray-100', icon, onClick, active = false }: any) => {
   const formatted = typeof value === 'number' ? value.toLocaleString('pt-BR') : value;
   return (
-    <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-100 dark:border-gray-700/50 bg-white/50 dark:bg-gray-800/50 shadow-sm hover:shadow-md transition-all">
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full flex flex-col items-center justify-center p-4 rounded-xl border bg-white/50 dark:bg-gray-800/50 shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#fbcc2c]
+        ${active ? 'border-[#fbcc2c] dark:border-yellow-500' : 'border-gray-100 dark:border-gray-700/50 hover:shadow-md'}`}
+      aria-pressed={active}
+    >
       <div className={`text-2xl font-bold ${color} flex flex-col items-center`}>
         {icon}
         {formatted}
       </div>
       <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1 text-center uppercase tracking-wide">{label}</div>
-    </div>
+    </button>
   );
 };
 
@@ -540,6 +546,7 @@ export const ComparacaoViagens: React.FC = () => {
   const [historicoLoading, setHistoricoLoading] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [openConfirmExecute, setOpenConfirmExecute] = useState(false);
+  const [activeQuick, setActiveQuick] = useState<string>('total');
 
   const buscarComparacoes = useCallback(async (currentFilters: FiltrosComparacao) => {
     setLoading(true);
@@ -645,11 +652,14 @@ export const ComparacaoViagens: React.FC = () => {
 
   const handleApplyFilters = () => {
     buscarComparacoes(filtros);
+    // ao aplicar manualmente, desmarca filtro rápido ativo se não corresponder a um status específico
+    if (!filtros.statusComparacao) setActiveQuick('total');
   };
 
   const clearFilters = () => {
     setFiltros(initialFilters);
     buscarComparacoes(initialFilters);
+    setActiveQuick('total');
   };
 
   const handleExecuteClick = () => {
@@ -706,7 +716,18 @@ export const ComparacaoViagens: React.FC = () => {
         <LoadingState text="Carregando estatísticas..." />
       ) : getEffectiveStats() ? (
         <div className="space-y-6">
-          <Statistics stats={getEffectiveStats() as ResultadoComparacao} />
+          <Statistics
+            stats={getEffectiveStats() as ResultadoComparacao}
+            onQuickFilter={(key: string) => {
+              // Aplica filtro rápido baseado no card clicado
+              setActiveQuick(key);
+              const next: FiltrosComparacao = { ...initialFilters, page: 1 };
+              if (key !== 'total') next.statusComparacao = key;
+              setFiltros(next);
+              buscarComparacoes(next);
+            }}
+            activeQuick={activeQuick}
+          />
           <HistoricoTable historico={historico} loading={historicoLoading} />
 
           {loading ? (

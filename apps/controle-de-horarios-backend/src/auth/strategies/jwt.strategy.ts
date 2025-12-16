@@ -12,7 +12,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private authService: AuthService,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        (request: any) => {
+          return request?.query?.token;
+        },
+      ]),
       ignoreExpiration: false,
       secretOrKey: configService.get('JWT_SECRET'),
     });
@@ -20,12 +25,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload): Promise<User> {
     console.log(`🔍 [JWT_STRATEGY] Validando token para: ${payload.email} (ID: ${payload.sub})`);
-    
+
     try {
       const user = await this.authService.validateJwtPayload(payload);
-      
+
       console.log(`✅ [JWT_STRATEGY] Token válido para: ${payload.email} - Role: ${user.role}`);
-      
+
       return user;
     } catch (error) {
       console.log(`❌ [JWT_STRATEGY] Token inválido para: ${payload.email} - Erro: ${error.message}`);

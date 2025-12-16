@@ -137,12 +137,12 @@ const ReportModal = ({ isOpen, onClose, item }: { isOpen: boolean, onClose: () =
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/60 dark:bg-black/80 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+    <div className="absolute inset-0 bg-black/60 dark:bg-black/80 z-20 flex items-start justify-center p-4 pt-20 backdrop-blur-sm">
+      <div className="sticky top-20 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl w-full max-w-3xl flex flex-col">
         <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
             <FileText className="text-[#fbcc2c] dark:text-yellow-400" />
-            Relatório da Comparação
+            Relatório da Comparação 
           </h2>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Fechar">
             <X className="h-5 w-5" />

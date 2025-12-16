@@ -9,6 +9,7 @@ import { FiltrosControleHorarioDto } from '../dto/filtros-controle-horario.dto';
 import { UpdateControleHorarioDto } from '../dto/update-controle-horario.dto';
 import { SingleControleHorarioUpdateDto } from '../dto/update-multiple-controle-horarios.dto';
 import { OracleService } from '../../database/oracle/services/oracle.service';
+import { NotificacoesService } from './notificacoes.service';
 import { createHash } from 'crypto';
 
 @Injectable()
@@ -22,6 +23,8 @@ export class ControleHorariosService {
     private readonly controleHorarioChangeRepository: Repository<ControleHorarioChange>,
     private readonly oracleService: OracleService,
     private readonly configService: ConfigService,
+    // Serviço de notificações por SSE
+    private readonly notificacoesService?: NotificacoesService,
   ) { }
 
   // Executa diariamente às 19:00 (horário do servidor) a sincronização do dia seguinte
@@ -212,6 +215,16 @@ export class ControleHorariosService {
       this.logger.log('ℹ️ Nenhuma alteração foi realizada no final do processo.');
     }
 
+    try {
+      if (this.notificacoesService && updatedRecords.length > 0) {
+        const unique = Array.from(new Map(updatedRecords.map((r) => [r.id, r])).values());
+        for (const rec of unique) {
+          const before = originalsById.get(rec.id) as Partial<ControleHorario> | undefined;
+          this.notificacoesService.emitirConfirmacao(rec as any, before);
+        }
+      }
+    } catch {}
+
     return Array.from(new Map(updatedRecords.map((r) => [r.id, r])).values());
   }
 
@@ -291,15 +304,38 @@ export class ControleHorariosService {
     }
 
     if (!isEscala && filtros?.cod_atividade) {
-      queryBuilder.andWhere('controle.cod_atividade = :cod_atividade', {
-        cod_atividade: filtros.cod_atividade,
-      });
+      const codAtividade = Number(filtros.cod_atividade);
+      // Fallbacks: em alguns cenários, certas atividades não possuem código persistido,
+      // apenas o nome. Para estes casos, aceitar nome_atividade como alternativa.
+      // 1: SAÍDA DE GARAGEM → nome_atividade ILIKE '%GARAGEM%'
+      // 24: DESLOCAMENTO DE VEÍCULO → nome_atividade ILIKE '%DESLOCAMENTO%'
+      if (codAtividade === 1) {
+        queryBuilder.andWhere(
+          '(controle.cod_atividade = :cod_atividade OR controle.nome_atividade ILIKE :nomeAtividadeFallback)',
+          { cod_atividade: codAtividade, nomeAtividadeFallback: '%GARAGEM%' },
+        );
+      } else if (codAtividade === 24) {
+        queryBuilder.andWhere(
+          '(controle.cod_atividade = :cod_atividade OR controle.nome_atividade ILIKE :nomeAtividadeFallback)',
+          { cod_atividade: codAtividade, nomeAtividadeFallback: '%DESLOCAMENTO%' },
+        );
+      } else {
+        queryBuilder.andWhere('controle.cod_atividade = :cod_atividade', {
+          cod_atividade: codAtividade,
+        });
+      }
     }
 
     if (!isEscala && filtros?.nome_atividade) {
-      queryBuilder.andWhere('controle.nome_atividade ILIKE :nome_atividade', {
-        nome_atividade: `%${filtros.nome_atividade}%`,
-      });
+      const codAtividadeAtual =
+        typeof (filtros as any).cod_atividade !== 'undefined'
+          ? Number((filtros as any).cod_atividade)
+          : undefined;
+      if (codAtividadeAtual !== 1 && codAtividadeAtual !== 24) {
+        queryBuilder.andWhere('controle.nome_atividade ILIKE :nome_atividade', {
+          nome_atividade: `%${filtros.nome_atividade}%`,
+        });
+      }
     }
 
     if (!isEscala && filtros?.desc_tipodia) {
@@ -385,6 +421,11 @@ export class ControleHorariosService {
     }
 
     // Novos Filtros Implementados
+    // Definição da lógica de ordem operacional (04:00–03:59), priorizando hora ajustada
+    const OPERATION_START_HOUR = 4;
+    const effectiveDeparture = "COALESCE(controle.hor_saida_ajustada, controle.hor_saida)";
+    const ordemOperacionalExpr = `CASE\n       WHEN EXTRACT(HOUR FROM ${effectiveDeparture}) < ${OPERATION_START_HOUR}\n         THEN ${effectiveDeparture} + INTERVAL '1 day'\n       ELSE ${effectiveDeparture}\n     END`;
+    queryBuilder.addSelect(ordemOperacionalExpr, 'ordem_operacional');
     // Mapear sentido_texto para flg_sentido
     if (!isEscala && filtros?.sentido_texto) {
       let flgSentido: string;
@@ -405,15 +446,32 @@ export class ControleHorariosService {
         queryBuilder.andWhere('controle.flg_sentido = :flgSentido', { flgSentido });
       }
     }
-    // Filtrar por horário de início (Viagens que começam DEPOIS ou IGUAL a X)
-    if (!isEscala && filtros?.horarioInicio) {
-      queryBuilder.andWhere('CAST(controle.hor_saida AS time) >= CAST(:horarioInicio AS time)', { horarioInicio: filtros.horarioInicio });
+    // Filtro por janela de horários (usa hora ajustada quando existir e lida com faixa cruzando meia-noite)
+    if (!isEscala && filtros?.horarioInicio && filtros?.horarioFim) {
+      const inicio = String(filtros.horarioInicio).trim();
+      const fim = String(filtros.horarioFim).trim();
+      const cruzaMeiaNoite = inicio > fim;
+      if (!cruzaMeiaNoite) {
+        queryBuilder.andWhere(
+          `CAST(${effectiveDeparture} AS time) BETWEEN CAST(:inicio AS time) AND CAST(:fim AS time)`,
+          { inicio, fim },
+        );
+      } else {
+        queryBuilder.andWhere(
+          `CAST(${effectiveDeparture} AS time) >= CAST(:inicio AS time) OR CAST(${effectiveDeparture} AS time) <= CAST(:fim AS time)`,
+          { inicio, fim },
+        );
+      }
+    }
+    // Filtrar por horário de início quando não houver horário de fim
+    if (!isEscala && filtros?.horarioInicio && !filtros?.horarioFim) {
+      queryBuilder.andWhere(`CAST(${effectiveDeparture} AS time) >= CAST(:horarioInicio AS time)`, { horarioInicio: filtros.horarioInicio });
     }
 
     // Filtrar por horário de fim (Viagens que começam ANTES ou IGUAL a Y)
     // CORREÇÃO: O filtro de fim deve limitar o horário de SAÍDA, não de chegada, para pegar o intervalo de partidas.
-    if (!isEscala && filtros?.horarioFim) {
-      queryBuilder.andWhere('CAST(controle.hor_saida AS time) <= CAST(:horarioFim AS time)', { horarioFim: filtros.horarioFim });
+    if (!isEscala && filtros?.horarioFim && !filtros?.horarioInicio) {
+      queryBuilder.andWhere(`CAST(${effectiveDeparture} AS time) <= CAST(:horarioFim AS time)`, { horarioFim: filtros.horarioFim });
     }
 
     // Busca geral em múltiplos campos
@@ -455,12 +513,16 @@ export class ControleHorariosService {
       } else if (orderByColumn === 'nome_motorista') {
         orderByColumn = 'nome_motorista';
       }
-      queryBuilder.orderBy(`controle.${orderByColumn}`, filtros.ordem);
+      if (orderByColumn === 'hor_saida' || orderByColumn === 'hor_saida_ajustada' || orderByColumn === 'ordem_operacional') {
+        queryBuilder.orderBy('ordem_operacional', filtros.ordem);
+      } else {
+        queryBuilder.orderBy(`controle.${orderByColumn}`, filtros.ordem);
+      }
     } else {
       queryBuilder
         .orderBy('controle.setor_principal_linha', 'ASC')
         .addOrderBy('controle.codigo_linha', 'ASC')
-        .addOrderBy('controle.hor_saida', 'ASC');
+        .addOrderBy('ordem_operacional', 'ASC');
     }
 
     // Sanitiza e aplica ordenação segura (override da anterior)
@@ -481,15 +543,18 @@ export class ControleHorariosService {
         'cod_atividade',
         'nome_atividade',
         'periodo_do_dia',
+        'ordem_operacional',
       ]);
       const candidate = String(filtros.ordenar_por).trim();
-      if (allowedOrderColumns.has(candidate)) {
+      if (candidate === 'ordem_operacional') {
+        queryBuilder.orderBy('ordem_operacional', filtros.ordem);
+      } else if (allowedOrderColumns.has(candidate)) {
         queryBuilder.orderBy(`controle.${candidate}` as any, filtros.ordem);
       } else {
         queryBuilder
           .orderBy('controle.setor_principal_linha', 'ASC')
           .addOrderBy('controle.codigo_linha', 'ASC')
-          .addOrderBy('controle.hor_saida', 'ASC');
+          .addOrderBy('ordem_operacional', 'ASC');
       }
     }
 
@@ -551,6 +616,8 @@ export class ControleHorariosService {
                 WHEN 4 THEN 'RENDIÇÃO'
                 WHEN 5 THEN 'RECOLHIMENTO'
                 WHEN 10 THEN 'RESERVA'
+                WHEN 1 THEN 'SAIDA DE GARAGEM'
+                WHEN 24 THEN 'DESLOCAMENTO DE VEICULO'
                 ELSE 'OUTROS'
             END AS NOME_ATIVIDADE,
             CASE H.COD_ATIVIDADE
@@ -580,7 +647,7 @@ export class ControleHorariosService {
             LEFT JOIN FLP_FUNCIONARIOS FM ON S.COD_MOTORISTA = FM.CODINTFUNC
             LEFT JOIN FLP_FUNCIONARIOS FC ON S.COD_COBRADOR = FC.CODINTFUNC
         WHERE
-            H.COD_ATIVIDADE IN (2, 3, 4, 5, 10)
+            H.COD_ATIVIDADE IN (2, 3, 4, 5, 10, 1, 24)
             AND L.CODIGOEMPRESA = 4
             AND UPPER(L.NOMELINHA) NOT LIKE '%DESPACHANTES%'
             AND UPPER(L.NOMELINHA) NOT LIKE '%LINHA ESPECIAL%'
@@ -965,7 +1032,7 @@ export class ControleHorariosService {
         JOIN T_ESC_SERVICODIARIA S ON D.DAT_ESCALA = S.DAT_ESCALA AND D.COD_INTESCALA = S.COD_INTESCALA
         JOIN T_ESC_HORARIODIARIA H ON D.DAT_ESCALA = H.DAT_ESCALA AND D.COD_INTESCALA = H.COD_INTESCALA
         JOIN BGM_CADLINHAS L ON DECODE(H.CODINTLINHA, NULL, D.COD_INTLINHA, H.CODINTLINHA) = L.CODINTLINHA
-        WHERE H.COD_ATIVIDADE IN (2, 3, 4, 5, 10)
+        WHERE H.COD_ATIVIDADE IN (2, 3, 4, 5, 10, 1, 24)
           AND L.CODIGOEMPRESA = 4
           AND UPPER(L.NOMELINHA) NOT LIKE '%DESPACHANTES%'
           AND UPPER(L.NOMELINHA) NOT LIKE '%LINHA ESPECIAL%'
@@ -1085,6 +1152,12 @@ export class ControleHorariosService {
         });
         await this.controleHorarioChangeRepository.save(rows);
       }
+      // Notificação SSE para confirmação (de_acordo virou true)
+      try {
+        if (this.notificacoesService) {
+          this.notificacoesService.emitirConfirmacao(saved, beforeState);
+        }
+      } catch {}
       return saved;
     }
   }

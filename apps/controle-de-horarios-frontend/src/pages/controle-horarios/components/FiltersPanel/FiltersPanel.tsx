@@ -1,5 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
-import { Search, X, CheckCheck, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, X, CheckCheck, Trash2, Loader2 } from 'lucide-react';
+import { api } from '../../../../services/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface FiltersPanelProps {
   showFilters: boolean;
@@ -40,48 +42,78 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
     setFiltros((prev: any) => ({ ...prev, [key]: value }));
   };
 
-  // Saved filters logic (local storage)
-  const [savedFilters, setSavedFilters] = useState<any[]>([]);
+  // Saved filters logic (API)
+  // savedFilters state removido (React Query usado)
   const [newFilterName, setNewFilterName] = useState('');
+  // Shared query with page header to keep data in sync
+  type UserFilterServer = {
+    id: string;
+    name: string;
+    filters?: Record<string, unknown> | null;
+    tipoLocal?: 'R' | 'S' | null;
+    statusEdicaoLocal?: 'todos' | 'minhas_edicoes' | 'nao_editados' | 'apenas_editadas' | null;
+    createdAt?: string;
+  };
+  const queryClient = useQueryClient();
+  const { data: serverSavedFilters, isFetching: loadingFilters } = useQuery({
+    queryKey: ['user-filters'],
+    queryFn: async () => {
+      const res = await api.get<UserFilterServer[]>('/user-filters');
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
 
-  // Load saved filters on mount
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('ch_saved_filters_default'); // Simplified key for now
-      if (raw) {
-        setSavedFilters(JSON.parse(raw));
-      }
-    } catch (e) {
-    }
-  }, []);
+  // Lista vinda do servidor (via React Query)
 
-  const handleSaveCurrentAsNamedFilter = () => {
+  const savedFilters = serverSavedFilters ?? [];
+
+  const loadSavedFilters = async () => {};
+
+  const handleSaveCurrentAsNamedFilter = async () => {
     if (!newFilterName.trim()) return;
-    if (savedFilters.length >= 3) {
-      alert("Limite de 3 filtros salvos atingido. Remova um para salvar outro.");
+    if (savedFilters.length >= 10) {
+      alert("Limite de 10 filtros salvos atingido. Remova um para salvar outro.");
       return;
     }
-    const newFilter = {
-      name: newFilterName.trim(),
-      filtros: { ...filtros },
-      tipoLocal,
-      statusEdicaoLocal,
-      createdAt: Date.now()
-    };
-    const updated = [...savedFilters, newFilter];
-    setSavedFilters(updated);
-    localStorage.setItem('ch_saved_filters_default', JSON.stringify(updated));
-    setNewFilterName('');
+
+    try {
+      const newFilter = {
+        name: newFilterName.trim(),
+        filters: { ...filtros },
+        tipoLocal,
+        statusEdicaoLocal,
+      };
+
+      console.log('🔄 [FiltersPanel] Salvando novo filtro:', newFilter);
+      const response = await api.post('/user-filters', newFilter);
+      console.log('✅ [FiltersPanel] Filtro salvo com sucesso:', response.data);
+      
+      setNewFilterName('');
+      // keep shared cache in sync
+      queryClient.invalidateQueries({ queryKey: ['user-filters'] });
+    } catch (error: any) {
+      console.error('❌ [FiltersPanel] Erro ao salvar filtro:', error);
+      alert(error.response?.data?.message || "Erro ao salvar filtro.");
+    }
   };
 
-  const handleDeleteSavedFilter = (name: string) => {
-    const updated = savedFilters.filter(f => f.name !== name);
-    setSavedFilters(updated);
-    localStorage.setItem('ch_saved_filters_default', JSON.stringify(updated));
+  const handleDeleteSavedFilter = async (id: string) => {
+    try {
+      console.log('🗑️ [FiltersPanel] Excluindo filtro:', id);
+      await api.delete(`/user-filters/${id}`);
+      console.log('✅ [FiltersPanel] Filtro excluído com sucesso');
+      
+      // keep shared cache in sync
+      queryClient.invalidateQueries({ queryKey: ['user-filters'] });
+    } catch (error) {
+      console.error('❌ [FiltersPanel] Erro ao excluir filtro:', error);
+      alert("Erro ao excluir filtro.");
+    }
   };
 
   const handleApplySavedFilter = (sf: any) => {
-    setFiltros(sf.filtros || {});
+    setFiltros(sf.filters || {});
     if (setTipoLocal) setTipoLocal(sf.tipoLocal);
     if (setStatusEdicaoLocal && sf.statusEdicaoLocal) setStatusEdicaoLocal(sf.statusEdicaoLocal);
     // Optionally auto-apply
@@ -124,8 +156,21 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <input
             type="text"
             value={filtros.codigo_linha ? (Array.isArray(filtros.codigo_linha) ? filtros.codigo_linha.join(', ') : filtros.codigo_linha) : ''}
-            onChange={(e) => handleFilterChange('codigo_linha', e.target.value ? e.target.value.split(',').map((s: string) => s.trim()) : undefined)}
-            placeholder="Códigos separados por vírgula"
+            onChange={(e) => {
+              const val = e.target.value;
+              if (!val) {
+                handleFilterChange('codigo_linha', undefined);
+                return;
+              }
+              const parts = val.split(',').map((s: string) => s.trim());
+              if (parts.length > 50) {
+                // Optional: alert or just truncate? User asked for "can filter up to 50".
+                // We'll just allow it but maybe show a warning if we wanted.
+                // For now, just pass it.
+              }
+              handleFilterChange('codigo_linha', parts);
+            }}
+            placeholder="Códigos separados por vírgula (até 50)"
             className="w-full min-w-[150px] border border-gray-400 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent shadow-sm"
           />
         </div>
@@ -223,15 +268,39 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           <label className="block text-sm font-bold text-gray-800 dark:text-gray-300 mb-1.5">Código Atividade</label>
           <select
             value={filtros.cod_atividade ?? ''}
-            onChange={(e) => handleFilterChange('cod_atividade', e.target.value ? parseInt(e.target.value) : undefined)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              // Zerar ambos ao escolher "Todas"
+              if (!raw) {
+                handleFilterChange('cod_atividade', undefined);
+                handleFilterChange('nome_atividade', undefined);
+                return;
+              }
+              const v = parseInt(raw, 10);
+              // Para 1 e 24, enviar o código E um fallback por nome para cobrir registros sem código
+              if (false && v === 1) {
+                handleFilterChange('cod_atividade', 1);
+                handleFilterChange('nome_atividade', 'GARAGEM');
+                return;
+              }
+              if (false && v === 24) {
+                handleFilterChange('cod_atividade', 24);
+                handleFilterChange('nome_atividade', 'DESLOCAMENTO');
+                return;
+              }
+              handleFilterChange('nome_atividade', undefined);
+              handleFilterChange('cod_atividade', Number.isFinite(v) ? v : undefined);
+            }}
             className="w-full min-w-[150px] border border-gray-400 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent shadow-sm"
           >
             <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" value="">Todas</option>
+            <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" value={1}>1 - SAÍDA DE GARAGEM</option>
             <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" value={2}>2 - REGULAR</option>
             <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" value={5}>5 - RECOLHIMENTO</option>
             <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" value={3}>3 - ESPECIAL</option>
             <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" value={4}>4 - RENDIÇÃO</option>
             <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" value={10}>10 - RESERVA</option>
+            <option className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100" value={24}>24 - DESLOCAMENTO DE VEÍCULO</option>
           </select>
         </div>
 
@@ -252,7 +321,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
         {/* Local Origem Direta - Multi-select (até 4) */}
         <div className="relative">
           <label className="block text-sm font-bold text-gray-800 dark:text-gray-300 mb-1.5">
-            Local Origem ({Array.isArray(filtros.local_origem_viagem) ? filtros.local_origem_viagem.length : 0}/4)
+            Local Origem ({Array.isArray(filtros.local_origem_viagem) ? filtros.local_origem_viagem.length : 0}/10)
           </label>
           <div className="relative">
             <button
@@ -265,7 +334,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
             >
               {Array.isArray(filtros.local_origem_viagem) && filtros.local_origem_viagem.length > 0
                 ? filtros.local_origem_viagem.join(', ')
-                : 'Selecione até 4'}
+                : 'Selecione até 10'}
             </button>
             <div
               id="localidade-dropdown"
@@ -274,7 +343,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
               {(opcoesFiltros.locaisOrigem || []).map(local => {
                 const selected = Array.isArray(filtros.local_origem_viagem) && filtros.local_origem_viagem.includes(local);
                 const count = Array.isArray(filtros.local_origem_viagem) ? filtros.local_origem_viagem.length : 0;
-                const canSelect = selected || count < 4;
+                const canSelect = selected || count < 10;
                 return (
                   <label
                     key={local}
@@ -288,7 +357,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
                         const currentList = Array.isArray(filtros.local_origem_viagem) ? filtros.local_origem_viagem : [];
                         let newList;
                         if (e.target.checked) {
-                          if (currentList.length < 4) {
+                          if (currentList.length < 10) {
                             newList = [...currentList, local];
                           } else {
                             return;
@@ -344,7 +413,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
         {/* Seção de filtros salvos */}
         <div className="flex flex-col sm:flex-row items-end gap-3 flex-wrap">
           <div className="flex-1 w-full sm:w-auto min-w-[220px]">
-            <label className="block text-sm font-bold text-gray-800 dark:text-gray-300 mb-1.5">Salvar filtro (até 3)</label>
+            <label className="block text-sm font-bold text-gray-800 dark:text-gray-300 mb-1.5">Salvar filtro (até 10)</label>
             <input
               type="text"
               value={newFilterName}
@@ -356,9 +425,9 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
           </div>
           <button
             onClick={handleSaveCurrentAsNamedFilter}
-            disabled={!newFilterName.trim() || savedFilters.length >= 3}
-            className={`w-full sm:w-auto px-4 py-2 text-sm rounded-md flex items-center justify-center gap-2 font-medium shadow-sm transition-colors ${(!newFilterName.trim() || savedFilters.length >= 3) ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400'}`}
-            title={savedFilters.length >= 3 ? 'Limite de 3 filtros atingido' : 'Salvar filtro atual'}
+            disabled={!newFilterName.trim() || savedFilters.length >= 10}
+            className={`w-full sm:w-auto px-4 py-2 text-sm rounded-md flex items-center justify-center gap-2 font-medium shadow-sm transition-colors ${(!newFilterName.trim() || savedFilters.length >= 10) ? 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed' : 'bg-yellow-500 text-black hover:bg-yellow-400'}`}
+            title={savedFilters.length >= 10 ? 'Limite de 10 filtros atingido' : 'Salvar filtro atual'}
           >
             <CheckCheck className="h-4 w-4" /> Salvar Filtro
           </button>
@@ -376,7 +445,7 @@ export const FiltersPanel: React.FC<FiltersPanelProps> = ({
                 <button
                   className="p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 transition-colors"
                   title="Excluir filtro"
-                  onClick={() => handleDeleteSavedFilter(sf.name)}
+                  onClick={() => handleDeleteSavedFilter(sf.id)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

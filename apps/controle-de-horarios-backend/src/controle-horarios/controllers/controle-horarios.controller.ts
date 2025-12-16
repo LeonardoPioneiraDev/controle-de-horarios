@@ -179,7 +179,7 @@ export class ControleHorariosController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.DESPACHANTE)
+  @Roles(UserRole.DESPACHANTE, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualizar um registro de controle de horário' })
   @ApiResponse({ status: 200, description: 'Registro atualizado com sucesso' })
@@ -194,6 +194,19 @@ export class ControleHorariosController {
       const editorNome = req.user?.nome || 'Desconhecido';
       const editorEmail = req.user?.email || 'desconhecido@example.com';
       const userRole: any = req.user?.role || req.user?.perfil || UserRole.OPERADOR;
+
+      // Regra específica: apenas DESPACHANTE e ADMINISTRADOR podem alterar prefixo_veiculo
+      const isAllowedPrefixEditor = userRole === UserRole.DESPACHANTE || userRole === UserRole.ADMINISTRADOR;
+      if (!isAllowedPrefixEditor && typeof (updateControleHorarioDto as any).prefixo_veiculo !== 'undefined') {
+        throw new HttpException(
+          {
+            success: false,
+            message: 'Você não tem permissão para alterar o prefixo do veículo',
+            error: 'prefixo_veiculo não permitido para este perfil',
+          },
+          HttpStatus.FORBIDDEN,
+        );
+      }
       if (userRole === UserRole.OPERADOR) {
         const allowedKeys = [
           'de_acordo',
@@ -202,7 +215,6 @@ export class ControleHorariosController {
           'atraso_motivo',
           'atraso_observacao',
           'observacoes_edicao',
-          'prefixo_veiculo',
           'motorista_substituto_nome',
           'motorista_substituto_cracha',
           'cobrador_substituto_nome',
@@ -281,7 +293,7 @@ export class ControleHorariosController {
   }
 
   @Patch('multiples')
-  @Roles(UserRole.DESPACHANTE)
+  @Roles(UserRole.DESPACHANTE, UserRole.ADMINISTRADOR)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Atualizar múltiplos registros de controle de horário com propagação' })
   @ApiResponse({ status: 200, description: 'Registros atualizados com sucesso' })
@@ -295,6 +307,22 @@ export class ControleHorariosController {
       const editorNome = req.user?.nome || 'Desconhecido';
       const editorEmail = req.user?.email || 'desconhecido@example.com';
       const userRole: any = req.user?.role || req.user?.perfil || UserRole.OPERADOR;
+
+      // Regra específica também para o batch: somente DESPACHANTE/ADMIN podem alterar prefixo
+      const isAllowedPrefixEditor = userRole === UserRole.DESPACHANTE || userRole === UserRole.ADMINISTRADOR;
+      if (!isAllowedPrefixEditor) {
+        const hasPrefixChange = (updateMultipleDto?.updates || []).some(u => typeof (u as any).prefixo_veiculo !== 'undefined');
+        if (hasPrefixChange) {
+          throw new HttpException(
+            {
+              success: false,
+              message: 'Você não tem permissão para alterar o prefixo do veículo',
+              error: 'prefixo_veiculo não permitido para este perfil',
+            },
+            HttpStatus.FORBIDDEN,
+          );
+        }
+      }
       if (userRole === UserRole.OPERADOR) {
         const allowedKeys = [
           'de_acordo',

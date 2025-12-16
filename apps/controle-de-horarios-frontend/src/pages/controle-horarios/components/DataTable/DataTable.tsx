@@ -1,11 +1,91 @@
 // src/features/controle-horarios/components/DataTable/DataTable.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList, Navigation, ArrowDown, Play, Square, Users, Car, Bus, Calendar, Activity, ChevronRight } from 'lucide-react';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { UserRole } from '@/types';
+import { createPortal } from 'react-dom';
+import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList, Navigation, ArrowDown, Play, Square, Users, Car, Bus, Calendar, Activity, ChevronRight, Bell } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ControleHorarioItem, StatusControleHorariosData, StatusControleHorariosDto, EstatisticasControleHorariosDto } from '@/types/controle-horarios.types';
 import { controleHorariosService } from '../../../../services/controleHorariosService';
 
+// Helpers: separar/combinar observações por pessoa
+const parseCombinedObservacoes = (text?: string): { motorista: string; cobrador: string } => {
+  const src = (text || '').toString();
+  const result = { motorista: '', cobrador: '' };
+  if (!src.trim()) return result;
+  const m = src.match(/\[MOTORISTA\]([\s\S]*?)(?=\[COBRADOR\]|$)/i);
+  const c = src.match(/\[COBRADOR\]([\s\S]*?)$/i);
+  if (m && m[1] !== undefined) result.motorista = m[1].trim();
+  if (c && c[1] !== undefined) result.cobrador = c[1].trim();
+  if (!m && !c) {
+    // Backward-compat: sem marcações, assume observação única (motorista)
+    result.motorista = src.trim();
+  }
+  return result;
+};
+
+const buildCombinedObservacoes = (motorista?: string, cobrador?: string): string => {
+  const parts: string[] = [];
+  const m = (motorista || '').trim();
+  const c = (cobrador || '').trim();
+  if (m) parts.push(`[MOTORISTA] ${m}`);
+  if (c) parts.push(`[COBRADOR] ${c}`);
+  return parts.join(' | ');
+};
+
 // ... other code ...
+
+interface VehicleInputModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialValue: string;
+  onSave: (value: string) => void;
+  canEdit: boolean;
+}
+
+const VehicleInputModal: React.FC<VehicleInputModalProps> = ({ isOpen, onClose, initialValue, onSave, canEdit }) => {
+  const [value, setValue] = useState(initialValue);
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue, isOpen]);
+
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative w-11/12 max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <div className="relative">
+          <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
+          <div className="relative rounded-xl border border-gray-200 dark:border-yellow-400/20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
+            <div className="px-6 py-4 border-b bg-gray-50 text-gray-900 border-gray-200 dark:bg-transparent dark:text-gray-100 dark:border-yellow-400/20">
+              <div className="flex items-center">
+                <Bus className="h-5 w-5 mr-2 text-green-800 dark:text-yellow-400" />
+                <h3 className="text-lg font-semibold text-green-800 dark:text-yellow-400">Informar Veículo</h3>
+              </div>
+            </div>
+            <div className="px-6 py-5">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Número do Veículo</label>
+              <input
+                className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
+                value={value}
+                disabled={!canEdit}
+                onChange={(e) => setValue(e.target.value.replace(/[^0-9]/g, '').slice(0, 7))}
+                placeholder="Digite o nº do veículo"
+                autoFocus
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-yellow-400/20 flex justify-end gap-3">
+              <button onClick={onClose} className="px-4 py-2 bg-white text-gray-700 border border-gray-300 dark:bg-neutral-800 dark:text-gray-300 dark:border-neutral-600 text-sm font-medium rounded-md hover:bg-gray-50 dark:hover:bg-neutral-700">Cancelar</button>
+              <button onClick={() => onSave(value)} className="px-5 py-2 bg-green-700 dark:bg-yellow-500 text-white dark:text-gray-900 text-sm font-bold rounded-md hover:bg-green-800 dark:hover:bg-yellow-600">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
 
 interface PersonOptionsModalProps {
   item: ControleHorarioItem;
@@ -22,21 +102,28 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
   onApplyScaleFilter,
   onSave,
 }) => {
+  const { user } = useAuth();
+  const canEditPrefix = useMemo(() => {
+    const role = user?.role as UserRole | undefined;
+    return role === UserRole.DESPACHANTE || role === UserRole.ADMINISTRADOR;
+  }, [user]);
   const isMotorista = personType === 'motorista';
   const nomeOriginal = isMotorista ? item.nomeMotoristaGlobus : item.nomeCobradorGlobus;
   const crachaOriginal = isMotorista ? item.crachaMotoristaGlobus : item.crachaCobradorGlobus;
   const numeroCarroOriginal = item.numeroCarro || '';
   const observacoesOriginal = item.observacoes || '';
+  const obsSections = useMemo(() => parseCombinedObservacoes(observacoesOriginal), [observacoesOriginal]);
 
   const [tempNome, setTempNome] = useState(isMotorista ? item.nomeMotoristaEditado || '' : item.nomeCobradorEditado || '');
   const [tempCracha, setTempCracha] = useState(isMotorista ? item.crachaMotoristaEditado || '' : item.crachaCobradorEditado || '');
-  const [tempObservacoes, setTempObservacoes] = useState(observacoesOriginal);
-  const [tempNumeroCarro, setTempNumeroCarro] = useState(numeroCarroOriginal);
+  const [tempObservacoes, setTempObservacoes] = useState(
+    (personType === 'motorista' ? obsSections.motorista : obsSections.cobrador) || ''
+  );
 
   const prefix = useMemo(() => `[${new Date().toLocaleString('pt-BR')}] `, []);
 
   useEffect(() => {
-    let currentRawContent = observacoesOriginal;
+    let currentRawContent = tempObservacoes;
     let existingTimestamp = '';
     let existingCrachaSignature = '';
 
@@ -52,11 +139,11 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
     // Use a global regex to remove all occurrences of "Crachá Original: [digits]."
     // This regex is more specific to the exact pattern and handles surrounding spaces.
     const crachaSignaturePattern = /(Crachá Original: \d+)\.?\s*/g;
-    currentRawContent = currentRawContent.replace(crachaSignaturePattern, '').trim(); // Replace with empty string, then trim
-    currentRawContent = currentRawContent.replace(/\s\s+/g, ' ').trim(); // Clean up any multiple spaces
+    currentRawContent = currentRawContent.replace(crachaSignaturePattern, '');
+
 
     // Trim any leading/trailing spaces from the actual user content
-    currentRawContent = currentRawContent.trim();
+
 
     // 3. Determine if a substitution is being made
     const isSubstitutionBeingMade = tempNome.trim() !== '' || tempCracha.trim() !== '';
@@ -82,7 +169,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
       setTempObservacoes(finalObservacoes);
     }
 
-  }, [tempNome, tempCracha, crachaOriginal, observacoesOriginal, prefix]);
+  }, [tempNome, tempCracha, crachaOriginal, prefix]);
 
   const handleSave = () => {
     const isSubstitutionMade = tempNome.trim() !== '' || tempCracha.trim() !== '';
@@ -93,15 +180,18 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
       return; // Prevent saving
     }
 
-    onSave({ nome: tempNome, cracha: tempCracha, observacoes: tempObservacoes, numeroCarro: tempNumeroCarro });
+    const combined = personType === 'motorista'
+      ? buildCombinedObservacoes(tempObservacoes, obsSections.cobrador)
+      : buildCombinedObservacoes(obsSections.motorista, tempObservacoes);
+    onSave({ nome: tempNome, cracha: tempCracha, observacoes: combined, numeroCarro: item.numeroCarro || '' });
     onClose();
   };
 
-  const canEditPerson = tempNumeroCarro.trim() !== ''; // Enable person editing only if vehicle is entered
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="relative">
           <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
           <div className="relative rounded-xl border border-gray-200 dark:border-yellow-400/20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
@@ -122,67 +212,23 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
               </div>
             </div>
             <div className="px-6 py-5 space-y-4">
-              <button
-                onClick={() => {
-                  const servico = (item as any).cod_servico_numero || '';
-                  const cracha = isMotorista
-                    ? ((item as any).crachaMotoristaGlobus || (item as any).crachaMotoristaEditado || '')
-                    : ((item as any).crachaCobradorGlobus || (item as any).crachaCobradorEditado || '');
-                  if (onApplyScaleFilter && servico && cracha) onApplyScaleFilter({ servico, cracha, tipo: isMotorista ? 'motorista' : 'cobrador' });
-                  onClose();
-                }}
-                className="w-full flex items-center justify-center px-4 py-2 border border-yellow-200 dark:border-yellow-400/30 rounded-md shadow-sm text-sm font-medium text-black dark:text-yellow-300 bg-yellow-400 text-black border-yellow-600 dark:bg-yellow-400/10 hover:bg-green-700 dark:bg-yellow-500 dark:hover:bg-green-700 dark:bg-yellow-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors"
-              >
-                <ClipboardList className="h-4 w-4 mr-2" /> Ver Escala Completa
-              </button>
-
-              {/* Vehicle Input */}
               <div>
                 <div className="flex items-center mb-1">
-                  <Bus className="h-4 w-4 mr-2 text-green-800 dark:text-yellow-400" />
-                  <label className="block text-sm font-medium text-gray-300">Número do Veículo</label>
-                </div>
-                <input
-                  type="text"
-                  className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
-                  value={tempNumeroCarro}
-                  onChange={(e) => setTempNumeroCarro(e.target.value.replace(/[^0-9]/g, '').slice(0, 7))}
-                  placeholder="Digite o número do veículo"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center mb-1">
-                  <Users className="h-4 w-4 mr-2 text-green-800 dark:text-green-400" />
-                  <label className="block text-sm font-medium text-gray-300">Nome do Substituto</label>
-                </div>
-                <input
-                  className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
-                  value={tempNome}
-                  onChange={(e) => setTempNome(e.target.value)}
-                  placeholder="Digite o nome"
-                  disabled={!canEditPerson}
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center mb-1">
-                  <Activity className="h-4 w-4 mr-2 text-blue-800 dark:text-blue-400" />
-                  <label className="block text-sm font-medium text-gray-300">Crachá do Substituto</label>
+                  <Activity className="h-4 w-4 mr-2 text-green-800 dark:text-yellow-400" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Crachá do Substituto</label>
                 </div>
                 <input
                   className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
                   value={tempCracha}
-                  onChange={(e) => setTempCracha(e.target.value)}
+                  onChange={(e) => setTempCracha(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="Digite o crachá"
-                  disabled={!canEditPerson}
                 />
               </div>
 
               <div>
                 <div className="flex items-center mb-1">
-                  <AlertCircle className="h-4 w-4 mr-2 text-orange-800 dark:text-orange-400" />
-                  <label className="block text-sm font-medium text-gray-300">Observações</label>
+                  <AlertCircle className="h-4 w-4 mr-2 text-green-800 dark:text-yellow-400" />
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Observações</label>
                 </div>
                 <textarea
                   className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
@@ -190,24 +236,24 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                   onChange={(e) => setTempObservacoes(e.target.value)}
                   rows={2}
                   placeholder="Adicione uma observação se necessário"
-                  disabled={!canEditPerson}
                 />
               </div>
             </div>
-            <div className="px-6 py-4 border-t bg-gray-50 border-gray-200 dark:border-yellow-400/20 flex justify-end gap-3">
-              <button onClick={onClose} className="px-4 py-2 bg-gray-100 text-gray-900 dark:bg-neutral-700 dark:text-gray-200 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-200 dark:hover:bg-neutral-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-colors">
+            <div className="px-6 py-4 border-t   border-gray-200 dark:border-yellow-400/20 flex justify-end gap-3">
+              <button onClick={onClose} className="px-4 py-2 bg-white text-gray-700 border border-gray-300 dark:bg-neutral-800 dark:text-gray-300 dark:border-neutral-600 text-sm font-medium rounded-md w-auto shadow-sm hover:bg-gray-50 dark:hover:bg-neutral-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-gray-500 transition-all duration-200">
                 <X className="h-4 w-4 mr-2 inline" />
                 Cancelar
               </button>
-              <button onClick={handleSave} className="px-5 py-2 bg-green-700 dark:bg-yellow-500 text-neutral-900 text-sm font-bold rounded-md w-auto shadow-sm hover:bg-green-800 dark:hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-colors">
+              <button onClick={handleSave} className="px-5 py-2 bg-gradient-to-r from-green-700 to-green-600 dark:from-yellow-500 dark:to-yellow-400 text-white dark:text-gray-900 text-sm font-bold rounded-md w-auto shadow-md hover:from-green-800 hover:to-green-700 dark:hover:from-yellow-600 dark:hover:to-yellow-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-neutral-900 focus:ring-green-700 dark:focus:ring-yellow-500 transition-all duration-200 transform hover:scale-[1.02]">
                 <Save className="h-4 w-4 mr-2 inline" />
-                Salvar e Propagar
+                Salvar
               </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -225,15 +271,15 @@ const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehic
   const service = (anchorItem as any).cod_servico_numero || 'N/I';
   const driverBadge = (anchorItem as any).crachaMotoristaGlobus || (anchorItem as any).crachaMotoristaEditado || 'N/I';
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-vehicle-title"
     >
-      <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="relative">
           <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
           <div className="relative rounded-xl border border-gray-200 dark:border-yellow-400/20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
@@ -293,7 +339,8 @@ const ConfirmVehicleModal: React.FC<ConfirmVehicleModalProps> = ({ isOpen, vehic
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -311,14 +358,14 @@ const ConfirmPersonPropagationModal: React.FC<{
   const service = (anchorItem as any).cod_servico_numero || 'N/I';
   const originalDriverBadge = (anchorItem as any).crachaMotoristaGlobus || 'N/A';
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
       onClick={onCancel}
       role="dialog"
       aria-modal="true"
     >
-      <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="relative">
           <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-yellow-400/30 via-amber-500/25 to-yellow-300/30 blur-md" />
           <div className="relative rounded-xl border border-gray-200 dark:border-yellow-400/20 bg-white dark:bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
@@ -378,7 +425,8 @@ const ConfirmPersonPropagationModal: React.FC<{
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -431,9 +479,9 @@ const HorariosModal: React.FC<HorariosModalProps> = ({ item, onClose, onSave }) 
   };
 
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative top-20 w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={onClose}>
+      <div className="relative w-11/12 max-w-lg" onClick={(e) => e.stopPropagation()}>
         <div className="relative">
           <div className="absolute -inset-[2px] rounded-2xl bg-gradient-to-r from-cyan-400/30 via-blue-500/25 to-cyan-300/30 blur-md" />
           <div className="relative rounded-xl border border-cyan-600/30 dark:border-cyan-400/20 bg-neutral-900 text-gray-900 dark:text-gray-100 shadow-2xl">
@@ -530,7 +578,8 @@ const HorariosModal: React.FC<HorariosModalProps> = ({ item, onClose, onSave }) 
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
@@ -554,7 +603,13 @@ interface DataTableProps {
   onHorariosModalOpenChange?: (open: boolean) => void;
   // Quando ativo, não ocultar viagens confirmadas após 30s (visão: Editados por mim)
   editedByMeActive?: boolean;
+  // Notificações: badge + abrir painel
+  notificationsUnreadCount?: number;
+  onOpenNotifications?: () => void;
+  onCommitChanges?: (id: string, updates: Partial<ControleHorarioItem>) => void;
 }
+
+
 
 export const DataTable: React.FC<DataTableProps> = ({
   controleHorarios,
@@ -573,9 +628,13 @@ export const DataTable: React.FC<DataTableProps> = ({
   onClearScaleFilter,
   onHorariosModalOpenChange,
   editedByMeActive = false,
+  notificationsUnreadCount = 0,
+  onOpenNotifications,
+  onCommitChanges,
 }) => {
   const [showDriverOptionsModal, setShowDriverOptionsModal] = useState<ControleHorarioItem | null>(null);
   const [showCobradorOptionsModal, setShowCobradorOptionsModal] = useState<ControleHorarioItem | null>(null);
+  const [vehicleInputModalItem, setVehicleInputModalItem] = useState<ControleHorarioItem | null>(null);
   const [horariosModalItem, setHorariosModalItem] = useState<ControleHorarioItem | null>(null);
 
   // Informe o container para ocultar mensagens globais enquanto o modal de horários está aberto
@@ -598,18 +657,10 @@ export const DataTable: React.FC<DataTableProps> = ({
   }>({ open: false, anchorId: '', personType: 'motorista', nome: '', cracha: '', observacoes: '', numeroCarro: '' });
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  const isMobileOrTablet = windowWidth <= 1200;
+  const handleOpenPersonOptions = (item: ControleHorarioItem, type: 'motorista' | 'cobrador') => {
+    if (type === 'motorista') setShowDriverOptionsModal(item);
+    else setShowCobradorOptionsModal(item);
+  };
 
   const visibleItems = controleHorarios;
 
@@ -628,7 +679,7 @@ export const DataTable: React.FC<DataTableProps> = ({
       if (!editedByMeActive && (item as any).de_acordo && !hiddenRows.has(item.id)) {
         const timerId = setTimeout(() => {
           setHiddenRows(prev => new Set(prev).add(item.id));
-        }, 30000); // 30 seconds
+        }, 25000); // 30 seconds
         timers.set(item.id, timerId);
       }
     });
@@ -680,11 +731,14 @@ export const DataTable: React.FC<DataTableProps> = ({
     }
 
     // Helper to convert HH:mm string to ISO string for a given date
-    const toISOString = (time: string, date: Date): string | undefined => {
+    const toISOString = (time: string, date: Date, compareBase?: Date): string | undefined => {
       if (!/^\d{2}:\d{2}$/.test(time)) return undefined;
       const [hours, minutes] = time.split(':').map(Number);
       const newDate = new Date(date);
       newDate.setHours(hours, minutes, 0, 0);
+      if (compareBase && newDate.getTime() < compareBase.getTime()) {
+        newDate.setDate(newDate.getDate() + 1);
+      }
       return newDate.toISOString();
     };
 
@@ -697,7 +751,8 @@ export const DataTable: React.FC<DataTableProps> = ({
       onInputChange(item.id, 'hor_saida_ajustada' as keyof ControleHorarioItem, saidaISO);
     }
     if (data.hor_chegada_ajustada) {
-      chegadaISO = toISOString(data.hor_chegada_ajustada, baseDate);
+      const saidaBase = saidaISO ? new Date(saidaISO) : baseDate;
+      chegadaISO = toISOString(data.hor_chegada_ajustada, baseDate, saidaBase);
       onInputChange(item.id, 'hor_chegada_ajustada' as keyof ControleHorarioItem, chegadaISO);
     }
     onInputChange(item.id, 'atraso_motivo' as keyof ControleHorarioItem, data.atraso_motivo as any);
@@ -721,15 +776,47 @@ export const DataTable: React.FC<DataTableProps> = ({
       // Ajustes e confirmação não usam propagação; atualizar somente este registro
       const { id, ...ajustes } = updates;
       await controleHorariosService.atualizarControleHorario(id, ajustes);
+
+      // Commit local changes to clear "pending" state
+      if (onCommitChanges) {
+        onCommitChanges(item.id, {
+          de_acordo: true,
+          hor_saida_ajustada: updates.hor_saida_ajustada,
+          hor_chegada_ajustada: updates.hor_chegada_ajustada,
+          atraso_motivo: updates.atraso_motivo,
+          atraso_observacao: updates.atraso_observacao,
+        });
+      }
+
       toast.success('Informações confirmadas e salvas.');
     } catch (e: any) {
       toast.error(e?.message || 'Falha ao salvar alterações');
     }
-  }, [onInputChange]);
+  }, [onInputChange, onCommitChanges]);
 
   const formatTime = (timeString?: string): string => {
     if (!timeString) return 'N/A';
     return timeString.substring(0, 5);
+  };
+
+  // Normaliza a chegada atravessando meia-noite para exibição (usa campos ISO quando disponíveis)
+  const formatHoraChegada = (item: any): string => {
+    try {
+      const saidaISO: string | undefined = item.hor_saida_ajustada || item.hor_saida;
+      const chegadaISO: string | undefined = item.hor_chegada_ajustada || item.hor_chegada;
+      // Se não houver ISO, recorre ao campo HH:mm atual
+      if (!saidaISO || !chegadaISO) return formatTime(item.horaChegada);
+      const dSaida = new Date(saidaISO);
+      const dChegada = new Date(chegadaISO);
+      if (isNaN(dSaida.getTime()) || isNaN(dChegada.getTime())) return formatTime(item.horaChegada);
+      // Se a chegada for "antes" da saída, considera +1 dia (virada)
+      if (dChegada.getTime() < dSaida.getTime()) {
+        dChegada.setDate(dChegada.getDate() + 1);
+      }
+      return dChegada.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } catch {
+      return formatTime(item.horaChegada);
+    }
   };
 
   // Editor de horários: estado para abrir/fechar por linha
@@ -770,27 +857,73 @@ export const DataTable: React.FC<DataTableProps> = ({
   }, [onInputChange, controleHorariosOriginais, setPendingPerson]);
 
   const sortedVisibleItems = useMemo(() => {
-    const items = [...visibleItems];
-    const MIDNIGHT_CUTOFF_HOUR = 4; // 04:00
+    const MIDNIGHT_CUTOFF_MINUTES = 4 * 60; // 04:00
 
-    const normMinutes = (item: ControleHorarioItem) => {
-      const d = (item as any).hor_saida; // Use the original ISO date string for reliable parsing
-      const dt = d ? new Date(d) : null;
-      if (!dt || isNaN(dt.getTime())) return sortOrder === 'asc' ? Number.MAX_SAFE_INTEGER : Number.MIN_SAFE_INTEGER;
-
-      const m = dt.getHours() * 60 + dt.getMinutes();
-      return dt.getHours() < MIDNIGHT_CUTOFF_HOUR ? m + 24 * 60 : m;
+    const toMinutesLocal = (val?: unknown): number | null => {
+      if (!val) return null;
+      // Date instance or ISO string
+      if (val instanceof Date || typeof val === 'string') {
+        const dt = new Date(val as any);
+        if (isNaN(dt.getTime())) return null;
+        return dt.getHours() * 60 + dt.getMinutes();
+      }
+      // HH:mm string (fallback)
+      if (typeof val === 'string') {
+        const s = val.trim();
+        if (/^\d{2}:\d{2}/.test(s)) {
+          const [h, m] = s.slice(0, 5).split(':').map((n) => Number(n));
+          if (Number.isFinite(h) && Number.isFinite(m)) return h * 60 + m;
+        }
+      }
+      return null;
     };
 
-    items.sort((a, b) => {
-      const timeA = normMinutes(a);
-      const timeB = normMinutes(b);
+    const pureMinutes = (item: any): number => {
+      // Partida efetiva: ajustada > original > HH:mm (sem deslocamento, ordem cronológica real)
+      const m = toMinutesLocal(item.hor_saida_ajustada) ?? toMinutesLocal(item.hor_saida) ?? toMinutesLocal(item.horaSaida);
+      if (m == null) return Number.MAX_SAFE_INTEGER;
+      return m;
+    };
 
-      if (sortOrder === 'asc') {
-        return timeA - timeB;
+    const operationalKey = (item: any): number => {
+      const m = pureMinutes(item);
+      return m < MIDNIGHT_CUTOFF_MINUTES ? m + 24 * 60 : m;
+    };
+
+    const groupKey = (item: any): string => {
+      const service = String(item.cod_servico_numero || item.codServicoNumero || '').trim();
+      const driver = String(item.crachaMotoristaEditado || item.crachaMotoristaGlobus || item.cracha_motorista || '').trim();
+      const line = String(item.codigoLinha || item.codigo_linha || '').trim();
+      return `${service}|${driver}|${line}`;
+    };
+
+    // Pré-computa informações por grupo (serviço+motorista+linha)
+    const groups = new Map<string, { anchorOpKey: number }>();
+    for (const it of visibleItems as any[]) {
+      const gk = groupKey(it);
+      if (!groups.has(gk)) {
+        groups.set(gk, { anchorOpKey: operationalKey(it) });
       } else {
-        return timeB - timeA;
+        const cur = groups.get(gk)!;
+        const opk = operationalKey(it);
+        if (opk < cur.anchorOpKey) cur.anchorOpKey = opk;
       }
+    }
+
+    const items = [...visibleItems].sort((a, b) => {
+      const ga = groupKey(a as any);
+      const gb = groupKey(b as any);
+      const anchorA = groups.get(ga)?.anchorOpKey ?? operationalKey(a as any);
+      const anchorB = groups.get(gb)?.anchorOpKey ?? operationalKey(b as any);
+      if (anchorA !== anchorB) return sortOrder === 'asc' ? anchorA - anchorB : anchorB - anchorA;
+      // Dentro do mesmo bloco, ordenar cronologicamente (00:00 → 23:59)
+      const pa = pureMinutes(a as any);
+      const pb = pureMinutes(b as any);
+      if (pa !== pb) return sortOrder === 'asc' ? pa - pb : pb - pa;
+      // Desempate estável
+      const sa = `${ga}|${(a as any).hor_saida || ''}`;
+      const sb = `${gb}|${(b as any).hor_saida || ''}`;
+      return sa.localeCompare(sb);
     });
 
     return items;
@@ -858,11 +991,13 @@ export const DataTable: React.FC<DataTableProps> = ({
       <div className="overflow-x-auto">
         {descTipoDia && (
           <div className="flex justify-between items-center mb-2">
-            <div className="flex items-center">
-              <Calendar className="h-4 w-4 mr-2 text-yellow-500" />
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-yellow-500" />
               <span className="px-3 py-1 text-xs font-semibold text-black bg-yellow-400 rounded-full border border-yellow-300/30">
                 ESCALA TIPO DIA: {descTipoDia}
               </span>
+              {/* Badge de notificações ao lado da etiqueta */}
+
             </div>
           </div>
         )}
@@ -933,7 +1068,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                     <span className="text-xs text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400 mb-1">Chegada</span>
                     <div className="flex items-center gap-1">
                       <Square className="h-3 w-3 text-red-500" />
-                      <span className="font-mono font-bold text-green-900 dark:text-gray-100">{formatTime((item as any).horaChegada)}</span>
+                      <span className="font-mono font-bold text-green-900 dark:text-gray-100">{formatHoraChegada(item)}</span>
                     </div>
                     <span className="text-[10px] text-green-900 font-semibold dark:text-gray-400 truncate mt-1">{(item as any).localDestinoLinha}</span>
                   </div>
@@ -948,10 +1083,18 @@ export const DataTable: React.FC<DataTableProps> = ({
                       type="text"
                       value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
                       onChange={(e) => {
+                        try {
+                          const role = JSON.parse(localStorage.getItem('user') || 'null')?.role;
+                          if (role !== 'despachante' && role !== 'administrador') return;
+                        } catch (_) { return; }
                         const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '').slice(0, 7);
                         setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
                       }}
                       onBlur={(e) => {
+                        try {
+                          const role = JSON.parse(localStorage.getItem('user') || 'null')?.role;
+                          if (role !== 'despachante' && role !== 'administrador') return;
+                        } catch (_) { return; }
                         const val = (e.target.value || '').trim();
                         if (!val) return;
                         if (val.length < 6) { e.target.focus(); return; }
@@ -966,30 +1109,38 @@ export const DataTable: React.FC<DataTableProps> = ({
                 {/* Crew (Motorista/Cobrador) */}
                 <div className="grid grid-cols-1 gap-2">
                   {/* Motorista */}
-                  <div className="flex items-center justify-between p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50" onClick={() => setShowDriverOptionsModal(item)}>
+                  <div className="flex items-center justify-between p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50" onClick={() => handleOpenPersonOptions(item, 'motorista')}>
                     <div className="flex items-center gap-2 overflow-hidden">
                       <Users className="h-4 w-4 text-blue-500 flex-shrink-0" />
                       <div className="flex flex-col overflow-hidden">
                         <span className="text-xs text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400">Motorista</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">
-                          {(item as any).nomeMotoristaEditado || (item as any).nomeMotoristaGlobus || 'Não informado'}
+                        <span className={`text-sm font-medium text-gray-900 dark:text-gray-200 truncate ${!!(item as any).nomeMotoristaEditado ? 'line-through text-gray-500 dark:text-gray-500' : ''}`}>
+                          {(item as any).nomeMotoristaGlobus || 'Não informado'}
                         </span>
-                        {!!(item as any).nomeMotoristaEditado && <span className="text-[10px] text-yellow-600 dark:text-green-800 dark:text-yellow-400">Substituto</span>}
+                        {!!(item as any).nomeMotoristaEditado && (
+                          <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400 mt-0.5">
+                            Substituto: {(item as any).nomeMotoristaEditado} ({(item as any).crachaMotoristaEditado})
+                          </span>
+                        )}
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-gray-900 font-semibold dark:text-gray-400" />
                   </div>
 
                   {/* Cobrador */}
-                  <div className="flex items-center justify-between p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50" onClick={() => setShowCobradorOptionsModal(item)}>
+                  <div className="flex items-center justify-between p-2 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50" onClick={() => handleOpenPersonOptions(item, 'cobrador')}>
                     <div className="flex items-center gap-2 overflow-hidden">
                       <Users className="h-4 w-4 text-cyan-500 flex-shrink-0" />
                       <div className="flex flex-col overflow-hidden">
                         <span className="text-xs text-gray-900 font-semibold dark:text-gray-900 font-semibold dark:text-gray-400">Cobrador</span>
-                        <span className="text-sm font-medium text-gray-900 dark:text-gray-200 truncate">
-                          {(item as any).nomeCobradorEditado || (item as any).nomeCobradorGlobus || 'Não informado'}
+                        <span className={`text-sm font-medium text-gray-900 dark:text-gray-200 truncate ${!!(item as any).nomeCobradorEditado ? 'line-through text-gray-500 dark:text-gray-500' : ''}`}>
+                          {(item as any).nomeCobradorGlobus || 'Não informado'}
                         </span>
-                        {!!(item as any).nomeCobradorEditado && <span className="text-[10px] text-yellow-600 dark:text-green-800 dark:text-yellow-400">Substituto</span>}
+                        {!!(item as any).nomeCobradorEditado && (
+                          <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400 mt-0.5">
+                            Substituto: {(item as any).nomeCobradorEditado} ({(item as any).crachaCobradorEditado})
+                          </span>
+                        )}
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 text-gray-900 font-semibold dark:text-gray-400" />
@@ -1022,14 +1173,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                   </div>
                 </th>
 
-                {!isMobileOrTablet && (
-                  <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                    <div className="flex items-center">
-                      <Bus className="h-4 w-4 mr-1 text-green-800 dark:text-yellow-400" />
-                      Veículo
-                    </div>
-                  </th>
-                )}
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden xl:table-cell">
+                  <div className="flex items-center">
+                    <Bus className="h-4 w-4 mr-1 text-green-800 dark:text-yellow-400" />
+                    Veículo
+                  </div>
+                </th>
 
                 <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                   <div className="flex items-center">
@@ -1044,43 +1193,37 @@ export const DataTable: React.FC<DataTableProps> = ({
                   </div>
                 </th>
 
-                {isMobileOrTablet ? (
-                  <>
-                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      <div className="flex items-center">
-                        <Navigation className="h-4 w-4 mr-1 text-green-800 dark:text-green-400" />
-                        Origem / Destino
-                      </div>
-                    </th>
-                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      <div className="flex items-center">
-                        <Activity className="h-4 w-4 mr-1 text-orange-800 dark:text-orange-400" />
-                        Atividade / Setor
-                      </div>
-                    </th>
-                  </>
-                ) : (
-                  <>
-                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      <div className="flex items-center">
-                        <Navigation className="h-4 w-4 mr-1 text-green-800 dark:text-green-400" />
-                        Origem
-                      </div>
-                    </th>
-                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-1 text-red-400" />
-                        Destino
-                      </div>
-                    </th>
-                    <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
-                      <div className="flex items-center">
-                        <Activity className="h-4 w-4 mr-1 text-orange-800 dark:text-orange-400" />
-                        Ativ. / Tipo / Setor
-                      </div>
-                    </th>
-                  </>
-                )}
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider xl:hidden">
+                  <div className="flex items-center">
+                    <Navigation className="h-4 w-4 mr-1 text-green-800 dark:text-green-400" />
+                    Origem / Destino
+                  </div>
+                </th>
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider xl:hidden">
+                  <div className="flex items-center">
+                    <Activity className="h-4 w-4 mr-1 text-orange-800 dark:text-orange-400" />
+                    Atividade / Setor
+                  </div>
+                </th>
+
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden xl:table-cell">
+                  <div className="flex items-center">
+                    <Navigation className="h-4 w-4 mr-1 text-green-800 dark:text-green-400" />
+                    Origem
+                  </div>
+                </th>
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden xl:table-cell">
+                  <div className="flex items-center">
+                    <MapPin className="h-4 w-4 mr-1 text-red-400" />
+                    Destino
+                  </div>
+                </th>
+                <th className="px-1 sm:px-2 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden xl:table-cell">
+                  <div className="flex items-center">
+                    <Activity className="h-4 w-4 mr-1 text-orange-800 dark:text-orange-400" />
+                    Ativ. / Tipo / Setor
+                  </div>
+                </th>
               </tr>
             </thead>
 
@@ -1135,10 +1278,10 @@ export const DataTable: React.FC<DataTableProps> = ({
                           <span className="text-xs text-green-900 font-bold dark:text-blue-300">até</span>
                         </div>
 
-                        {/* Horário de Chegada */}
+                        {/* Horário de Chegada (normaliza virada de dia) */}
                         <div className="flex items-center">
                           <Square className="h-4 w-4 mr-2 text-red-400" />
-                          <span className="font-mono font-semibold text-red-800 dark:text-red-300">{formatTime((item as any).horaChegada)}</span>
+                          <span className="font-mono font-semibold text-red-800 dark:text-red-300">{formatHoraChegada(item)}</span>
                         </div>
                       </div>
                     </td>
@@ -1156,37 +1299,43 @@ export const DataTable: React.FC<DataTableProps> = ({
                       </div>
                     </td>
 
-                    {!isMobileOrTablet && (
-                      <td className="px-2 py-4">
-                        <div className="flex items-center">
-                          <Bus className="h-4 w-4 mr-2 text-green-800 dark:text-yellow-400" />
-                          <input
-                            type="text"
-                            value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
-                            onChange={(e) => {
-                              const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '').slice(0, 7);
-                              setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
-                            }}
-                            onBlur={(e) => {
-                              const val = (e.target.value || '').trim();
-                              if (!val) return;
-                              if (val.length < 6) { e.target.focus(); return; }
-                              if (/^\d{6,7}$/.test(val)) { setPendingVehicle({ open: true, vehicle: val, anchorId: item.id }); return; }
-                            }}
-                            placeholder="Nº Veículo"
-                            className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-transparent transition-colors text-gray-900 dark:text-gray-100 ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' : 'border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60'}`}
-                          />
-                        </div>
-                      </td>
-                    )}
+                    <td className="px-2 py-4 hidden xl:table-cell">
+                      <div className="flex items-center">
+                        <Bus className="h-4 w-4 mr-2 text-green-800 dark:text-yellow-400" />
+                        <input
+                          type="text"
+                          value={vehicleDrafts[item.id] ?? ((item as any).numeroCarro || '')}
+                          onChange={(e) => {
+                            try {
+                              const role = JSON.parse(localStorage.getItem('user') || 'null')?.role;
+                              if (role !== 'despachante' && role !== 'administrador') return;
+                            } catch (_) { return; }
+                            const onlyDigits = (e.target.value || '').replace(/[^0-9]/g, '').slice(0, 7);
+                            setVehicleDrafts(prev => ({ ...prev, [item.id]: onlyDigits }));
+                          }}
+                          onBlur={(e) => {
+                            try {
+                              const role = JSON.parse(localStorage.getItem('user') || 'null')?.role;
+                              if (role !== 'despachante' && role !== 'administrador') return;
+                            } catch (_) { return; }
+                            const val = (e.target.value || '').trim();
+                            if (!val) return;
+                            if (val.length < 6) { e.target.focus(); return; }
+                            if (/^\d{6,7}$/.test(val)) { setPendingVehicle({ open: true, vehicle: val, anchorId: item.id }); return; }
+                          }}
+                          placeholder="Nº Veículo"
+                          className={`w-24 px-2 py-1 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-transparent transition-colors text-gray-900 dark:text-gray-100 ${((item as any).hor_saida && new Date((item as any).hor_saida) < new Date() && !(item as any).numeroCarro) ? 'border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' : 'border-gray-600  dark:border-neutral-700 bg-white  dark:bg-neutral-800/60'}`}
+                        />
+                      </div>
+                    </td>
 
                     <td className="px-2 py-4">
-                      <div className="cursor-pointer" onClick={() => setShowDriverOptionsModal(item)}>
+                      <div className="cursor-pointer" onClick={() => handleOpenPersonOptions(item, 'motorista')}>
                         <div className="flex items-center">
                           <Users className="h-4 w-4 mr-2 text-blue-800 dark:text-blue-400" />
                           <button
                             type="button"
-                            className="text-sm font-bold text-blue-800 dark:text-blue-400 leading-tight hover:underline"
+                            className={`text-sm font-bold text-blue-800 dark:text-blue-400 leading-tight hover:underline ${(((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') || ((item as any).crachaMotoristaEditado && String((item as any).crachaMotoristaEditado).trim() !== '')) ? 'line-through opacity-60' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               const servico = (item as any).cod_servico_numero || '';
@@ -1198,28 +1347,36 @@ export const DataTable: React.FC<DataTableProps> = ({
                             {(item as any).crachaMotoristaGlobus || 'N/A'}
                           </button>
                         </div>
-                        {isMobileOrTablet && item.numeroCarro ? (
-                          <div className="flex items-center mt-1 ml-6">
-                            <Bus className="h-3 w-3 mr-1 text-orange-800 dark:text-orange-400" />
-                            <span className="text-xs font-semibold text-orange-800 dark:text-orange-400">{item.numeroCarro}</span>
-                          </div>
-                        ) : isMobileOrTablet && (
-                          <div className="flex items-center mt-1 ml-6">
-                            <Bus className="h-3 w-3 mr-1 text-gray-900 font-semibold" />
-                            <span className="text-xs font-semibold text-gray-900 font-semibold">Veículo:</span>
-                          </div>
-                        )}
+                        <div className="flex items-center mt-1 ml-6 xl:hidden cursor-pointer hover:bg-gray-100 dark:hover:bg-white/5 rounded px-1 -ml-1 transition-colors" onClick={(e) => { e.stopPropagation(); setVehicleInputModalItem(item); }}>
+                          {item.numeroCarro ? (
+                            <>
+                              <Bus className="h-3 w-3 mr-1 text-orange-800 dark:text-orange-400" />
+                              <span className="text-xs font-semibold text-orange-800 dark:text-orange-400">{item.numeroCarro}</span>
+                            </>
+                          ) : (
+                            <>
+                              <Bus className="h-3 w-3 mr-1 text-gray-900 font-semibold" />
+                              <span className="text-xs font-semibold text-gray-900 font-semibold">Veículo: <span className="text-blue-600 dark:text-blue-400 font-normal ml-1">Informar</span></span>
+                            </>
+                          )}
+                        </div>
                         <div className="mt-0.5 leading-tight ml-6">
                           <div className="flex items-center">
                             <Activity className="h-3 w-3 mr-1 text-gray-900 font-semibold dark:text-gray-400" />
-                            <div className="text-[11px] text-green-800 dark:text-green-400">Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
+                            <div className={`text-[11px] text-green-800 dark:text-green-400 ${(((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') || ((item as any).crachaMotoristaEditado && String((item as any).crachaMotoristaEditado).trim() !== '')) ? 'line-through opacity-60' : ''}`}>Original: {(item as any).nomeMotoristaGlobus || 'N/I'}</div>
                           </div>
-                          {((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') && (
-                            <div className="flex items-center">
-                              <Users className="h-3 w-3 mr-1 text-green-800 dark:text-yellow-400" />
-                              <div className="text-xs font-semibold text-yellow-500">Substituto: {(item as any).nomeMotoristaEditado} ({(item as any).crachaMotoristaEditado})</div>
-                            </div>
-                          )}
+                          {(
+                            ((item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '') ||
+                            ((item as any).crachaMotoristaEditado && String((item as any).crachaMotoristaEditado).trim() !== '')
+                          ) && (
+                              <div className="flex items-center mt-0.5">
+                                <Users className="h-3 w-3 mr-1 text-yellow-600 dark:text-yellow-400" />
+                                <div className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                                  Substituto: {(item as any).nomeMotoristaEditado && (item as any).nomeMotoristaEditado.trim() !== '' ? (item as any).nomeMotoristaEditado : '—'}
+                                  {((item as any).crachaMotoristaEditado && String((item as any).crachaMotoristaEditado).trim() !== '') ? ` (${(item as any).crachaMotoristaEditado})` : ''}
+                                </div>
+                              </div>
+                            )}
                         </div>
                         <button
                           type="button"
@@ -1237,12 +1394,12 @@ export const DataTable: React.FC<DataTableProps> = ({
                       </div>
                     </td>
                     <td className="px-2 py-4">
-                      <div className="cursor-pointer" onClick={() => setShowCobradorOptionsModal(item)}>
+                      <div className="cursor-pointer" onClick={() => handleOpenPersonOptions(item, 'cobrador')}>
                         <div className="flex items-center">
                           <Users className="h-4 w-4 mr-2 text-cyan-800 dark:text-cyan-400" />
                           <button
                             type="button"
-                            className="text-sm font-bold text-blue-800 dark:text-blue-400 leading-tight hover:underline"
+                            className={`text-sm font-bold text-blue-800 dark:text-blue-400 leading-tight hover:underline ${(((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') || ((item as any).crachaCobradorEditado && String((item as any).crachaCobradorEditado).trim() !== '')) ? 'line-through opacity-60' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               const servico = (item as any).cod_servico_numero || '';
@@ -1258,14 +1415,20 @@ export const DataTable: React.FC<DataTableProps> = ({
                         <div className="mt-0.5 leading-tight ml-6">
                           <div className="flex items-center">
                             <Activity className="h-3 w-3 mr-1 text-gray-900 font-semibold dark:text-gray-400" />
-                            <div className="text-[11px] text-gray-900 font-semibold dark:text-gray-200">Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
+                            <div className={`text-[11px] text-gray-900 font-semibold dark:text-gray-200 ${(((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') || ((item as any).crachaCobradorEditado && String((item as any).crachaCobradorEditado).trim() !== '')) ? 'line-through opacity-60' : ''}`}>Original: {(item as any).nomeCobradorGlobus || 'N/I'}</div>
                           </div>
-                          {((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') && (
-                            <div className="flex items-center">
-                              <Users className="h-3 w-3 mr-1 text-green-800 dark:text-yellow-400" />
-                              <div className="text-xs font-semibold text-yellow-500">Substituto: {(item as any).nomeCobradorEditado} ({(item as any).crachaCobradorEditado})</div>
-                            </div>
-                          )}
+                          {(
+                            ((item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '') ||
+                            ((item as any).crachaCobradorEditado && String((item as any).crachaCobradorEditado).trim() !== '')
+                          ) && (
+                              <div className="flex items-center mt-0.5">
+                                <Users className="h-3 w-3 mr-1 text-yellow-600 dark:text-yellow-400" />
+                                <div className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
+                                  Substituto: {(item as any).nomeCobradorEditado && (item as any).nomeCobradorEditado.trim() !== '' ? (item as any).nomeCobradorEditado : '—'}
+                                  {((item as any).crachaCobradorEditado && String((item as any).crachaCobradorEditado).trim() !== '') ? ` (${(item as any).crachaCobradorEditado})` : ''}
+                                </div>
+                              </div>
+                            )}
                         </div>
                         {!!(item.crachaCobradorGlobus) && (
                           <button
@@ -1285,85 +1448,79 @@ export const DataTable: React.FC<DataTableProps> = ({
                       </div>
                     </td>
 
-                    {isMobileOrTablet ? (
-                      <>
-                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
-                          <div className="flex flex-col space-y-2">
-                            {/* Origem */}
-                            <div className="flex items-center">
-                              <Navigation className="h-4 w-4 mr-2 text-green-800 dark:text-green-400" />
-                              <span className="font-semibold text-green-800 dark:text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
-                            </div>
+                    <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200 xl:hidden">
+                      <div className="flex flex-col space-y-2">
+                        {/* Origem */}
+                        <div className="flex items-center">
+                          <Navigation className="h-4 w-4 mr-2 text-green-800 dark:text-green-400" />
+                          <span className="font-semibold text-green-800 dark:text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
+                        </div>
 
-                            {/* Sentido - Centralizado */}
-                            <div className="flex items-center justify-center">
-                              <span className="text-xs text-green-900 font-bold dark:text-blue-300">{(item as any).sentido_texto || ''}</span>
-                            </div>
+                        {/* Sentido - Centralizado */}
+                        <div className="flex items-center justify-center">
+                          <span className="text-xs text-green-900 font-bold dark:text-blue-300">{(item as any).sentido_texto || ''}</span>
+                        </div>
 
-                            {/* Destino */}
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-2 text-red-400" />
-                              <span className="font-semibold text-red-800 dark:text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
-                          <div className="flex flex-col space-y-2">
-                            <div className="flex items-center">
-                              <Activity className="h-4 w-4 mr-2 text-orange-800 dark:text-orange-400" />
-                              <div className="text-sm text-gray-700 dark:text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
-                            </div>
-                            <div className="flex items-center ml-6">
-                              <div className="text-xs text-gray-900 font-semibold dark:text-gray-300">{(item as any).flg_tipo || ''}</div>
-                            </div>
-                            <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-gray-200">
-                                {(item as any).setorPrincipalLinha}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                      </>
-                    ) : (
-                      <>
-                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
-                          <div className="flex flex-col space-y-1">
-                            <div className="flex items-center">
-                              <Navigation className="h-4 w-4 mr-2 text-green-800 dark:text-green-400" />
-                              <span className="font-semibold text-green-800 dark:text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
-                            </div>
-                            <div className="flex items-center ml-6">
-                              <ArrowDown className="h-3 w-3 mr-1 text-blue-800 dark:text-blue-400" />
-                              <div className="text-xs text-green-900 font-bold dark:text-blue-300">{(item as any).sentido_texto || ''}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
-                          <div className="flex items-center">
-                            <MapPin className="h-4 w-4 mr-2 text-red-400" />
-                            <span className="font-semibold text-red-800 dark:text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
-                          </div>
-                        </td>
-                        <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200">
-                          <div className="flex flex-col space-y-1">
-                            <div className="flex items-center">
-                              <Activity className="h-4 w-4 mr-2 text-orange-800 dark:text-orange-400" />
-                              <div className="text-sm text-gray-700 dark:text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
-                            </div>
-                            <div className="flex items-center ml-6">
-                              <div className="text-xs text-gray-900 font-semibold dark:text-gray-300">{(item as any).flg_tipo || ''}</div>
-                            </div>
-                            <div className="flex items-center mt-1">
-                              <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-gray-200">
-                                {(item as any).setorPrincipalLinha}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                      </>
-                    )}
+                        {/* Destino */}
+                        <div className="flex items-center">
+                          <MapPin className="h-4 w-4 mr-2 text-red-400" />
+                          <span className="font-semibold text-red-800 dark:text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200 xl:hidden">
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center">
+                          <Activity className="h-4 w-4 mr-2 text-orange-800 dark:text-orange-400" />
+                          <div className="text-sm text-gray-700 dark:text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
+                        </div>
+                        <div className="flex items-center ml-6">
+                          <div className="text-xs text-gray-900 font-semibold dark:text-gray-300">{(item as any).flg_tipo || ''}</div>
+                        </div>
+                        <div className="flex items-center">
+                          <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-gray-200">
+                            {(item as any).setorPrincipalLinha}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200 hidden xl:table-cell">
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center">
+                          <Navigation className="h-4 w-4 mr-2 text-green-800 dark:text-green-400" />
+                          <span className="font-semibold text-green-800 dark:text-green-300">{(item as any).localOrigemViagem || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center ml-6">
+                          <ArrowDown className="h-3 w-3 mr-1 text-blue-800 dark:text-blue-400" />
+                          <div className="text-xs text-green-900 font-bold dark:text-blue-300">{(item as any).sentido_texto || ''}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200 hidden xl:table-cell">
+                      <div className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-2 text-red-400" />
+                        <span className="font-semibold text-red-800 dark:text-red-300">{(item as any).localDestinoLinha || 'N/A'}</span>
+                      </div>
+                    </td>
+                    <td className="px-2 py-4 text-sm text-gray-900 dark:text-gray-200 hidden xl:table-cell">
+                      <div className="flex flex-col space-y-1">
+                        <div className="flex items-center">
+                          <Activity className="h-4 w-4 mr-2 text-orange-800 dark:text-orange-400" />
+                          <div className="text-sm text-gray-700 dark:text-gray-300">{(item as any).nome_atividade || 'N/A'}</div>
+                        </div>
+                        <div className="flex items-center ml-6">
+                          <div className="text-xs text-gray-900 font-semibold dark:text-gray-300">{(item as any).flg_tipo || ''}</div>
+                        </div>
+                        <div className="flex items-center mt-1">
+                          <MapPin className="h-4 w-4 mr-2 text-indigo-400" />
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-200 dark:bg-neutral-700 text-gray-900 dark:text-gray-200">
+                            {(item as any).setorPrincipalLinha}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
@@ -1372,9 +1529,26 @@ export const DataTable: React.FC<DataTableProps> = ({
         </div>
       </div>
 
+      {/* Modal de Input de Veículo (Tablet/Mobile) */}
+      <VehicleInputModal
+        isOpen={!!vehicleInputModalItem}
+        onClose={() => setVehicleInputModalItem(null)}
+        initialValue={vehicleInputModalItem?.numeroCarro || ''}
+        canEdit={true}
+        onSave={(val) => {
+          if (vehicleInputModalItem) {
+            setPendingVehicle({ open: true, vehicle: val, anchorId: vehicleInputModalItem.id });
+            setVehicleInputModalItem(null);
+          }
+        }}
+      />
+
       {showDriverOptionsModal && (
         <PersonOptionsModal
-          item={showDriverOptionsModal}
+          item={{
+            ...showDriverOptionsModal,
+            numeroCarro: vehicleDrafts[showDriverOptionsModal.id] ?? showDriverOptionsModal.numeroCarro
+          }}
           personType="motorista"
           onClose={() => setShowDriverOptionsModal(null)}
           onApplyScaleFilter={onApplyScaleFilter}
@@ -1383,7 +1557,10 @@ export const DataTable: React.FC<DataTableProps> = ({
       )}
       {showCobradorOptionsModal && (
         <PersonOptionsModal
-          item={showCobradorOptionsModal}
+          item={{
+            ...showCobradorOptionsModal,
+            numeroCarro: vehicleDrafts[showCobradorOptionsModal.id] ?? showCobradorOptionsModal.numeroCarro
+          }}
           personType="cobrador"
           onClose={() => setShowCobradorOptionsModal(null)}
           onApplyScaleFilter={onApplyScaleFilter}

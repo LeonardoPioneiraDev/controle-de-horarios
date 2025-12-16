@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { viagensTransdataService } from '../../services/api';
 import { ViagemTransdata, FiltrosViagem, StatusDados } from '../../types';
 import {
@@ -24,7 +24,6 @@ import { Label } from '../../components/ui/label';
 import { Alert, AlertDescription, AlertTitle, AlertIcon } from '../../components/ui/alert';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
 import { ViagensFiltersPanel } from './components/FiltersPanel';
-import { HistoryDrawerCH } from './components/HistoryDrawerCH/HistoryDrawerCH';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Componente para o cabeçalho da página
@@ -397,6 +396,7 @@ export const Viagens: React.FC = () => {
     const isAdmin = ['administrador', 'admin'].includes(String(user?.role || '').toLowerCase());
     const [viagens, setViagens] = useState<ViagemTransdata[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refetching, setRefetching] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -406,9 +406,24 @@ export const Viagens: React.FC = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [total, setTotal] = useState(0);
     const [sincronizando, setSincronizando] = useState(false);
-    const [showHistorico, setShowHistorico] = useState(false);
 
-    const loadInitialData = useCallback(async () => {
+    // Sanitiza filtros para enviar apenas valores válidos à API
+    const sanitizedFilters = useMemo(() => {
+        const f = { ...filtros };
+        // Remover strings vazias/undefined
+        const emptyKeys: (keyof typeof f)[] = [];
+        (Object.keys(f) as (keyof typeof f)[]).forEach((k) => {
+            const v = f[k];
+            if (v === '' || v === null || v === undefined) emptyKeys.push(k);
+        });
+        emptyKeys.forEach((k) => delete (f as any)[k]);
+        // Evitar enviar somenteAtrasados=false (backend pode interpretar incorretamente)
+        if (f.somenteAtrasados === false) delete (f as any).somenteAtrasados;
+        return f;
+    }, [filtros]);
+
+    // Carrega status e serviços quando a data muda
+    const fetchMeta = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
@@ -416,40 +431,67 @@ export const Viagens: React.FC = () => {
             setStatusDados(status);
 
             if (status.existemDados) {
-                const results = await Promise.allSettled([
-                    viagensTransdataService.getViagensWithFilters(selectedDate, filtros),
-                    viagensTransdataService.getServicosUnicos(selectedDate),
-                ]);
-
-                const [viagensResult, servicosResult] = results;
-
-                if (viagensResult.status === 'fulfilled') {
-                    setViagens(viagensResult.value.data);
-                    setTotal(viagensResult.value.total);
-                } else {
-                    setError('Erro ao carregar viagens.');
+                try {
+                    const serv = await viagensTransdataService.getServicosUnicos(selectedDate);
+                    setServicos(serv.servicos);
+                } catch {
+                    setServicos([]);
+                    setError((prev) => prev ? prev + ' Erro ao carregar serviços.' : 'Erro ao carregar serviços.');
                 }
-
-                if (servicosResult.status === 'fulfilled') {
-                    setServicos(servicosResult.value.servicos);
-                } else {
-                    setError(prev => prev + ' Erro ao carregar serviços.');
-                }
-
             } else {
+                setServicos([]);
                 setViagens([]);
                 setTotal(0);
             }
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Erro ao carregar dados iniciais.');
+            setError(err.response?.data?.message || 'Erro ao verificar status dos dados.');
         } finally {
             setLoading(false);
         }
-    }, [selectedDate, filtros]);
+    }, [selectedDate]);
 
+    // Busca viagens quando data ou filtros mudarem, sem bloquear a UI
+    const fetchViagens = useCallback(async (initial = false) => {
+        if (!statusDados?.existemDados) {
+            setViagens([]);
+            setTotal(0);
+            return;
+        }
+        if (!initial) setRefetching(true);
+        try {
+            const res = await viagensTransdataService.getViagensWithFilters(selectedDate, sanitizedFilters);
+            setViagens(res.data);
+            setTotal(res.total);
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Erro ao carregar viagens.');
+        } finally {
+            if (!initial) setRefetching(false);
+        }
+    }, [selectedDate, sanitizedFilters, statusDados?.existemDados]);
+
+    // Recarrega metadados e viagens respeitando UI otimista
+    const loadInitialData = useCallback(async () => {
+        try {
+            await fetchMeta();
+            await fetchViagens(true);
+        } catch {
+            // Erros já são tratados nas funções chamadas
+        }
+    }, [fetchMeta, fetchViagens]);
+
+    // Efeito para meta ao mudar a data
     useEffect(() => {
-        loadInitialData();
-    }, [loadInitialData]);
+        fetchMeta();
+    }, [fetchMeta]);
+
+    // Efeito para carregar viagens na primeira vez e em cada alteração de filtros/data
+    useEffect(() => {
+        // Após saber se existem dados para a data, busca viagens
+        if (statusDados !== null) {
+            // initial=true evita spinner global e usa refetching quando alterando filtros
+            fetchViagens(true);
+        }
+    }, [fetchViagens, statusDados]);
 
     const handleSincronizar = async () => {
         setSincronizando(true);
@@ -517,8 +559,6 @@ export const Viagens: React.FC = () => {
                         filters={filtros}
                         onFilterChange={handleFilterChange}
                         onClearFilters={clearFilters}
-                        onApplyFilters={loadInitialData}
-                        onShowHistorico={() => setShowHistorico(true)}
                         services={servicos}
                     />
                 </div>
@@ -532,6 +572,12 @@ export const Viagens: React.FC = () => {
             ) : statusDados?.existemDados ? (
                 <Card className="border-none shadow-xl bg-white/60 dark:bg-gray-900/60 backdrop-blur-md overflow-hidden">
                     <CardContent className="p-0">
+                        {refetching && (
+                            <div className="w-full flex items-center gap-2 p-3 text-sm text-gray-600 dark:text-gray-300">
+                                <Loader2 className="h-4 w-4 animate-spin text-[#fbcc2c] dark:text-yellow-400" />
+                                Atualizando resultados…
+                            </div>
+                        )}
                         <ViagensTable
                             viagens={viagens}
                             loading={loading}
@@ -541,7 +587,6 @@ export const Viagens: React.FC = () => {
             ) : (
                 <NoData onSync={handleSincronizar} synchronizing={sincronizando} />
             )}
-            <HistoryDrawerCH open={showHistorico} date={selectedDate} filtros={filtros} onClose={() => setShowHistorico(false)} />
         </div>
     );
 };

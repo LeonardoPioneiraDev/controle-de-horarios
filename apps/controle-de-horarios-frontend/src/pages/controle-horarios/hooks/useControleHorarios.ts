@@ -95,6 +95,8 @@ export const useControleHorarios = () => {
     }
   });
 
+  // SSE movido para a página para não alterar a ordem de hooks deste hook.
+
   const toTime = (d?: string | Date | null) => {
     if (!d) return '';
     const dt = new Date(d);
@@ -373,6 +375,8 @@ export const useControleHorarios = () => {
     setError(null);
   }, []);
 
+
+
   const limparFiltros = useCallback(() => {
     setFiltros({}); // Reset all filters to an empty object
     setTipoLocal(undefined);
@@ -411,6 +415,21 @@ export const useControleHorarios = () => {
       );
     }).length;
   }, [controleHorarios, controleHorariosOriginais]);
+
+  const commitLocalChanges = useCallback((viagemId: string, updates: Partial<ControleHorarioItem>) => {
+    setControleHorarios((prev) => prev.map((it) => (it.id === viagemId ? { ...it, ...updates } : it)));
+    setControleHorariosOriginais((prev) => prev.map((it) => (it.id === viagemId ? { ...it, ...updates } : it)));
+    // Re-avaliar se ainda há alterações pendentes
+    setTimeout(() => {
+      setTemAlteracoesPendentes(contarAlteracoesPendentes() > 0);
+    }, 0);
+  }, [contarAlteracoesPendentes]);
+
+  const handleServerUpdate = useCallback((viagemId: string, updates: Partial<ControleHorarioItem>) => {
+    setControleHorarios((prev) => prev.map((it) => (it.id === viagemId ? { ...it, ...updates } : it)));
+    setControleHorariosOriginais((prev) => prev.map((it) => (it.id === viagemId ? { ...it, ...updates } : it)));
+    // Server updates should NOT trigger pending changes
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -490,6 +509,8 @@ export const useControleHorarios = () => {
     descartarAlteracoes,
     sincronizarControleHorarios,
     handleInputChange,
+    commitLocalChanges,
+    handleServerUpdate,
     limparFiltros,
     aplicarFiltros,
     contarAlteracoesPendentes,

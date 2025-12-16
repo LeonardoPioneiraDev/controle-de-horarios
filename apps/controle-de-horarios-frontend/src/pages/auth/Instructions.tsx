@@ -160,7 +160,7 @@ const Instructions: React.FC = () => {
 
           <div className="mt-8 text-center">
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">© 2025 Viação Pioneira Ltda.</p>
-            <p className="text-[10px] text-gray-400 dark:text-gray-600">Versão 1.0.0 • Todos os direitos reservados</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-600">Versão 1.1.2 • Todos os direitos reservados</p>
           </div>
         </div>
       </div>

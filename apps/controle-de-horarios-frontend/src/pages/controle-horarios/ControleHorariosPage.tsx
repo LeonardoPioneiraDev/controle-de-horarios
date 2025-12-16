@@ -1,4 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserRole, canSyncControleHorarios, canEditControleHorarios } from '../../types';
 import { ConfirmDialog } from '../../components/ui/confirm-dialog';
@@ -11,9 +14,18 @@ import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import { Calendar, Maximize2, Minimize2, FileText, Download } from 'lucide-react';
+import { Calendar, Maximize2, Minimize2, FileText, Download, Bell, X, Filter } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useFullscreen } from '../../contexts/FullscreenContext';
+
+interface UINotification {
+  id: string;
+  message: string;
+  payload: any;
+  read: boolean;
+  ts: number;
+  change_type?: 'confirmado' | 'atualizado';
+}
 
 export const ControleHorariosPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
@@ -23,22 +35,13 @@ export const ControleHorariosPage: React.FC = () => {
   const [openConfirmSync, setOpenConfirmSync] = useState(false);
   const [showHistorico, setShowHistorico] = useState(false);
 
+  const [notifications, setNotifications] = useState<UINotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const [isHorariosModalOpen, setIsHorariosModalOpen] = useState(false);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
-  const [windowHeight, setWindowHeight] = useState(window.innerHeight);
 
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-      setWindowHeight(window.innerHeight);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-  useEffect(() => {
-    if (isFullscreen) setShowFilters(false);
-  }, [isFullscreen]);
+  // Notificações UI (badge + painel)
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
 
   // Accessibility: allow ESC to exit fullscreen
   useEffect(() => {
@@ -65,6 +68,8 @@ export const ControleHorariosPage: React.FC = () => {
     opcoesFiltros,
     statusDados,
     handleInputChange,
+    handleServerUpdate,
+    commitLocalChanges,
     estatisticas,
     temAlteracoesPendentes,
     contarAlteracoesPendentes,
@@ -80,7 +85,7 @@ export const ControleHorariosPage: React.FC = () => {
     salvarFiltrosManualmente,
   } = useControleHorarios();
 
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const isAnalistaOuMais = useMemo(() => {
     const role = user?.role;
     return (
@@ -94,6 +99,147 @@ export const ControleHorariosPage: React.FC = () => {
   const canSyncCH = useMemo(() => canSyncControleHorarios(user?.role), [user]);
   const canSaveCH = useMemo(() => canEditControleHorarios(user?.role), [user]);
 
+  // SSE: Notificações em tempo real de confirmações
+  useEffect(() => {
+    try {
+      const base = (api as any)?.defaults?.baseURL || '/api';
+      const baseStr = String(base);
+      // Remove trailing slash
+      const baseClean = baseStr.replace(/\/$/, '');
+      // Add leading slash only if it's a relative path (doesn't start with http)
+      const baseNormalized = baseClean.startsWith('http') ? baseClean : `/${baseClean.replace(/^\/+/, '')}`;
+      const linhaSel = Array.isArray(filtros.codigo_linha) && filtros.codigo_linha.length > 0 ? String(filtros.codigo_linha[0]) : '';
+      const sentido = (filtros as any)?.sentido_texto || (filtros as any)?.sentido || '';
+      const destino = (filtros as any)?.local_destino_linha || '';
+      const lastTs = localStorage.getItem('ch_last_event_ts') || new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const qs = new URLSearchParams({ data_referencia: dataReferencia, codigo_linha: linhaSel, sentido_texto: sentido, local_destino_linha: destino, local_origem_viagem: (filtros as any)?.local_origem_viagem || '', cod_servico_numero: (filtros as any)?.cod_servico_numero || '', since: lastTs, token: token || '', viewer_email: (user && (user.email || (user as any).usuarioEmail)) || '' }).toString();
+      const url = `${baseNormalized}/controle-horarios-events/stream?${qs}`;
+      try {
+        // eslint-disable-next-line no-console
+        console.log('[SSE][FRONT] Conectando...', {
+          url,
+          baseClean: baseNormalized,
+          data_referencia: dataReferencia,
+          codigo_linha: linhaSel,
+          sentido_texto: sentido,
+          local_destino_linha: destino,
+          local_origem_viagem: (filtros as any)?.local_origem_viagem || '',
+          cod_servico_numero: (filtros as any)?.cod_servico_numero || '',
+          since: lastTs,
+          hasToken: Boolean(token),
+        });
+      } catch { }
+      const es = new EventSource(url);
+
+      es.onopen = () => {
+        try {
+          // eslint-disable-next-line no-console
+          console.log('[SSE][FRONT] Conectado. readyState=', es.readyState);
+        } catch { }
+      };
+
+      es.onmessage = (evt) => {
+        try {
+          try {
+            // eslint-disable-next-line no-console
+            console.log('[SSE][FRONT] Mensagem recebida (raw length):', (evt?.data || '').length);
+          } catch { }
+          const parsed = JSON.parse(evt.data || '{}');
+          try {
+            // eslint-disable-next-line no-console
+            console.log('[SSE][FRONT] Mensagem parseada:', { type: parsed?.type, id: parsed?.data?.id });
+          } catch { }
+          if (!parsed || !parsed.type) return;
+          if (parsed.type === 'confirmado' || parsed.type === 'atualizado') {
+            const d = parsed.data || {};
+            // Frontend guard: não notificar o próprio autor
+            try {
+              const me = String((user && (user.email || (user as any)?.usuarioEmail)) || '').trim().toLowerCase();
+              const author = String((d && (d.editado_por_email)) || '').trim().toLowerCase();
+              if (me && author && me === author) {
+                return; // suprime notificação para o próprio autor
+              }
+            } catch {}
+            try {
+              const ts = d.created_at || new Date().toISOString();
+              localStorage.setItem('ch_last_event_ts', ts);
+            } catch { }
+            // Atualiza campos pontuais via hook API (sem recarregar tudo)
+            try {
+              const updates: any = { de_acordo: true };
+              if (d.de_acordo_em) updates.de_acordo_em = d.de_acordo_em;
+              if (d.prefixo_veiculo) updates.numeroCarro = d.prefixo_veiculo;
+              if (d.hor_Saída_ajustada) updates.hor_Saída_ajustada = d.hor_Saída_ajustada;
+              if (d.hor_chegada_ajustada) updates.hor_chegada_ajustada = d.hor_chegada_ajustada;
+              handleServerUpdate(d.id, updates);
+            } catch { }
+
+            // Notificação visual
+            try {
+              const linhaStr = String(d.codigo_linha || '').trim();
+              const srvStr = String(d.cod_servico_numero || '').trim();
+              const origemStr = String(d.local_origem_viagem || '').trim();
+              const destinoStr = String(d.local_destino_linha || '').trim();
+              const tipoMsg = parsed.type === 'atualizado' ? 'Atualização' : 'Confirmação';
+              const msg = `${tipoMsg}: linha ${linhaStr} servico ${srvStr} saindo de ${origemStr} > ${destinoStr}`;
+
+              const newNotification: UINotification = {
+                id: d.id,
+                message: msg,
+                payload: d,
+                read: false,
+                ts: Date.now(),
+                change_type: parsed.type
+              };
+
+              setNotifications((prev) => {
+                const exists = prev.find((n) => n.id === d.id && n.change_type === parsed.type);
+                if (exists) return prev;
+                return [newNotification, ...prev];
+              });
+              setUnreadCount((prev) => prev + 1);
+
+              // Toast informativo (sem ação de clique para filtrar)
+              toast.info(msg);
+              // Badge (incrementa lista de Notificações)
+              setNotifications((prev) => {
+                const nid = `${d.id || 'sem-id'}:${d.de_acordo_em || Date.now()}`;
+                const item: UINotification = { id: nid, message: msg, payload: d, read: false, ts: Date.now() };
+                const next = [item, ...prev];
+                return next.slice(0, 50);
+              });
+            } catch { }
+          } else {
+            try {
+              // eslint-disable-next-line no-console
+              console.log('[SSE][FRONT] Tipo de mensagem desconhecido:', parsed?.type);
+            } catch { }
+          }
+        } catch (e) {
+          try {
+            // eslint-disable-next-line no-console
+            console.warn('[SSE][FRONT] Falha ao parsear mensagem SSE:', e);
+          } catch { }
+        }
+      };
+
+      es.onerror = (err) => {
+        try {
+          // eslint-disable-next-line no-console
+          console.warn('[SSE][FRONT] Erro no stream:', err, 'readyState=', es.readyState, 'url=', url);
+        } catch { }
+        try { es.close(); } catch { }
+      };
+      return () => {
+        try {
+          // eslint-disable-next-line no-console
+          console.log('[SSE][FRONT] Encerrando conexão SSE');
+        } catch { }
+        try { es.close(); } catch { }
+      };
+    } catch { return; }
+  }, [dataReferencia, JSON.stringify((filtros || {}).codigo_linha || []), (filtros as any)?.sentido_texto, (filtros as any)?.sentido, (filtros as any)?.local_destino_linha, token]);
+
   // Saved filters quick-select (top bar)
   type SavedFilterQuick = {
     name: string;
@@ -102,19 +248,44 @@ export const ControleHorariosPage: React.FC = () => {
     statusEdicaoLocal?: 'todos' | 'minhas_edicoes' | 'nao_editados' | 'apenas_editadas';
     createdAt: number;
   };
-  const savedFiltersKey = useMemo(() => {
-    const u: any = user;
-    return `ch_saved_filters_${u?.id || u?.email || 'default'}`;
-  }, [user]);
   const [savedFiltersQuick, setSavedFiltersQuick] = useState<SavedFilterQuick[]>([]);
+  // Agora os Filtros salvos…
+
+  // Carregar Filtros salvos…
+  type UserFilterServer = {
+    id: string;
+    name: string;
+    filters?: Record<string, unknown> | null;
+    tipoLocal?: 'R' | 'S' | null;
+    statusEdicaoLocal?: 'todos' | 'minhas_edicoes' | 'nao_editados' | 'apenas_editadas' | null;
+    createdAt?: string;
+  };
+
+  const { data: serverSavedFilters, isFetching: loadingSavedFilters } = useQuery({
+    queryKey: ['user-filters'],
+    queryFn: async () => {
+      const res = await api.get<UserFilterServer[]>('/user-filters');
+      return res.data;
+    },
+    staleTime: 60_000,
+  });
+
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(savedFiltersKey);
-      setSavedFiltersQuick(raw ? JSON.parse(raw) : []);
-    } catch {
-      setSavedFiltersQuick([]);
-    }
-  }, [savedFiltersKey, showFilters]);
+    if (!serverSavedFilters) return;
+    const mapped: SavedFilterQuick[] = serverSavedFilters.map((sf) => ({
+      name: sf.name,
+      filtros: (sf.filters || {}) as any,
+      tipoLocal: (sf.tipoLocal ?? undefined) as 'R' | 'S' | undefined,
+      statusEdicaoLocal: (sf.statusEdicaoLocal ?? undefined) as
+        | 'todos'
+        | 'minhas_edicoes'
+        | 'nao_editados'
+        | 'apenas_editadas'
+        | undefined,
+      createdAt: sf.createdAt ? new Date(sf.createdAt).getTime() : Date.now(),
+    }));
+    setSavedFiltersQuick(mapped);
+  }, [serverSavedFilters]);
   const applySavedFilterQuick = (name: string) => {
     const sf = savedFiltersQuick.find((x) => x.name === name);
     if (!sf) return;
@@ -147,15 +318,15 @@ export const ControleHorariosPage: React.FC = () => {
       return parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
     };
     const mins = arr
-      .map((it: any) => parseMinutes(it.horaSaida))
+      .map((it: any) => parseMinutes(it.horaSaída))
       .filter((n) => Number.isFinite(n)) as number[];
     const minM = mins.length ? Math.min(...mins) : 0;
     const maxM = mins.length ? Math.max(...mins) : 0;
     const crosses = minM <= 240 && maxM >= 1080; // <=04:00 e >=18:00
     const threshold = 240;
     arr.sort((a: any, b: any) => {
-      const am = parseMinutes(a.horaSaida);
-      const bm = parseMinutes(b.horaSaida);
+      const am = parseMinutes(a.horaSaída);
+      const bm = parseMinutes(b.horaSaída);
       const aKey = crosses && am < threshold ? am + 1440 : am;
       const bKey = crosses && bm < threshold ? bm + 1440 : bm;
       return aKey - bKey;
@@ -179,11 +350,11 @@ export const ControleHorariosPage: React.FC = () => {
       return `<td class="cell-adjusted"><div class="original">${originalFormatted}</div><div class="adjusted">${adjustedFormatted}</div></td>`;
     };
 
-    const renderPerson = (originalName?: string, substitutedName?: string, originalCracha?: string, substitutedCracha?: string) => {
-      if (!substitutedName && !substitutedCracha) {
-        return `<td><div>${safe(originalName)}</div><div class="cracha">${safe(originalCracha)}</div></td>`;
+    const renderPerson = (originalName?: string, substitutedName?: string, originalCrachá?: string, substitutedCrachá?: string) => {
+      if (!substitutedName && !substitutedCrachá) {
+        return `<td><div>${safe(originalName)}</div><div class="Crachá">${safe(originalCrachá)}</div></td>`;
       }
-      return `<td class="cell-substitute"><div class="original">${safe(originalName)} (${safe(originalCracha)})</div><div class="substituted">${safe(substitutedName)} (${safe(substitutedCracha)})</div></td>`;
+      return `<td class="cell-substitute"><div class="original">${safe(originalName)} (${safe(originalCrachá)})</div><div class="substituted">${safe(substitutedName)} (${safe(substitutedCrachá)})</div></td>`;
     };
 
     const renderCarro = (originalCarro?: string, editedCarro?: string) => {
@@ -195,12 +366,12 @@ export const ControleHorariosPage: React.FC = () => {
 
     const rows = items
       .map((it: any) => {
-        const hasAdjust = Boolean(it.hor_saida_ajustada || it.hor_chegada_ajustada);
+        const hasAdjust = Boolean(it.hor_Saída_ajustada || it.hor_chegada_ajustada);
         const hasEdits = Boolean(
           it.nomeMotoristaEditado ||
-          it.crachaMotoristaEditado ||
+          it.CracháMotoristaEditado ||
           it.nomeCobradorEditado ||
-          it.crachaCobradorEditado ||
+          it.CracháCobradorEditado ||
           (it.prefixo_veiculo_editado && it.prefixo_veiculo_editado !== it.prefixo_veiculo) ||
           hasAdjust
         );
@@ -209,12 +380,12 @@ export const ControleHorariosPage: React.FC = () => {
         return `
         <tr class="${rowClass}">
           <td><div>${safe(it.codigoLinha)} - ${safe(it.nomeLinha)}</div><div class="setor">${safe(it.setorPrincipalLinha)}</div></td>
-          <td class="center">${safe(it.codServicoNumero ?? it.cod_servico_numero ?? '')}</td>
-          ${renderAdjustedTime(it.hor_saida, it.hor_saida_ajustada)}
+          <td class="center">${safe(it.codservicoNumero ?? it.cod_servico_numero ?? '')}</td>
+          ${renderAdjustedTime(it.hor_Saída, it.hor_Saída_ajustada)}
           ${renderAdjustedTime(it.hor_chegada, it.hor_chegada_ajustada)}
           ${renderCarro(it.prefixo_veiculo, it.prefixo_veiculo_editado)}
-          ${renderPerson(it.nome_motorista, it.nome_motorista_editado, it.cracha_motorista, it.cracha_motorista_editado)}
-          ${renderPerson(it.nome_cobrador, it.nome_cobrador_editado, it.cracha_cobrador, it.cracha_cobrador_editado)}
+          ${renderPerson(it.nome_motorista, it.nome_motorista_editado, it.Crachá_motorista, it.Crachá_motorista_editado)}
+          ${renderPerson(it.nome_cobrador, it.nome_cobrador_editado, it.Crachá_cobrador, it.Crachá_cobrador_editado)}
           <td>${safe(it.editado_por_nome || '')}</td>
           <td>${safe(it.observacao || '')}</td>
         </tr>`;
@@ -254,7 +425,7 @@ export const ControleHorariosPage: React.FC = () => {
     .cell-adjusted .original { text-decoration: line-through; color: #6c757d; }
     .cell-adjusted .adjusted { font-weight: bold; color: #28a745; }
     .center { text-align: center; }
-    .cracha, .setor { font-size: 0.9em; color: #495057; }
+    .Crachá, .setor { font-size: 0.9em; color: #495057; }
     @media print { 
       body { margin: 0; font-size: 10px; } 
       .container { box-shadow: none; margin: 0; padding: 10px; border-radius: 0; }
@@ -279,7 +450,7 @@ export const ControleHorariosPage: React.FC = () => {
         <thead>
           <tr>
             <th>Linha</th>
-            <th>Serviço</th>
+            <th>servico</th>
             <th>Saída</th>
             <th>Chegada</th>
             <th>Carro</th>
@@ -315,7 +486,7 @@ export const ControleHorariosPage: React.FC = () => {
     const items = Array.isArray(sortedControleHorarios) ? sortedControleHorarios : [];
 
     const header = [
-      'Setor', 'Linha', 'Serviço', 'Saída', 'Chegada', 'Saída Ajustada', 'Chegada Ajustada', 'Carro',
+      'Setor', 'Linha', 'servico', 'Saída', 'Chegada', 'Saída Ajustada', 'Chegada Ajustada', 'Carro',
       'Motorista', 'Cobrador', 'Observações'
     ];
 
@@ -325,13 +496,13 @@ export const ControleHorariosPage: React.FC = () => {
         try { const d = new Date(v); if (isNaN(d.getTime())) return ''; return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch { return ''; }
       };
 
-      const motorista = (it.nome_motorista_editado && it.nome_motorista_editado !== it.nome_motorista) || (it.cracha_motorista_editado && it.cracha_motorista_editado !== it.cracha_motorista)
-        ? `DE: ${it.nome_motorista} (${it.cracha_motorista}) PARA: ${it.nome_motorista_editado} (${it.cracha_motorista_editado})`
-        : `${it.nome_motorista} (${it.cracha_motorista})`;
+      const motorista = (it.nome_motorista_editado && it.nome_motorista_editado !== it.nome_motorista) || (it.Crachá_motorista_editado && it.Crachá_motorista_editado !== it.Crachá_motorista)
+        ? `DE: ${it.nome_motorista} (${it.Crachá_motorista}) PARA: ${it.nome_motorista_editado} (${it.Crachá_motorista_editado})`
+        : `${it.nome_motorista} (${it.Crachá_motorista})`;
 
-      const cobrador = (it.nome_cobrador_editado && it.nome_cobrador_editado !== it.nome_cobrador) || (it.cracha_cobrador_editado && it.cracha_cobrador_editado !== it.cracha_cobrador)
-        ? `DE: ${it.nome_cobrador} (${it.cracha_cobrador}) PARA: ${it.nome_cobrador_editado} (${it.cracha_cobrador_editado})`
-        : (it.nome_cobrador ? `${it.nome_cobrador} (${it.cracha_cobrador})` : 'SEM COBRADOR');
+      const cobrador = (it.nome_cobrador_editado && it.nome_cobrador_editado !== it.nome_cobrador) || (it.Crachá_cobrador_editado && it.Crachá_cobrador_editado !== it.Crachá_cobrador)
+        ? `DE: ${it.nome_cobrador} (${it.Crachá_cobrador}) PARA: ${it.nome_cobrador_editado} (${it.Crachá_cobrador_editado})`
+        : (it.nome_cobrador ? `${it.nome_cobrador} (${it.Crachá_cobrador})` : 'SEM COBRADOR');
 
       const carro = (it.prefixo_veiculo_editado && it.prefixo_veiculo_editado !== it.prefixo_veiculo)
         ? `DE: ${it.prefixo_veiculo} PARA: ${it.prefixo_veiculo_editado}`
@@ -340,10 +511,10 @@ export const ControleHorariosPage: React.FC = () => {
       return [
         it.setorPrincipalLinha,
         `${it.codigoLinha} - ${it.nomeLinha}`,
-        it.codServicoNumero ?? it.cod_servico_numero ?? '',
-        it.horaSaida,
+        it.codservicoNumero ?? it.cod_servico_numero ?? '',
+        it.horaSaída,
         it.horaChegada,
-        fmtAdj(it.hor_saida_ajustada as any),
+        fmtAdj(it.hor_Saída_ajustada as any),
         fmtAdj(it.hor_chegada_ajustada as any),
         carro,
         motorista,
@@ -402,15 +573,42 @@ export const ControleHorariosPage: React.FC = () => {
     XLSX.writeFile(wb, `relatorio_controle_horarios_${dataReferencia || 'data'}.xlsx`);
   };
 
-  const shouldApplyZoom = isFullscreen && windowWidth <= 1390 && windowHeight <= 1900;
+  //<Button variant="outline" onClick={() => setShowReport(true)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
+  //<FileText className="h-4 w-4 mr-2" /> Gerar Relatório
+  //</Button>
 
   return (
-    <div className="space-y-4 md:space-y-6 p-2 md:p-6 min-h-screen bg-gray-100 dark:bg-gradient-to-br dark:from-black dark:via-neutral-900 dark:to-yellow-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <div className="w-full min-h-screen bg-gray-100 dark:bg-gradient-to-br dark:from-black dark:via-neutral-900 dark:to-yellow-950 text-gray-900 dark:text-gray-100 transition-colors duration-300">
       <div className="max-w-[1400px] mx-auto">
         <Card className="relative border border-gray-300 dark:border-yellow-400/20 bg-white dark:bg-gray-900 shadow-md dark:shadow-none">
           <CardHeader className="pb-4 border-b border-gray-400 dark:border-yellow-400/10">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Controle de Horários</h1>
-            <p className="mt-1 text-sm text-gray-700 dark:text-gray-400">Gerencie e edite os horários das viagens</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">Controle de Horários</h1>
+                <p className="mt-1 text-sm text-gray-700 dark:text-gray-400">Gerencie e edite os horários das viagens</p>
+              </div>
+              {/* Notification Bell in page header (near theme toggle) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsNotifOpen(true);
+                  if (unreadCount > 0) {
+                    setNotifications((prev) => prev.map(n => ({ ...n, read: true })));
+                    setUnreadCount(0);
+                  }
+                }}
+                className="relative inline-flex items-center justify-center w-10 h-10 rounded-md border border-gray-500 dark:border-gray-700 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors mt-1"
+                aria-label="Notificações"
+                title="Notificações"
+              >
+                <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -437,18 +635,20 @@ export const ControleHorariosPage: React.FC = () => {
                   Limpar Filtros
                 </Button>
                 <select
-                  className="border border-gray-500 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent min-w-[180px]"
+                  className="border border-gray-500 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent min-w-[220px]"
                   onChange={(e) => e.target.value && applySavedFilterQuick(e.target.value)}
                   defaultValue=""
+                  disabled={loadingSavedFilters || savedFiltersQuick.length === 0}
+                  aria-busy={loadingSavedFilters}
                 >
-                  <option value="" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">Filtros salvos…</option>
-                  {savedFiltersQuick.map((sf) => (
+                  <option value="" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                    {loadingSavedFilters ? 'Carregando filtros…' : 'Filtros salvos…'}
+                  </option>
+                  {!loadingSavedFilters && savedFiltersQuick.map((sf) => (
                     <option key={sf.name} value={sf.name} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">{sf.name}</option>
                   ))}
                 </select>
-                <Button variant="outline" onClick={() => setShowReport(true)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
-                  <FileText className="h-4 w-4 mr-2" /> Gerar Relatório
-                </Button>
+
                 <Button variant="outline" onClick={() => setIsFullscreen((v) => !v)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 font-medium">
                   {isFullscreen ? (
                     <>
@@ -466,7 +666,31 @@ export const ControleHorariosPage: React.FC = () => {
                   </Button>
                 )}
               </div>
+
+              {/* Notification Bell moved to header */}
             </div>
+
+              {isFullscreen && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNotifOpen(true);
+                    if (unreadCount > 0) {
+                      setNotifications((prev) => prev.map(n => ({ ...n, read: true })));
+                      setUnreadCount(0);
+                    }
+                  }}
+                  className="fixed right-4 top-4 z-[80] inline-flex items-center justify-center w-10 h-10 rounded-md border border-gray-500 dark:border-gray-700 bg-white/90 dark:bg-black/40 backdrop-blur hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  aria-label="Notificações"
+                >
+                  <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              )}
           </CardContent>
         </Card>
 
@@ -476,27 +700,112 @@ export const ControleHorariosPage: React.FC = () => {
           </div>
         )}
 
-        {showFilters && !isFullscreen && (
-          <FiltersPanel
-            showFilters={showFilters}
-            onClose={() => setShowFilters(false)}
-            filtros={filtros}
-            setFiltros={setFiltros}
-            opcoesFiltros={opcoesFiltros}
-            showLinhaMultiSelect={showLinhaMultiSelect}
-            setShowLinhaMultiSelect={setShowLinhaMultiSelect}
-            onLimparFiltros={limparFiltros}
-            onAplicarFiltros={aplicarFiltros}
-            onMostrarHistorico={() => setShowHistorico(true)}
-            tipoLocal={tipoLocal}
-            setTipoLocal={setTipoLocal}
-            statusEdicaoLocal={statusEdicaoLocal}
-            setStatusEdicaoLocal={setStatusEdicaoLocal}
-          />
+        {showFilters && (
+          <div className={isFullscreen ? "fixed right-4 top-16 z-[60] w-[calc(100%-2rem)] sm:w-[720px]" : "mb-4"}>
+            <FiltersPanel
+              showFilters={showFilters}
+              onClose={() => setShowFilters(false)}
+              filtros={filtros}
+              setFiltros={setFiltros}
+              opcoesFiltros={opcoesFiltros}
+              showLinhaMultiSelect={showLinhaMultiSelect}
+              setShowLinhaMultiSelect={setShowLinhaMultiSelect}
+              onLimparFiltros={limparFiltros}
+              onAplicarFiltros={aplicarFiltros}
+              onMostrarHistorico={() => setShowHistorico(true)}
+              tipoLocal={tipoLocal}
+              setTipoLocal={setTipoLocal}
+              statusEdicaoLocal={statusEdicaoLocal}
+              setStatusEdicaoLocal={setStatusEdicaoLocal}
+            />
+          </div>
         )}
 
         {Array.isArray(controleHorarios) && controleHorarios.length > 0 ? (
           <div>
+            {/* Botão de notificação + badge */}
+            {/* Sino e badge movidos para o DataTable (ao lado de ESCALA TIPO DIA) */}
+
+            {/* Painel de Notificações */}
+            {isNotifOpen && (
+              <div className="fixed right-4 top-16 z-[70] w-96 max-w-[95vw] rounded-lg border border-gray-300 dark:border-gray-700 shadow-2xl bg-white dark:bg-gray-900">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                  <div className="text-sm font-semibold text-gray-800 dark:text-gray-200">Notificações</div>
+                  <button
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+                    onClick={() => setIsNotifOpen(false)}
+                    aria-label="Fechar Notificações"
+                  >
+                    <X className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                  </button>
+                </div>
+                <div className="max-h-[60vh] overflow-auto">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-6 text-sm text-gray-600 dark:text-gray-400">Sem Notificações</div>
+                  ) : (
+                    notifications.map((n) => {
+                      const d: any = n.payload || {};
+                      const linhaStr = String(d.codigo_linha || '').trim();
+                      const srvStr = String(d.cod_servico_numero || '').trim();
+                      const origemStr = String(d.local_origem_viagem || '').trim();
+                      const destinoStr = String(d.local_destino_linha || '').trim();
+                      const veiculoStr = d.prefixo_veiculo ? ` • Carro: ${d.prefixo_veiculo}` : '';
+                      const motoristaStr = d.Crachá_motorista ? ` • Motorista: ${d.Crachá_motorista}` : '';
+
+                      return (
+  <button
+    key={n.id}
+    type="button"
+    onClick={() => {
+      setIsNotifOpen(false);
+      const linhaStr = String((n.payload || {}).codigo_linha || '').trim();
+      const d: any = n.payload || {};
+      const srvStr = String(d.cod_servico_numero || d.cod_servico_numero || '').trim();
+      const veiculo = String(d.prefixo_veiculo || '').trim();
+      setFiltros((prev: any) => ({
+        ...prev,
+        codigo_linha: linhaStr ? [linhaStr] : prev.codigo_linha,
+        cod_servico_numero: srvStr || prev.cod_servico_numero,
+        sentido_texto: (d as any).sentido_texto || (d as any).sentido || prev.sentido_texto,
+        numeroCarro: veiculo || prev.numeroCarro,
+      }));
+      setTimeout(() => aplicarFiltros(), 0);
+    }}
+    className={`w-full text-left px-4 py-3 border-b border-gray-200 dark:border-gray-800 transition-colors ${n.read ? 'bg-transparent' : 'bg-yellow-50 dark:bg-yellow-900/10 hover:bg-yellow-100 dark:hover:bg-yellow-900/20'}`}
+  >
+    <div className="text-sm text-gray-800 dark:text-gray-200 font-semibold mb-1">
+      {n.message}
+    </div>
+    <div className="text-xs text-gray-600 dark:text-gray-400 mb-1 flex flex-wrap items-center gap-2">
+      <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">{String((n.payload||{}).local_origem_viagem||"") || "Origem"}</span>
+      <span className="text-gray-500">-&gt;</span>
+      <span className="inline-flex items-center px-2 py-0.5 rounded bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">{String((n.payload||{}).local_destino_linha||"") || "Destino"}</span>
+      <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-800 dark:bg-gray-800/50 dark:text-gray-200 border border-gray-200 dark:border-gray-700">Linha {String((n.payload||{}).codigo_linha||"")} • servico {String(((n.payload||{}).cod_servico_numero||(n.payload||{}).cod_servico_numero)||"")}</span>
+      {String((n.payload||{}).prefixo_veiculo||"") && (<span className="inline-flex items-center px-2 py-0.5 rounded bg-yellow-200 text-yellow-900 dark:bg-yellow-600/30 dark:text-yellow-300 font-bold">Carro: {String((n.payload||{}).prefixo_veiculo)}</span>)}
+    </div>
+    </button>
+                    );
+                    })
+                  )}
+                </div>
+                {notifications.length > 0 && (
+                  <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                    <button
+                      className="text-xs text-gray-600 dark:text-gray-400 hover:underline"
+                      onClick={() => setNotifications((prev) => prev.map(n => ({ ...n, read: true })))}
+                    >
+                      Marcar todas como lidas
+                    </button>
+                    <button
+                      className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                      onClick={() => setNotifications([])}
+                    >
+                      Limpar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             {false && isFullscreen && (
               <div className="fixed top-4 right-4 z-[60]">
                 <Button
@@ -532,9 +841,13 @@ export const ControleHorariosPage: React.FC = () => {
                 </div>
 
                 {/* Saved Filters Quick Select */}
-                {savedFiltersQuick.length > 0 && (
+                {loadingSavedFilters ? (
                   <div className="flex items-center gap-2 pt-2 border-t border-gray-400 dark:border-gray-700">
-                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Filtros Salvos:</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Carregando filtros…</span>
+                  </div>
+                ) : (savedFiltersQuick.length > 0 && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-400 dark:border-gray-700">
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Filtros salvos…</span>
                     <div className="flex flex-wrap gap-2">
                       {savedFiltersQuick.map((sf) => (
                         <button
@@ -548,67 +861,92 @@ export const ControleHorariosPage: React.FC = () => {
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
-            )}
-            {isFullscreen && showFilters && (
-              <div className="fixed right-4 top-16 z-[60] w-[calc(100%-2rem)] sm:w-[720px]">
-                <FiltersPanel
-                  showFilters={showFilters}
-                  onClose={() => setShowFilters(false)}
-                  filtros={filtros}
-                  setFiltros={setFiltros}
-                  opcoesFiltros={opcoesFiltros}
-                  showLinhaMultiSelect={showLinhaMultiSelect}
-                  setShowLinhaMultiSelect={setShowLinhaMultiSelect}
-                  onLimparFiltros={limparFiltros}
-                  onAplicarFiltros={aplicarFiltros}
-                  onMostrarHistorico={() => setShowHistorico(true)}
-                  tipoLocal={tipoLocal}
-                  setTipoLocal={setTipoLocal}
-                  statusEdicaoLocal={statusEdicaoLocal}
-                  setStatusEdicaoLocal={setStatusEdicaoLocal}
-                />
+                ))}
               </div>
             )}
 
-            <div className={isFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-4 overflow-auto' : ''} style={shouldApplyZoom ? { transform: 'scale(1)', transformOrigin: 'top left' } : {}}>
+
+            <div className={isFullscreen ? 'fixed inset-0 z-50 bg-white dark:bg-gray-900 p-4 overflow-auto' : ''}>
               {isFullscreen && (
                 <div className="sticky top-0 z-[55] bg-white/95 dark:bg-gray-900/95 backdrop-blur border-b border-gray-400 dark:border-yellow-400/20 px-4 py-3 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] items-center gap-2 mb-2">
                     <div className="text-sm text-gray-800 dark:text-gray-300 font-medium">
                       <b>{controleHorarios.length}</b> viagens • Data: <b>{dataReferencia}</b> • <b>{dayType}</b>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" onClick={() => setShowFilters((v) => !v)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
-                        Filtros
+                    <div className="flex flex-wrap justify-end items-center gap-2 w-full md:w-auto">
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowFilters((v) => !v)}
+                        className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+                        aria-label="Abrir filtros"
+                      >
+                        <Filter className="h-4 w-4 md:mr-2" />
+                        <span className="hidden md:inline">Filtros</span>
                       </Button>
-                      <Button variant="outline" onClick={() => { limparFiltros(); aplicarFiltros(); }} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
-                        Limpar Filtros
+                      <Button
+                        variant="outline"
+                        onClick={() => { limparFiltros(); aplicarFiltros(); }}
+                        className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+                        aria-label="Limpar filtros"
+                      >
+                        <X className="h-4 w-4 md:mr-2" />
+                        <span className="hidden md:inline">Limpar Filtros</span>
                       </Button>
                       <select
-                        className="border border-gray-500 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent min-w-[180px]"
+                        className="border border-gray-500 dark:border-gray-700 bg-white dark:bg-transparent rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent w-full md:w-[220px] flex-1 md:flex-none"
                         onChange={(e) => e.target.value && applySavedFilterQuick(e.target.value)}
                         defaultValue=""
-                        aria-label="Filtros Salvos"
-                        title="Filtros Salvos"
+                        aria-label="Filtros salvos…"
+                        title="Filtros salvos…"
+                        disabled={loadingSavedFilters || savedFiltersQuick.length === 0}
+                        aria-busy={loadingSavedFilters}
                       >
-                        <option value="" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">Filtros salvos…</option>
-                        {savedFiltersQuick.map((sf) => (
+                        <option value="" className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+                          {loadingSavedFilters ? 'Carregando filtros…' : 'Filtros salvos…'}
+                        </option>
+                        {!loadingSavedFilters && savedFiltersQuick.map((sf) => (
                           <option key={sf.name} value={sf.name} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">{sf.name}</option>
                         ))}
                       </select>
-                      <Button variant="outline" onClick={handleExportHtml} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
-                        <Download className="h-4 w-4 mr-2" /> Gerar Relatório
+
+                      <Button
+                        variant="outline"
+                        onClick={() => setIsFullscreen(false)}
+                        className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+                        aria-label="Sair da tela cheia"
+                      >
+                        <Minimize2 className="h-4 w-4 md:mr-2" />
+                        <span className="hidden md:inline">Sair da Tela Cheia</span>
                       </Button>
-                      <Button variant="outline" onClick={() => setIsFullscreen(false)} className="border-gray-500 dark:border-gray-700 text-gray-700 dark:text-gray-300 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800">
-                        <Minimize2 className="h-4 w-4 mr-2" /> Sair da Tela Cheia
-                      </Button>
+                      {/* Notification Bell in fullscreen mode */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsNotifOpen(true);
+                          if (unreadCount > 0) {
+                            setNotifications((prev) => prev.map(n => ({ ...n, read: true })));
+                            setUnreadCount(0);
+                          }
+                        }}
+                        className="relative inline-flex items-center justify-center w-10 h-10 rounded-md border border-gray-500 dark:border-gray-700 bg-white dark:bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        aria-label="Notificações"
+                      >
+                        <Bell className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-xs font-bold flex items-center justify-center">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </button>
                     </div>
                   </div>
-                  {savedFiltersQuick.length > 0 && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-gray-400 dark:border-gray-700">
-                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Filtros Salvos:</span>
+                  {loadingSavedFilters ? (
+                    <div className="grid grid-cols-1 items-start gap-2 pt-2 border-t border-gray-400 dark:border-yellow-400/20 dark:border-gray-700">
+                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Carregando filtros…</span>
+                    </div>
+                  ) : (savedFiltersQuick.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] items-start gap-2 pt-2 border-t border-gray-400 dark:border-yellow-400/20 dark:border-gray-700">
+                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">Filtros salvos…</span>
                       <div className="flex flex-wrap gap-2">
                         {savedFiltersQuick.map((sf) => (
                           <button
@@ -622,7 +960,7 @@ export const ControleHorariosPage: React.FC = () => {
                         ))}
                       </div>
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
               <DataTable
@@ -638,7 +976,7 @@ export const ControleHorariosPage: React.FC = () => {
                 contarAlteracoesPendentes={contarAlteracoesPendentes}
                 canSave={canSaveCH}
                 editedByMeActive={Boolean((filtros as any).editado_por_usuario_email)}
-                onApplyScaleFilter={({ servico, cracha }) => {
+                onApplyScaleFilter={({ servico, cracha }: { servico: string; cracha: string; tipo: 'motorista' | 'cobrador' }) => {
                   setFiltros((prev: any) => ({
                     ...prev,
                     cod_servico_numero: servico,
@@ -650,12 +988,18 @@ export const ControleHorariosPage: React.FC = () => {
                 }}
                 scaleFilterActive={Boolean((filtros as any).cod_servico_numero && (filtros as any).cracha_funcionario)}
                 scaleFilterLabel={
-                  (filtros as any).cod_servico_numero && (filtros as any).cracha_funcionario
-                    ? `Serviço ${(filtros as any).cod_servico_numero} • Crachá ${(filtros as any).cracha_funcionario}`
+                  ((filtros as any).cod_servico_numero && (filtros as any).cracha_funcionario)
+                    ? `Servico ${(filtros as any).cod_servico_numero} - Cracha ${(filtros as any).cracha_funcionario}`
                     : null
                 }
                 onClearScaleFilter={limparFiltros}
                 onHorariosModalOpenChange={setIsHorariosModalOpen}
+                notificationsUnreadCount={unreadCount}
+                onOpenNotifications={() => {
+                  setIsNotifOpen(true);
+                  setNotifications((prev) => prev.map(n => ({ ...n, read: true })));
+                }}
+                onCommitChanges={commitLocalChanges}
               />
 
               {canSaveCH && !isHorariosModalOpen && (
@@ -715,7 +1059,7 @@ export const ControleHorariosPage: React.FC = () => {
                     <thead>
                       <tr className="bg-gray-200 dark:bg-gray-800/60 border-b border-gray-400 dark:border-gray-700">
                         <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Linha</th>
-                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Serviço</th>
+                        <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">servico</th>
                         <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Saída</th>
                         <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Chegada</th>
                         <th className="px-3 py-2 text-left font-bold text-gray-700 dark:text-gray-200">Carro</th>
@@ -740,12 +1084,12 @@ export const ControleHorariosPage: React.FC = () => {
                           );
                         };
 
-                        const renderPerson = (originalName?: string, substitutedName?: string, originalCracha?: string, substitutedCracha?: string) => {
-                          if (!substitutedName && !substitutedCracha) {
+                        const renderPerson = (originalName?: string, substitutedName?: string, originalCrachá?: string, substitutedCrachá?: string) => {
+                          if (!substitutedName && !substitutedCrachá) {
                             return (
                               <div>
                                 <div className="text-gray-900 dark:text-gray-100">{originalName || ''}</div>
-                                {originalCracha && <div className="text-xs text-gray-700 dark:text-gray-400">Crachá: {originalCracha}</div>}
+                                {originalCrachá && <div className="text-xs text-gray-700 dark:text-gray-400">Crachá: {originalCrachá}</div>}
                               </div>
                             );
                           }
@@ -753,11 +1097,11 @@ export const ControleHorariosPage: React.FC = () => {
                             <div className="flex flex-col">
                               <div className="text-gray-500 line-through">
                                 <div>{originalName || ''}</div>
-                                {originalCracha && <div className="text-xs">Crachá: {originalCracha}</div>}
+                                {originalCrachá && <div className="text-xs">Crachá: {originalCrachá}</div>}
                               </div>
                               <div className="text-yellow-700 dark:text-yellow-400 font-bold">
                                 <div>{substitutedName || ''}</div>
-                                {substitutedCracha && <div className="text-xs">Crachá: {substitutedCracha}</div>}
+                                {substitutedCrachá && <div className="text-xs">Crachá: {substitutedCrachá}</div>}
                               </div>
                             </div>
                           );
@@ -771,8 +1115,8 @@ export const ControleHorariosPage: React.FC = () => {
                               <div className="text-gray-900 dark:text-gray-100 font-medium">{it.codigoLinha} - {it.nomeLinha}</div>
                               <div className="text-xs text-gray-600 dark:text-gray-400">{it.setorPrincipalLinha}</div>
                             </td>
-                            <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{it.codServicoNumero ?? it.cod_servico_numero}</td>
-                            <td className="px-3 py-2">{renderAdjustedTime(it.hor_saida, it.hor_saida_ajustada)}</td>
+                            <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{it.codservicoNumero ?? it.cod_servico_numero}</td>
+                            <td className="px-3 py-2">{renderAdjustedTime(it.hor_Saída, it.hor_Saída_ajustada)}</td>
                             <td className="px-3 py-2">{renderAdjustedTime(it.hor_chegada, it.hor_chegada_ajustada)}</td>
                             <td className={`px-3 py-2 ${isCarroEdited ? 'text-yellow-700 dark:text-yellow-400 font-bold' : 'text-gray-900 dark:text-gray-100'}`}>
                               {isCarroEdited ? (
@@ -784,8 +1128,8 @@ export const ControleHorariosPage: React.FC = () => {
                                 it.prefixo_veiculo
                               )}
                             </td>
-                            <td className="px-3 py-2">{renderPerson(it.nome_motorista, it.nome_motorista_editado, it.cracha_motorista, it.cracha_motorista_editado)}</td>
-                            <td className="px-3 py-2">{renderPerson(it.nome_cobrador, it.nome_cobrador_editado, it.cracha_cobrador, it.cracha_cobrador_editado)}</td>
+                            <td className="px-3 py-2">{renderPerson(it.nome_motorista, it.nome_motorista_editado, it.Crachá_motorista, it.Crachá_motorista_editado)}</td>
+                            <td className="px-3 py-2">{renderPerson(it.nome_cobrador, it.nome_cobrador_editado, it.Crachá_cobrador, it.Crachá_cobrador_editado)}</td>
                             <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{it.observacao || ''}</td>
                           </tr>
                         );
@@ -813,6 +1157,31 @@ export const ControleHorariosPage: React.FC = () => {
           onConfirm={() => sincronizarControleHorarios()}
         />
       </div>
-    </div>
+    </div >
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

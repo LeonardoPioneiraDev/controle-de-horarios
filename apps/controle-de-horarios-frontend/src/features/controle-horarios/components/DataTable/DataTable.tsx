@@ -1,5 +1,7 @@
 // src/features/controle-horarios/components/DataTable/DataTable.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useAuth } from '../../../../contexts/AuthContext';
+import { UserRole } from '@/types';
 import { AlertCircle, Clock, RefreshCw, MapPin, Save, X, ClipboardList, Navigation, ArrowDown, Play, Square, Users, Car, Bus, Calendar, Activity, ChevronRight } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { ControleHorarioItem, StatusControleHorariosData, StatusControleHorariosDto, EstatisticasControleHorariosDto } from '@/types/controle-horarios.types';
@@ -22,6 +24,11 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
   onApplyScaleFilter,
   onSave,
 }) => {
+  const { user } = useAuth();
+  const canEditPrefix = useMemo(() => {
+    const role = user?.role as UserRole | undefined;
+    return role === UserRole.DESPACHANTE || role === UserRole.ADMINISTRADOR;
+  }, [user]);
   const isMotorista = personType === 'motorista';
   const nomeOriginal = isMotorista ? item.nomeMotoristaGlobus : item.nomeCobradorGlobus;
   const crachaOriginal = isMotorista ? item.crachaMotoristaGlobus : item.crachaCobradorGlobus;
@@ -146,7 +153,7 @@ const PersonOptionsModal: React.FC<PersonOptionsModalProps> = ({
                   type="text"
                   className="block w-full px-3 py-2 border border-gray-600 dark:border-neutral-700 bg-white dark:bg-neutral-800/60 rounded-md shadow-sm focus:outline-none focus:ring-green-700 dark:focus:ring-yellow-500 focus:border-yellow-600 sm:text-sm text-gray-900 dark:text-gray-100"
                   value={tempNumeroCarro}
-                  onChange={(e) => setTempNumeroCarro(e.target.value.replace(/[^0-9]/g, '').slice(0, 7))}
+                  onChange={(e) => { if (!canEditPrefix) return; setTempNumeroCarro(e.target.value.replace(/[^0-9]/g, '').slice(0, 7)); }}
                   placeholder="Digite o número do veículo"
                 />
               </div>
@@ -1447,9 +1454,6 @@ export const DataTable: React.FC<DataTableProps> = ({
 }
 
 export default DataTable;
-
-
-
 
 
 

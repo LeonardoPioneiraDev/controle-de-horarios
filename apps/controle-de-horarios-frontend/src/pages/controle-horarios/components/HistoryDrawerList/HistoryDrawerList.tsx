@@ -219,17 +219,17 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} aria-hidden="true" />
-      <div className="absolute inset-0 w-full h-full bg-gray-900 overflow-hidden">
-        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-yellow-400/20 bg-gray-900">
+      <div className="absolute inset-0 w-full h-full bg-white dark:bg-gray-900 overflow-hidden">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-yellow-400/20 bg-white dark:bg-gray-900">
           <div className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5 text-yellow-400" />
-            <h2 className="text-sm font-semibold text-gray-100">Viagens Editadas • {date}</h2>
+            <ClipboardList className="h-5 w-5 text-green-700 dark:text-yellow-400" />
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Viagens Editadas • {date}</h2>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={handleExportHtml} className="px-3 py-1.5 text-xs border border-yellow-400/30 rounded text-yellow-200 hover:bg-yellow-400/10 flex items-center gap-1"><Download className="h-3 w-3" /> Relatório</button>
-            <button onClick={handleExportExcel} className="px-3 py-1.5 text-xs border border-yellow-400/30 rounded text-yellow-200 hover:bg-yellow-400/10 flex items-center gap-1"><Download className="h-3 w-3" /> Excel</button>
-            <button onClick={onClose} aria-label="Fechar histórico" className="p-1 rounded hover:bg-gray-800">
-              <X className="h-5 w-5 text-gray-300" />
+            <button onClick={handleExportHtml} className="px-3 py-1.5 text-xs border border-green-700/30 dark:border-yellow-400/30 rounded text-green-800 dark:text-yellow-200 hover:bg-green-50 dark:hover:bg-yellow-400/10 flex items-center gap-1"><Download className="h-3 w-3" /> Relatório</button>
+            <button onClick={handleExportExcel} className="px-3 py-1.5 text-xs border border-green-700/30 dark:border-yellow-400/30 rounded text-green-800 dark:text-yellow-200 hover:bg-green-50 dark:hover:bg-yellow-400/10 flex items-center gap-1"><Download className="h-3 w-3" /> Excel</button>
+            <button onClick={onClose} aria-label="Fechar histórico" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
+              <X className="h-5 w-5 text-gray-500 dark:text-gray-300" />
             </button>
           </div>
         </div>
@@ -243,26 +243,26 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
           {!loading && !error && items.length > 0 && (
             <div className="overflow-x-auto">
               <table className="min-w-full text-sm">
-                <thead className="bg-gray-800/60">
+                <thead className="bg-gray-50 dark:bg-gray-800/60">
                   <tr>
-                    <th className="px-3 py-2 text-left font-semibold">Linha / Serviço / Setor</th>
-                    <th className="px-3 py-2 text-left font-semibold">Horários</th>
-                    <th className="px-3 py-2 text-left font-semibold">Carro</th>
-                    <th className="px-3 py-2 text-left font-semibold">Motorista</th>
-                    <th className="px-3 py-2 text-left font-semibold">Cobrador</th>
-                    <th className="px-3 py-2 text-left font-semibold">Edição/Conf.</th>
-                    <th className="px-3 py-2 text-left font-semibold">Observações</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Linha / Serviço / Setor</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Horários</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Carro</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Motorista</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Cobrador</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Edição/Conf.</th>
+                    <th className="px-3 py-2 text-left font-semibold text-gray-700 dark:text-gray-200">Observações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {items.map((it: any) => {
                     const carroEdited = it.prefixo_veiculo_editado && it.prefixo_veiculo_editado !== it.prefixo_veiculo;
                     return (
-                      <tr key={it.id} className="hover:bg-gray-800/30">
+                      <tr key={it.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/30">
                         <td className="px-3 py-2 align-top">
-                          <div className="font-medium text-gray-100">{(it.codigo_linha || it.codigoLinha) + ' - ' + trunc(it.nome_linha || it.nomeLinha, 20)}</div>
-                          <div className="text-xs text-gray-300">Serviço: {it.cod_servico_numero || ''}</div>
-                          <div className="text-xs text-gray-400">Setor: {it.setor_principal_linha || it.setorPrincipalLinha || ''}</div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">{(it.codigo_linha || it.codigoLinha) + ' - ' + trunc(it.nome_linha || it.nomeLinha, 20)}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-300">Serviço: {it.cod_servico_numero || ''}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Setor: {it.setor_principal_linha || it.setorPrincipalLinha || ''}</div>
                         </td>
                         <td className="px-3 py-2 align-top">
                           <div className="flex flex-col gap-1">
@@ -287,28 +287,28 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
                         <td className="px-3 py-2 align-top">
                           {carroEdited ? (
                             <div className="flex flex-col">
-                              <span className="text-gray-500 line-through text-xs">{it.prefixo_veiculo}</span>
-                              <span className="text-yellow-400 font-bold bg-yellow-400/10 px-1.5 py-0.5 rounded border border-yellow-400/20 w-fit">{it.prefixo_veiculo_editado}</span>
+                              <span className="text-gray-400 dark:text-gray-500 line-through text-xs">{it.prefixo_veiculo}</span>
+                              <span className="text-green-700 dark:text-yellow-400 font-bold bg-green-50 dark:bg-yellow-400/10 px-1.5 py-0.5 rounded border border-green-200 dark:border-yellow-400/20 w-fit">{it.prefixo_veiculo_editado}</span>
                             </div>
                           ) : (
-                            <span className="font-bold text-blue-200 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">{it.prefixo_veiculo || '—'}</span>
+                            <span className="font-bold text-blue-700 dark:text-blue-200 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-200 dark:border-blue-500/20">{it.prefixo_veiculo || '—'}</span>
                           )}
                         </td>
                         <td className="px-3 py-2 align-top">
                           {(!it.motorista_substituto_nome && !it.motorista_substituto_cracha) ? (
                             <div>
-                              <div>{it.nome_motorista || it.nomeMotorista || ''}</div>
+                              <div className="text-gray-900 dark:text-gray-100">{it.nome_motorista || it.nomeMotorista || ''}</div>
                               {(it.cracha_motorista || it.crachaMotoristaGlobus) && (
-                                <div className="text-xs text-gray-400">Crachá: {it.cracha_motorista || it.crachaMotoristaGlobus}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Crachá: {it.cracha_motorista || it.crachaMotoristaGlobus}</div>
                               )}
                             </div>
                           ) : (
                             <div className="flex flex-col">
-                              <div className="text-gray-500 line-through">
+                              <div className="text-gray-400 dark:text-gray-500 line-through">
                                 <div>{it.nome_motorista || it.nomeMotorista || ''}</div>
                                 {(it.cracha_motorista || it.crachaMotoristaGlobus) && <div className="text-xs">Crachá: {it.cracha_motorista || it.crachaMotoristaGlobus}</div>}
                               </div>
-                              <div className="text-yellow-400 font-bold">
+                              <div className="text-green-700 dark:text-yellow-400 font-bold">
                                 <div>{it.motorista_substituto_nome || ''}</div>
                                 {it.motorista_substituto_cracha && <div className="text-xs">Crachá: {it.motorista_substituto_cracha}</div>}
                               </div>
@@ -318,18 +318,18 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
                         <td className="px-3 py-2 align-top">
                           {(!it.cobrador_substituto_nome && !it.cobrador_substituto_cracha) ? (
                             <div>
-                              <div>{it.nome_cobrador || it.nomeCobrador || ''}</div>
+                              <div className="text-gray-900 dark:text-gray-100">{it.nome_cobrador || it.nomeCobrador || ''}</div>
                               {(it.cracha_cobrador || it.crachaCobradorGlobus) && (
-                                <div className="text-xs text-gray-400">Crachá: {it.cracha_cobrador || it.crachaCobradorGlobus}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Crachá: {it.cracha_cobrador || it.crachaCobradorGlobus}</div>
                               )}
                             </div>
                           ) : (
                             <div className="flex flex-col">
-                              <div className="text-gray-500 line-through">
+                              <div className="text-gray-400 dark:text-gray-500 line-through">
                                 <div>{it.nome_cobrador || it.nomeCobrador || ''}</div>
                                 {(it.cracha_cobrador || it.crachaCobradorGlobus) && <div className="text-xs">Crachá: {it.cracha_cobrador || it.crachaCobradorGlobus}</div>}
                               </div>
-                              <div className="text-yellow-400 font-bold">
+                              <div className="text-green-700 dark:text-yellow-400 font-bold">
                                 <div>{it.cobrador_substituto_nome || ''}</div>
                                 {it.cobrador_substituto_cracha && <div className="text-xs">Crachá: {it.cobrador_substituto_cracha}</div>}
                               </div>
@@ -346,19 +346,19 @@ export const HistoryDrawerList: React.FC<Props> = ({ open, date, filtros, onClos
                                 <span className="text-xs font-bold text-red-400 bg-red-400/10 px-1.5 py-0.5 rounded border border-red-400/20">NÃO</span>
                               )}
                             </div>
-                            <span className="text-xs text-gray-400">{it.editado_por_email || it.usuarioEmail || it.editado_por_nome || it.usuarioEdicao || '—'}</span>
-                            <span className="text-xs text-gray-500">{it.updated_at ? new Date(it.updated_at).toLocaleString('pt-BR') : ''}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">{it.editado_por_email || it.usuarioEmail || it.editado_por_nome || it.usuarioEdicao || '—'}</span>
+                            <span className="text-xs text-gray-400 dark:text-gray-500">{it.updated_at ? new Date(it.updated_at).toLocaleString('pt-BR') : ''}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2 align-top">
-                            {buildObservacoes(it) ? (
-                              <span className="text-yellow-200/90 italic font-medium bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20 block">
-                                {buildObservacoes(it)}
-                              </span>
-                            ) : (
-                              <span className="text-gray-600">—</span>
-                            )}
-                          </td>
+                          {buildObservacoes(it) ? (
+                            <span className="text-green-800 dark:text-yellow-200/90 italic font-medium bg-green-50 dark:bg-yellow-500/10 px-2 py-1 rounded border border-green-200 dark:border-yellow-500/20 block">
+                              {buildObservacoes(it)}
+                            </span>
+                          ) : (
+                            <span className="text-gray-600">—</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
